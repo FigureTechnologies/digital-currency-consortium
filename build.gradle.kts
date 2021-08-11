@@ -11,7 +11,7 @@ plugins {
 }
 
 allprojects {
-    group = "io.provenance.usdf.consortium"
+    group = "io.provenance.digitalcurrency.consortium"
     version = artifactVersion(this)
 
     repositories {

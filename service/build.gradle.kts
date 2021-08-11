@@ -92,4 +92,4 @@ tasks.getByName<BootRun>("bootRun") {
     args = mutableListOf("--spring.profiles.active=$profiles")
 }
 
-springBoot.mainClass.set("io.provenance.usdf.consortium.ApplicationKt")
+springBoot.mainClass.set("io.provenance.digitalcurrency.consortium.ApplicationKt")

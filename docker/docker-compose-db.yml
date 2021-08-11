@@ -1,6 +1,6 @@
-version: '3.5'
+version: '3.9'
 services:
-  usdfconsortium-postgres:
+  digital-currency-consortium-postgres:
     image: postgres:13.2
     container_name: postgres-local
     environment:

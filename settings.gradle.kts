@@ -1,4 +1,4 @@
-rootProject.name = "usdf-consortium"
+rootProject.name = "digital-currency-consortium"
 
 include(
     "service",

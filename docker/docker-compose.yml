@@ -1,17 +1,17 @@
 version: '3.9'
 services:
-  usdfconsortium-postgres:
-    image: provenanceio/usdfconsortium-database:latest
-    container_name: usdfconsortium-postgres
+  digital-currency-consortium-postgres:
+    image: provenanceio/digital-currency-consortium-database:latest
+    container_name: digital-currency-consortium-postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password1
     ports:
       - 5432:5432
 
-  usdfconsortium-service:
-    image: provenanceio/usdf-consortium:latest
-    container_name: usdf-consortium
+  digital-currency-consortium-service:
+    image: provenanceio/digital-currency-consortium:latest
+    container_name: digital-currency-consortium-service
     ports:
       - 8080:8080
     environment:
@@ -19,10 +19,10 @@ services:
       - DB_USER=postgres
       - DB_PASS=password1
       - DB_HOST=postgres
-      - DB_URL=jdbc:postgresql://usdfconsortium-postgres:5432/usdfconsortium
+      - DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_consortium
       - DB_PORT=5432
-      - DB_NAME=usdfconsortium
-      - DB_SCHEMA=usdfconsortium
+      - DB_NAME=digital_currency_consortium
+      - DB_SCHEMA=digital_currency_consortium
       - DB_CONNECTION_POOL_SIZE=5
       - PROVENANCE_MAINNET=false
       - PROVENANCE_CHAIN_ID=testing
@@ -33,6 +33,6 @@ services:
       - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
       - EVENT_STREAM_EPOCH=0
     depends_on:
-      - usdfconsortium-postgres
+      - digital-currency-consortium-postgres
     links:
-      - "usdfconsortium-postgres"
+      - "digital-currency-consortium-postgres"
