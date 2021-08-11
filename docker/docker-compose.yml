@@ -1,0 +1,38 @@
+version: '3.9'
+services:
+  usdfconsortium-postgres:
+    image: provenanceio/usdfconsortium-database:latest
+    container_name: usdfconsortium-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5432:5432
+
+  usdfconsortium-service:
+    image: provenanceio/usdf-consortium:latest
+    container_name: usdf-consortium
+    ports:
+      - 8080:8080
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_HOST=postgres
+      - DB_URL=jdbc:postgresql://usdfconsortium-postgres:5432/usdfconsortium
+      - DB_PORT=5432
+      - DB_NAME=usdfconsortium
+      - DB_SCHEMA=usdfconsortium
+      - DB_CONNECTION_POOL_SIZE=5
+      - PROVENANCE_MAINNET=false
+      - PROVENANCE_CHAIN_ID=testing
+      # Hits the locally running node
+      - GRPC_CHANNEL_URL=http://host.docker.internal:9090
+      - EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1
+      - EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657
+      - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
+      - EVENT_STREAM_EPOCH=0
+    depends_on:
+      - usdfconsortium-postgres
+    links:
+      - "usdfconsortium-postgres"
