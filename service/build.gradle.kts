@@ -34,9 +34,9 @@ dependencies {
         it(Libraries.SpringBootDevTools)
         it(Libraries.SpringBootActuator)
         it(Libraries.SpringBootStartedJdbc)
-        it(Libraries.SpringBoogStarterSecurity)
         it(Libraries.SpringBootStarterWeb)
         it(Libraries.SpringBootStarterValidation)
+        it(Libraries.JavaxValidation)
 
         it(Libraries.GrpcAlts)
         it(Libraries.GrpcStub)
@@ -52,7 +52,9 @@ dependencies {
         it(Libraries.ScarletMessageAdapter)
 
         // ----- Misc -----
-        it(Libraries.Swagger)
+        it(Libraries.Swagger2)
+        it(Libraries.SwaggerStarter)
+        it(Libraries.SwaggerUi)
         it(Libraries.Flyway)
         it(Libraries.Exposed)
         it(Libraries.ExposedDao)

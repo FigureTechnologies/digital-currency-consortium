@@ -5,7 +5,13 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.util.TimeZone
 
-@SpringBootApplication(scanBasePackages = ["io.provenance.digitalcurrency.consortium"])
+@SpringBootApplication(
+    scanBasePackages = ["io.provenance.digitalcurrency.consortium"],
+    exclude = [
+        org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration::class,
+        org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration::class
+    ]
+)
 @EnableScheduling
 class Application
 

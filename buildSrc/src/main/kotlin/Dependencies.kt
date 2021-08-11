@@ -37,12 +37,14 @@ object Versions {
     const val Feign = "11.6"
     const val Flyway = PluginVersions.Flyway
     const val Jackson = "2.12.2"
+    const val JavaxValidation = "2.0.0.Final"
     const val Kethereum = "0.83.4"
     const val Komputing = "0.1"
     const val Logback = "0.1.5"
     const val Postgres = "42.2.23"
     const val Protobuf = "3.6.1"
     const val Swagger = "3.0.0"
+    const val SwaggerUi = "2.9.2"
     const val SpringBoot = PluginVersions.SpringBoot
 
     // Testing
@@ -87,7 +89,9 @@ object Libraries {
     const val ScarletWebsocket = "com.tinder.scarlet:websocket-okhttp:${Versions.ScarletForEventStream}"
     const val ScarletMessageAdapter = "com.tinder.scarlet:message-adapter-moshi:${Versions.ScarletForEventStream}"
 
-    const val Swagger = "io.springfox:springfox-boot-starter:${Versions.Swagger}"
+    const val Swagger2 = "io.springfox:springfox-swagger2:${Versions.Swagger}"
+    const val SwaggerStarter = "io.springfox:springfox-boot-starter:${Versions.Swagger}"
+    const val SwaggerUi = "io.springfox:springfox-swagger-ui:${Versions.SwaggerUi}"
     const val Flyway = "org.flywaydb:flyway-core:${Versions.Flyway}"
     const val Exposed = "org.jetbrains.exposed:exposed-core:${Versions.Exposed}"
     const val ExposedDao = "org.jetbrains.exposed:exposed-dao:${Versions.Exposed}"
@@ -108,9 +112,9 @@ object Libraries {
     const val SpringBootDevTools = "org.springframework.boot:spring-boot-devtools:${Versions.SpringBoot}"
     const val SpringBootActuator = "org.springframework.boot:spring-boot-starter-actuator:${Versions.SpringBoot}"
     const val SpringBootStartedJdbc = "org.springframework.boot:spring-boot-starter-jdbc:${Versions.SpringBoot}"
-    const val SpringBoogStarterSecurity = "org.springframework.boot:spring-boot-starter-security:${Versions.SpringBoot}"
     const val SpringBootStarterWeb = "org.springframework.boot:spring-boot-starter-web:${Versions.SpringBoot}"
     const val SpringBootStarterValidation = "org.springframework.boot:spring-boot-starter-validation:${Versions.SpringBoot}"
+    const val JavaxValidation = "javax.validation:validation-api:${Versions.JavaxValidation}"
 
     // Testing
     // const val JunitJupiterApi = "org.junit.jupiter:junit-jupiter-api:${Versions.JunitJupiter}"
