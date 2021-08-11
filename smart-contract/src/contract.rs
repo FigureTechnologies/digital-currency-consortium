@@ -21,7 +21,7 @@ use crate::state::{
 // Contract constants
 pub static MIN_DENOM_LEN: usize = 8;
 
-/// Create the initial configuration state and propose the USDF marker.
+/// Create the initial configuration state and propose the dcc marker.
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
@@ -36,7 +36,7 @@ pub fn instantiate(
         return Err(contract_err("invalid dcc denom"));
     }
     if msg.quorum_pct.is_zero() || msg.quorum_pct > Decimal::percent(100) {
-        return Err(contract_err("invalid dcc quorum percent"));
+        return Err(contract_err("invalid quorum percent"));
     }
     if msg.vote_duration.is_zero() {
         return Err(contract_err("invalid vote duration"));
@@ -539,7 +539,7 @@ fn try_transfer(
 }
 
 // Increase the reserve supply of a member.
-// If an address is provided, mint equivalent USDF and withdraw fungible tokens.
+// If an address is provided, mint dcc tokens and withdraw there.
 fn try_mint(
     deps: DepsMut,
     info: MessageInfo,
@@ -591,7 +591,7 @@ fn try_mint(
             )?);
         }
         Some(a) => {
-            // When withdrawing USDF to a non-member account, ensure the recipient has the
+            // When withdrawing dcc tokens to a non-member account, ensure the recipient has the
             // required kyc attributes.
             let address = deps.api.addr_validate(&a)?;
             if address != info.sender {
@@ -1954,7 +1954,7 @@ mod tests {
         )
         .unwrap();
 
-        // Assume the customer has a balance of USDF + the required attribute.
+        // Assume the customer has a balance of dcc tokens + the required attribute.
         let dcc = coin(1000, "dcc.coin");
         deps.querier
             .base
@@ -2127,7 +2127,7 @@ mod tests {
         )
         .unwrap();
 
-        // Assume the customer has the required attribute, but no USDF funds.
+        // Assume the customer has the required attribute, but no dcc tokens.
         deps.querier
             .with_attributes("customer", &[("bank.kyc", "ok", "string")]);
 
