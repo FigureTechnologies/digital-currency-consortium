@@ -26,6 +26,8 @@ object PluginVersions {
 object Versions {
     const val Kotlin = PluginVersions.Kotlin
 
+    const val Jacoco = "0.8.7"
+
     const val Grpc = "1.39.0"
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"

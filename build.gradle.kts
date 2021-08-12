@@ -31,6 +31,7 @@ subprojects {
         plugin(PluginIds.Idea)
         plugin(PluginIds.Protobuf)
         plugin(PluginIds.TestLogger)
+        plugin(PluginIds.Jacoco)
     }
 
     repositories {
@@ -52,6 +53,25 @@ subprojects {
             showCauses = true
             slowThreshold = 1000
             showSummary = true
+        }
+    }
+
+    jacoco {
+        toolVersion = Versions.Jacoco
+        reportsDirectory.set(layout.buildDirectory.dir("customJacocoReportDir"))
+    }
+
+    tasks.test {
+        finalizedBy(tasks.jacocoTestReport)
+    }
+
+    tasks.jacocoTestReport {
+        dependsOn(tasks.test)
+
+        reports {
+            xml.required.set(false)
+            csv.required.set(false)
+            html.outputLocation.set(layout.buildDirectory.dir("jacocoHtml"))
         }
     }
 
