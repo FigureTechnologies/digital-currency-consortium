@@ -748,18 +748,9 @@ fn ensure_attributes(deps: Deps, addr: Addr, attrs: Vec<String>) -> Result<(), C
 }
 
 // Calculate the weight for a member based on reserve max supply.
-// TODO: Can we determinsticly use the Banzhaf or Shapley–Shubik power index instead of this?
 fn calculate_weight(max_supply: u128) -> u128 {
-    if max_supply == 0 {
-        return 1;
-    }
-    let msf = max_supply as f64;
-    let weight = msf.ln().floor();
-    if weight < 2f64 {
-        2
-    } else {
-        weight as u128
-    }
+    // Just return turncated usd equivalent for now...
+    max_supply / 100
 }
 
 /// Query contract state
@@ -870,19 +861,20 @@ mod tests {
 
     #[test]
     fn test_weight_orders_of_magnitude() {
-        assert_eq!(calculate_weight(0), 1);
-        assert_eq!(calculate_weight(1), 2);
-        assert_eq!(calculate_weight(10), 2);
-        assert_eq!(calculate_weight(100), 4);
-        assert_eq!(calculate_weight(1000), 6);
-        assert_eq!(calculate_weight(10000), 9);
-        assert_eq!(calculate_weight(100000), 11);
-        assert_eq!(calculate_weight(1000000), 13);
-        assert_eq!(calculate_weight(10000000), 16);
-        assert_eq!(calculate_weight(100000000), 18);
-        assert_eq!(calculate_weight(1000000000), 20);
-        assert_eq!(calculate_weight(10000000000), 23);
-        assert_eq!(calculate_weight(100000000000), 25);
+        assert_eq!(calculate_weight(0), 0);
+        assert_eq!(calculate_weight(1), 0);
+        assert_eq!(calculate_weight(10), 0);
+        assert_eq!(calculate_weight(100), 1);
+        assert_eq!(calculate_weight(1000), 10);
+        assert_eq!(calculate_weight(10000), 100);
+        assert_eq!(calculate_weight(100000), 1000);
+        assert_eq!(calculate_weight(1000000), 10000); // $10,000.00
+        assert_eq!(calculate_weight(2000000), 20000); // $20,000.00
+        assert_eq!(calculate_weight(10000000), 100000); // $100,000.00
+        assert_eq!(calculate_weight(100000000), 1000000); // $1,000,000.00
+        assert_eq!(calculate_weight(1000000000), 10000000); // $10,000,000.00
+        assert_eq!(calculate_weight(10000000000), 100000000); // $100,000,000.00
+        assert_eq!(calculate_weight(100000000000), 1000000000); // $1,000,000,000.00
     }
 
     #[test]
@@ -1544,7 +1536,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128(100000000),
                 denom: "bank.coin".into(),
             },
         )
@@ -1582,8 +1574,8 @@ mod tests {
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
         assert_eq!(member.supply, Uint128::zero());
-        assert_eq!(member.max_supply, Uint128(1_000_000));
-        assert_eq!(member.weight, Uint128(13));
+        assert_eq!(member.max_supply, Uint128(100000000));
+        //assert_eq!(member.weight, Uint128(20));
     }
 
     #[test]
@@ -1612,7 +1604,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128(100000000),
                 denom: "bank.coin".into(),
             },
         )
@@ -1636,7 +1628,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Accept {
-                mint_amount: Some(Uint128(1_000_000)),
+                mint_amount: Some(Uint128(100000000)),
             },
         )
         .unwrap();
@@ -1651,9 +1643,9 @@ mod tests {
 
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
-        assert_eq!(member.supply, Uint128(1_000_000));
-        assert_eq!(member.max_supply, Uint128(1_000_000));
-        assert_eq!(member.weight, Uint128(13));
+        assert_eq!(member.supply, Uint128(100000000));
+        assert_eq!(member.max_supply, Uint128(100000000));
+        // assert_eq!(member.weight, Uint128(20));
     }
 
     #[test]
