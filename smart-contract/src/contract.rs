@@ -1575,7 +1575,7 @@ mod tests {
         assert_eq!(member.denom, "bank.coin");
         assert_eq!(member.supply, Uint128::zero());
         assert_eq!(member.max_supply, Uint128(100000000));
-        //assert_eq!(member.weight, Uint128(20));
+        assert_eq!(member.weight, Uint128(1000000));
     }
 
     #[test]
@@ -1645,7 +1645,7 @@ mod tests {
         assert_eq!(member.denom, "bank.coin");
         assert_eq!(member.supply, Uint128(100000000));
         assert_eq!(member.max_supply, Uint128(100000000));
-        // assert_eq!(member.weight, Uint128(20));
+        assert_eq!(member.weight, Uint128(1000000));
     }
 
     #[test]
