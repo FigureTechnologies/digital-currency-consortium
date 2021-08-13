@@ -1,0 +1,24 @@
+{
+    "address": "dcc.marker",
+    "coins": [],
+    "account_number": 1,
+    "sequence": 0,
+    "permissions": [
+        {
+            "permissions": [
+                "admin",
+                "burn",
+                "deposit",
+                "delete",
+                "mint",
+                "withdraw"
+            ],
+            "address": "cosmos2contract"
+        }
+    ],
+    "status": "active",
+    "denom": "dcc.coin",
+    "total_supply": "0",
+    "marker_type": "coin",
+    "supply_fixed": false
+}
