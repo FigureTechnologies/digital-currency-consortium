@@ -180,6 +180,16 @@ provenanced tx wasm execute \
     --testnet | jq
 ```
 
+Query the join proposals to get the proposal id to vote on
+
+```bash
+provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+   '{"get_join_proposals": {}}' \
+   --ascii \
+   -o json \
+   --chain-id chain-local -t | jq
+```
+
 Vote 'yes' as the admin user (required to onboard the first bank since there are no members yet).
 
 ```bash
