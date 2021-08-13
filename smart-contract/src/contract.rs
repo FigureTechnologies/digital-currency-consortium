@@ -58,26 +58,34 @@ pub fn instantiate(
     };
     config(deps.storage).save(&state)?;
 
-    // Create the dcc marker and grant permissions
+    // Create the dcc marker and grant permissions if it doesn't exist.
     let mut res = Response::new();
-    res.add_message(create_marker(
-        0,
-        msg.dcc_denom.clone(),
-        MarkerType::Restricted,
-    )?);
-    res.add_message(grant_marker_access(
-        &msg.dcc_denom,
-        env.contract.address,
-        MarkerAccess::all(),
-    )?);
-    res.add_message(grant_marker_access(
-        &msg.dcc_denom,
-        info.sender,
-        vec![MarkerAccess::Admin], // The contract admin is also a dcc marker admin
-    )?);
-    res.add_message(finalize_marker(&msg.dcc_denom)?);
-    res.add_message(activate_marker(&msg.dcc_denom)?);
+    if !marker_exists(deps.as_ref(), &msg.dcc_denom) {
+        res.add_message(create_marker(
+            0,
+            msg.dcc_denom.clone(),
+            MarkerType::Restricted,
+        )?);
+        res.add_message(grant_marker_access(
+            &msg.dcc_denom,
+            env.contract.address,
+            MarkerAccess::all(),
+        )?);
+        res.add_message(grant_marker_access(
+            &msg.dcc_denom,
+            info.sender,
+            vec![MarkerAccess::Admin], // The contract admin is also a dcc marker admin
+        )?);
+        res.add_message(finalize_marker(&msg.dcc_denom)?);
+        res.add_message(activate_marker(&msg.dcc_denom)?);
+    }
     Ok(res)
+}
+
+// Determine whether the marker with the given denom exists.
+fn marker_exists(deps: Deps, denom: &str) -> bool {
+    let querier = ProvenanceQuerier::new(&deps.querier);
+    querier.get_marker_by_denom(denom).is_ok()
 }
 
 /// Execute the contract
