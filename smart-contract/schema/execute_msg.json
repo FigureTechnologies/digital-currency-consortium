@@ -3,12 +3,6 @@
   "title": "ExecuteMsg",
   "anyOf": [
     {
-      "type": "string",
-      "enum": [
-        "cancel"
-      ]
-    },
-    {
       "type": "object",
       "required": [
         "join"
@@ -76,6 +70,18 @@
               ]
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "cancel"
+      ],
+      "properties": {
+        "cancel": {
+          "type": "object"
         }
       },
       "additionalProperties": false

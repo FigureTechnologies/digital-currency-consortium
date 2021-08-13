@@ -43,7 +43,7 @@ pub enum ExecuteMsg {
         mint_amount: Option<Uint128>,
     },
     // Cancel join proposal
-    Cancel,
+    Cancel {},
     // Redeem dcc tokens for reserve tokens.
     Redeem {
         amount: Uint128,

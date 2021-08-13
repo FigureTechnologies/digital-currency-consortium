@@ -91,7 +91,7 @@ pub fn execute(
         ExecuteMsg::Join { denom, max_supply } => try_join(deps, env, info, denom, max_supply),
         ExecuteMsg::Vote { id, choice } => try_vote(deps, env, info, id, choice),
         ExecuteMsg::Accept { mint_amount } => try_accept(deps, env, info, mint_amount),
-        ExecuteMsg::Cancel => try_cancel(deps, info),
+        ExecuteMsg::Cancel {} => try_cancel(deps, info),
         ExecuteMsg::Redeem {
             amount,
             reserve_denom,
