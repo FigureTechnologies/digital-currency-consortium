@@ -160,13 +160,98 @@ provenanced tx bank send \
 
 ## KYC Attributes
 
-### TODO
+Add the unrestricted base name: `kyc.pb`.
 
-- Add base name `kyc.pb` (owned by node0)
-- Add `bank1.kyc.pb` (owned by bank1)
-- Add `bank2.kyc.pb` (owned by bank2)
-- Give `user1` the `bank1.kyc.pb`attribute.
-- Give `user2` the `bank2.kyc.pb`attribute.
+```bash
+provenanced tx name bind \
+    "kyc" \
+    $(provenanced keys show -a node0 --home build/node0 --keyring-backend test --testnet) \
+    "pb" \
+    --restrict=false \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add the restricted name: `bank1.kyc.pb`.
+
+```bash
+provenanced tx name bind \
+    "bank1" \
+    $(provenanced keys show -a bank1 --home build/node0 --keyring-backend test --testnet) \
+    "kyc.pb" \
+    --from bank1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add the restricted name: `bank2.kyc.pb`.
+
+```bash
+provenanced tx name bind \
+    "bank2" \
+    $(provenanced keys show -a bank2 --home build/node0 --keyring-backend test --testnet) \
+    "kyc.pb" \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add a `bank1.kyc.pb` attribute to the `user1` account. This simulates `user1` going through the
+KYC process for `bank1`.
+
+```bash
+provenanced tx attribute add \
+    "bank1.kyc.pb" \
+    $(provenanced keys show -a user1 --home build/node0 --keyring-backend test --testnet) \
+    "string" \
+    "ok" \
+    --from bank1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add a `bank2.kyc.pb`attribute to the `user2` account. This simulates `user2` going through the
+KYC process for `bank2`.
+
+```bash
+provenanced tx attribute add \
+    "bank2.kyc.pb" \
+    $(provenanced keys show -a user2 --home build/node0 --keyring-backend test --testnet) \
+    "json" \
+    '{"status":"pass"}' \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+NOTE: The attribute value/type doesn't matter to the smart contract. It only checks for the
+existence of the attribute on accounts.
 
 ## Store the Consortium Wasm
 
@@ -302,7 +387,7 @@ provenanced tx wasm execute \
     --testnet | jq
 ```
 
-Vote 'yes' as the existing member (`bank1`).
+Vote 'yes' as the existing member, `bank1`.
 
 ```bash
 provenanced tx wasm execute \
@@ -376,16 +461,15 @@ You can now see `user1` holds `usdf.local`.
 
 ```bash
 provenanced q bank balances tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "usdf.local",
-      "amount": "10000"
-    },
-    {
       "denom": "nhash",
       "amount": "100000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "10000"
     }
   ],
   "pagination": {
@@ -393,14 +477,12 @@ provenanced q bank balances tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p -t -o json
     "total": "0"
   }
 }
-
 ```
 
 You can also see that the minted reserve tokens were escrowed in the marker for `bank1`
 
 ```bash
 provenanced q marker escrow "bank1.coin" -t -o json | jq
-
 {
   "escrow": [
     {
@@ -441,16 +523,15 @@ You can now see `user2` holds `usdf.local`.
 
 ```bash
 provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "usdf.local",
-      "amount": "5000"
-    },
-    {
       "denom": "nhash",
       "amount": "100000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "5000"
     }
   ],
   "pagination": {
@@ -508,7 +589,6 @@ You can now see that `bank2` holds reserve tokens from `bank1`
 
 ```bash
 provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
-
 {
   "balances": [
     {
@@ -516,12 +596,12 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
       "amount": "5000"
     },
     {
-      "denom": "usdf.local",
-      "amount": "0"
+      "denom": "nhash",
+      "amount": "97500000000"
     },
     {
-      "denom": "nhash",
-      "amount": "97900000000"
+      "denom": "usdf.local",
+      "amount": "0"
     }
   ],
   "pagination": {
@@ -560,16 +640,15 @@ You can now see that `user2` holds the minted `usdf.local`.
 
 ```bash
 provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "usdf.local",
-      "amount": "2500"
-    },
-    {
       "denom": "nhash",
       "amount": "99000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "2500"
     }
   ],
   "pagination": {
@@ -777,8 +856,8 @@ provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x
     "id": "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3",
     "max_supply": "100000000",
     "denom": "bank3.coin",
-    "created": "356",
-    "expires": "1356",
+    "created": "165",
+    "expires": "10165",
     "no": "1000000",
     "yes": "0",
     "voters": [
