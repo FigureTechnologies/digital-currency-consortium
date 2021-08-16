@@ -169,6 +169,10 @@ fn try_join(
         env.contract.address,
         MarkerAccess::all(),
     )?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "join");
+    res.add_attribute("join_proposal_id", info.sender.to_string());
     Ok(res)
 }
 
@@ -237,7 +241,12 @@ fn try_vote(
 
     // Save join request state.
     proposals.save(key, &proposal)?;
-    Ok(Response::default())
+
+    // Add wasm event attributes
+    let mut res = Response::new();
+    res.add_attribute("action", "vote");
+    res.add_attribute("join_proposal_id", id);
+    Ok(res)
 }
 
 // Proposers must explicitly accept membership once voted into the consortium. Note: a proposer
@@ -320,6 +329,10 @@ fn try_accept(
             info.sender,
         )?);
     }
+
+    // Add wasm event attributes
+    res.add_attribute("action", "accept");
+    res.add_attribute("join_proposal_id", &proposal.id);
     Ok(res)
 }
 
@@ -347,6 +360,10 @@ fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg
     let mut res = Response::new();
     res.add_message(cancel_marker(&proposal.denom)?);
     res.add_message(destroy_marker(&proposal.denom)?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "cancel");
+    res.add_attribute("join_proposal_id", &proposal.id);
     Ok(res)
 }
 
@@ -416,8 +433,14 @@ fn try_redeem(
         &reserve_denom,
         amount.u128(),
         &reserve_denom,
-        info.sender,
+        info.sender.clone(),
     )?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "redeem");
+    res.add_attribute("member_id", info.sender);
+    res.add_attribute("amount", amount);
+    res.add_attribute("reserve_denom", &reserve_denom);
     Ok(res)
 }
 
@@ -489,8 +512,15 @@ fn try_swap(
         &state.dcc_denom,
         amount.u128(),
         &state.dcc_denom,
-        withdraw_address,
+        withdraw_address.clone(),
     )?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "swap");
+    res.add_attribute("member_id", info.sender);
+    res.add_attribute("amount", amount);
+    res.add_attribute("denom", &denom);
+    res.add_attribute("withdraw_address", withdraw_address);
     Ok(res)
 }
 
@@ -540,9 +570,16 @@ fn try_transfer(
     res.add_message(transfer_marker_coins(
         amount.u128(),
         &state.dcc_denom,
-        recipient,
-        info.sender,
+        recipient.clone(),
+        info.sender.clone(),
     )?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "transfer");
+    res.add_attribute("amount", amount);
+    res.add_attribute("denom", &state.dcc_denom);
+    res.add_attribute("sender", info.sender);
+    res.add_attribute("recipient", recipient);
     Ok(res)
 }
 
@@ -587,6 +624,11 @@ fn try_mint(
         res.add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?);
     }
 
+    // Add wasm event attributes
+    res.add_attribute("action", "mint");
+    res.add_attribute("amount", amount);
+    res.add_attribute("denom", &member.denom);
+
     // Withdraw either dcc or reserve token.
     match address {
         None => {
@@ -595,8 +637,10 @@ fn try_mint(
                 &member.denom,
                 amount.u128(),
                 &member.denom,
-                info.sender,
+                info.sender.clone(),
             )?);
+            res.add_attribute("withdraw_denom", &member.denom);
+            res.add_attribute("withdraw_address", info.sender);
         }
         Some(a) => {
             // When withdrawing dcc tokens to a non-member account, ensure the recipient has the
@@ -610,8 +654,10 @@ fn try_mint(
                 &state.dcc_denom,
                 amount.u128(),
                 &state.dcc_denom,
-                address,
+                address.clone(),
             )?);
+            res.add_attribute("withdraw_denom", &state.dcc_denom);
+            res.add_attribute("withdraw_address", address);
         }
     };
     Ok(res)
@@ -665,6 +711,11 @@ fn try_burn(
 
     // Burn reserve
     res.add_message(burn_marker_supply(amount.u128(), &member.denom)?);
+
+    // Add wasm event attributes
+    res.add_attribute("action", "burn");
+    res.add_attribute("amount", amount);
+    res.add_attribute("denom", &member.denom);
     Ok(res)
 }
 
@@ -694,9 +745,14 @@ fn try_add_kyc(
     }
 
     // Add the kyc attribute and save
-    state.kyc_attrs.push(name);
+    state.kyc_attrs.push(name.clone());
     config(deps.storage).save(&state)?;
-    Ok(Response::default())
+
+    // Add wasm event attributes
+    let mut res = Response::new();
+    res.add_attribute("action", "add_kyc_attribute");
+    res.add_attribute("name", name);
+    Ok(res)
 }
 
 // Remove an existing kyc attribute.
@@ -727,7 +783,12 @@ fn try_remove_kyc(
     // Remove the kyc attribute and save
     state.kyc_attrs.retain(|n| *n != name);
     config(deps.storage).save(&state)?;
-    Ok(Response::default())
+
+    // Add wasm event attributes
+    let mut res = Response::new();
+    res.add_attribute("action", "remove_kyc_attribute");
+    res.add_attribute("name", name);
+    Ok(res)
 }
 
 // A helper function for creating generic contract errors.
@@ -883,6 +944,7 @@ mod tests {
         assert_eq!(calculate_weight(1000000000), 10000000); // $10,000,000.00
         assert_eq!(calculate_weight(10000000000), 100000000); // $100,000,000.00
         assert_eq!(calculate_weight(100000000000), 1000000000); // $1,000,000,000.00
+        assert_eq!(calculate_weight(100000000011), 1000000000); // $1,000,000,000.11 (truncated)
     }
 
     #[test]
