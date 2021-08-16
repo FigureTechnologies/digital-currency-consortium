@@ -626,6 +626,7 @@ fn try_mint(
 
     // Add wasm event attributes
     res.add_attribute("action", "mint");
+    res.add_attribute("member_id", &member.id);
     res.add_attribute("amount", amount);
     res.add_attribute("denom", &member.denom);
 
@@ -714,6 +715,7 @@ fn try_burn(
 
     // Add wasm event attributes
     res.add_attribute("action", "burn");
+    res.add_attribute("member_id", &member.id);
     res.add_attribute("amount", amount);
     res.add_attribute("denom", &member.denom);
     Ok(res)
