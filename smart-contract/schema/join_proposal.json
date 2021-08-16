@@ -29,6 +29,12 @@
     "max_supply": {
       "$ref": "#/definitions/Uint128"
     },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "no": {
       "$ref": "#/definitions/Uint128"
     },

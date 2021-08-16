@@ -32,6 +32,7 @@ pub enum ExecuteMsg {
     Join {
         denom: String,
         max_supply: Uint128,
+        name: Option<String>,
     },
     // Vote on a join proposal.
     Vote {
@@ -47,7 +48,7 @@ pub enum ExecuteMsg {
     // Redeem dcc tokens for reserve tokens.
     Redeem {
         amount: Uint128,
-        reserve_denom: String,
+        reserve_denom: String, // TODO: remove this and auto-determine reserve denom(s).
     },
     // Swap reserve tokens for dcc tokens.
     Swap {
@@ -82,10 +83,15 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    // Query all join proposals.
     GetJoinProposals {},
+    // Query all members.
     GetMembers {},
+    // Query a join proposal by ID.
     GetJoinProposal { id: String },
+    // Query a member by ID.
     GetMember { id: String },
+    // Query available reserve balances for redemption.
     GetBalances {},
 }
 

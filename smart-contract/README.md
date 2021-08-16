@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a prototype and not ready for use on any network.
+Alpha: this smart contract has been verified on a Provenance localnet.
 
 ## Blockchain Setup
 
@@ -158,7 +158,102 @@ provenanced tx bank send \
     --testnet | jq
 ```
 
-## Set up a shell consortium
+## KYC Attributes
+
+Add the unrestricted base name: `kyc.pb`.
+
+```bash
+provenanced tx name bind \
+    "kyc" \
+    $(provenanced keys show -a node0 --home build/node0 --keyring-backend test --testnet) \
+    "pb" \
+    --restrict=false \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add the restricted name: `bank1.kyc.pb`.
+
+```bash
+provenanced tx name bind \
+    "bank1" \
+    $(provenanced keys show -a bank1 --home build/node0 --keyring-backend test --testnet) \
+    "kyc.pb" \
+    --from bank1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add the restricted name: `bank2.kyc.pb`.
+
+```bash
+provenanced tx name bind \
+    "bank2" \
+    $(provenanced keys show -a bank2 --home build/node0 --keyring-backend test --testnet) \
+    "kyc.pb" \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add a `bank1.kyc.pb` attribute to the `user1` account. This simulates `user1` going through the
+KYC process for `bank1`.
+
+```bash
+provenanced tx attribute add \
+    "bank1.kyc.pb" \
+    $(provenanced keys show -a user1 --home build/node0 --keyring-backend test --testnet) \
+    "string" \
+    "ok" \
+    --from bank1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Add a `bank2.kyc.pb`attribute to the `user2` account. This simulates `user2` going through the
+KYC process for `bank2`.
+
+```bash
+provenanced tx attribute add \
+    "bank2.kyc.pb" \
+    $(provenanced keys show -a user2 --home build/node0 --keyring-backend test --testnet) \
+    "json" \
+    '{"status":"pass"}' \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+NOTE: The attribute value/type doesn't matter to the smart contract. It only checks for the
+existence of the attribute on accounts.
+
+## Store the Consortium Wasm
 
 Store the optimized smart contract Wasm on-chain. This assumes you've copied `artifacts/dcc.wasm`
 to the provenance root dir (ie where the localnet was started from).
@@ -179,15 +274,17 @@ provenanced tx wasm store dcc.wasm \
     --testnet | jq
 ```
 
+## Instantiate the Consortium
+
 Instantiate the contract with the following params:
 
-- Denom: `centiusdx`
-- Quorum Percent: `10%`
-- Vote Duration: `1000 blocks`
-- KYC Attributes: `None` (TODO: Use kyc attributes in this example)
+- Denom: `usdf.local`
+- Quorum Percent: `1%`
+- Vote Duration: `10000 blocks`
+- KYC Attributes: [`bank1.kyc.pb`, `bank2.kyc.pb`]
 
 ```bash
-provenanced tx wasm instantiate 1 '{"dcc_denom":"centiusdx","quorum_pct":"0.1","vote_duration":"1000","kyc_attrs":[]}' \
+provenanced tx wasm instantiate 1 '{"dcc_denom":"usdf.local","quorum_pct":"0.01","vote_duration":"10000","kyc_attrs":["bank1.kyc.pb","bank2.kyc.pb"]}' \
     --admin $(provenanced keys show -a node0 --keyring-backend test --home build/node0 --testnet) \
     --label dcc_poc_v1 \
     --from node0 \
@@ -203,14 +300,17 @@ provenanced tx wasm instantiate 1 '{"dcc_denom":"centiusdx","quorum_pct":"0.1","
 
 At this point, we have an empty consortium. We can now start adding members.
 
-## Bootstrap the consortium
+## Bootstrap the Consortium
 
-Create a proposal to join the consortium as `bank1`.
+Right now, there are zero members in the consortium. We will need to bootstrap the first member
+using the contract administrator.
+
+First, create a proposal to join the consortium as `bank1`.
 
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"join":{"denom":"bank1.coin","max_supply":"50000000"}}' \
+    '{"join":{"denom":"bank1.coin","max_supply":"50000000","name":"Bank 1"}}' \
     --from bank1 \
     --keyring-backend test \
     --home build/node0 \
@@ -232,7 +332,7 @@ provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x
    --chain-id chain-local -t | jq
 ```
 
-Vote 'yes' as the admin user (required to onboard the first bank since there are no members yet).
+Vote 'yes' as the admin user.
 
 ```bash
 provenanced tx wasm execute \
@@ -266,14 +366,16 @@ provenanced tx wasm execute \
     --testnet | jq
 ```
 
-## Add a second member bank
+There is now a single voting member in the consortium.
+
+## Add a Second Member
 
 Create a proposal to join the consortium as `bank2`.
 
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"join":{"denom":"bank2.coin","max_supply":"50000000"}}' \
+    '{"join":{"denom":"bank2.coin","max_supply":"50000000","name":"Bank 2"}}' \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
@@ -285,7 +387,7 @@ provenanced tx wasm execute \
     --testnet | jq
 ```
 
-Vote 'yes' as the existing member (`bank1`).
+Vote 'yes' as the existing member, `bank1`.
 
 ```bash
 provenanced tx wasm execute \
@@ -331,7 +433,7 @@ provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x
 
 ## Mint
 
-Let's assume `user1` has sent $100 to `bank1` and wants `centiusdx` in return.
+Let's assume `user1` has sent $100 to `bank1` and wants `usdf.local` in return.
 The required tokens can be minted and withdrawn directly to the `user1` account.
 
 ```bash
@@ -355,20 +457,19 @@ NOTE: you can get the address for `user1` with the following command:
 provenanced keys show -a user1 --home build/node0 -t
 ```
 
-You can now see `user1` holds `centiusdx`.
+You can now see `user1` holds `usdf.local`.
 
 ```bash
 provenanced q bank balances tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "centiusdx",
-      "amount": "10000"
-    },
-    {
       "denom": "nhash",
       "amount": "100000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "10000"
     }
   ],
   "pagination": {
@@ -376,14 +477,12 @@ provenanced q bank balances tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p -t -o json
     "total": "0"
   }
 }
-
 ```
 
 You can also see that the minted reserve tokens were escrowed in the marker for `bank1`
 
 ```bash
 provenanced q marker escrow "bank1.coin" -t -o json | jq
-
 {
   "escrow": [
     {
@@ -397,7 +496,7 @@ provenanced q marker escrow "bank1.coin" -t -o json | jq
 ## Transfer
 
 Let's say `user1` owes `user2` $50. They can transfer the tokens through the smart contract.
-NOTE: There are no kyc attribute checks performed in this example (TODO).
+NOTE: This is possible because both users have kyc attributes supported by the consortium.
 
 ```bash
 provenanced tx wasm execute \
@@ -420,20 +519,19 @@ NOTE: you can get the address for `user2` with the following command:
 provenanced keys show -a user2 --home build/node0 -t
 ```
 
-You can now see `user2` holds `centiusdx`.
+You can now see `user2` holds `usdf.local`.
 
 ```bash
 provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "centiusdx",
-      "amount": "5000"
-    },
-    {
       "denom": "nhash",
       "amount": "100000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "5000"
     }
   ],
   "pagination": {
@@ -469,8 +567,36 @@ NOTE: you can get the address for `bank2` with the following command:
 provenanced keys show -a bank2 --home build/node0 -t
 ```
 
-`bank2` can then redeem the tokens with the smart contract and receive `bank1.coin` tokens in
-return (ie the only available bank reserves in escrow).
+Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract. To query the
+redeemable reserve tokens in escrow:
+
+```bash
+provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+   '{"get_balances": {}}' \
+   --ascii \
+   -o json \
+   --chain-id chain-local -t | jq
+
+{
+  "data": {
+    "balances": [
+      {
+        "address": "tp1wm78cde9t7gyl6k8gnafgrek0627mpqs4qevgl",
+        "denom": "bank2.coin",
+        "amount": "0"
+      },
+      {
+        "address": "tp1p0datkknnsfkmzz34wqkenw7dmyw7ged2neeqp",
+        "denom": "bank1.coin",
+        "amount": "10000"
+      }
+    ]
+  }
+}
+```
+
+So, `bank2` can redeem for `bank1.coin` tokens as they are the only available member reserves
+in escrow.
 
 ```bash
 provenanced tx wasm execute \
@@ -491,7 +617,6 @@ You can now see that `bank2` holds reserve tokens from `bank1`
 
 ```bash
 provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
-
 {
   "balances": [
     {
@@ -499,12 +624,12 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
       "amount": "5000"
     },
     {
-      "denom": "centiusdx",
-      "amount": "0"
+      "denom": "nhash",
+      "amount": "97500000000"
     },
     {
-      "denom": "nhash",
-      "amount": "97900000000"
+      "denom": "usdf.local",
+      "amount": "0"
     }
   ],
   "pagination": {
@@ -516,12 +641,12 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
 
 Now, `bank2` can deliver the cash/fiat to `user2` (off chain process). In addition, `bank2` can
 request the debt from `bank1` be paid (again, off chain). They can also sit on the reserve tokens
-and swap them for `centiusdx` when another user provides cash/fiat.
+and swap them for `usdf.local` when another user provides cash/fiat.
 
 ## Swap
 
 Let's say `user2` now wants $25 worth of tokens back from `bank2`. The bank can then swap the
-`bank1.coin` they hold back out for `centiusdx`, minting and withdrawing the tokens directly to
+`bank1.coin` they hold back out for `usdf.local`, minting and withdrawing the tokens directly to
 `user2`.
 
 ```bash
@@ -539,20 +664,19 @@ provenanced tx wasm execute \
     --testnet | jq
 ```
 
-You can now see that `user2` holds the minted `centiusdx`.
+You can now see that `user2` holds the minted `usdf.local`.
 
 ```bash
 provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json | jq
-
 {
   "balances": [
     {
-      "denom": "centiusdx",
-      "amount": "2500"
-    },
-    {
       "denom": "nhash",
       "amount": "99000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "2500"
     }
   ],
   "pagination": {
@@ -567,7 +691,7 @@ provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json
 Let's say `bank1` wants to reduce their supply of reserve tokens. Members can burn their tokens,
 but only the amount they currently hold in their account.
 
-So, before burn, `user1` redeems their `centiusdx` for cash/fiat by transferring those tokens
+So, before burn, `user1` redeems their `usdf.local` for cash/fiat by transferring those tokens
 to `bank1`.
 
 ```bash
@@ -579,7 +703,7 @@ provenanced tx wasm execute \
     --home build/node0 \
     --chain-id chain-local \
     --gas auto \
-    --fees 600000000nhash \
+    --fees 500000000nhash \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -630,7 +754,7 @@ To add an attribute
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"add_kyc":{"name":"bank1.kyc"}}' \
+    '{"add_kyc":{"name":"bank3.kyc.pb"}}' \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
@@ -647,7 +771,7 @@ To remove the attribute
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"remove_kyc":{"name":"bank1.kyc"}}' \
+    '{"remove_kyc":{"name":"bank3.kyc.pb"}}' \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
@@ -760,8 +884,8 @@ provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x
     "id": "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3",
     "max_supply": "100000000",
     "denom": "bank3.coin",
-    "created": "356",
-    "expires": "1356",
+    "created": "165",
+    "expires": "10165",
     "no": "1000000",
     "yes": "0",
     "voters": [

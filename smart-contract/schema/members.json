@@ -26,6 +26,7 @@
         "id",
         "joined",
         "max_supply",
+        "name",
         "supply",
         "weight"
       ],
@@ -41,6 +42,9 @@
         },
         "max_supply": {
           "$ref": "#/definitions/Uint128"
+        },
+        "name": {
+          "type": "string"
         },
         "supply": {
           "$ref": "#/definitions/Uint128"
