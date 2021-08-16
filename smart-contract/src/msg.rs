@@ -32,6 +32,7 @@ pub enum ExecuteMsg {
     Join {
         denom: String,
         max_supply: Uint128,
+        name: Option<String>,
     },
     // Vote on a join proposal.
     Vote {

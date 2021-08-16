@@ -96,7 +96,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     match msg {
-        ExecuteMsg::Join { denom, max_supply } => try_join(deps, env, info, denom, max_supply),
+        ExecuteMsg::Join {
+            denom,
+            max_supply,
+            name,
+        } => try_join(deps, env, info, denom, max_supply, name),
         ExecuteMsg::Vote { id, choice } => try_vote(deps, env, info, id, choice),
         ExecuteMsg::Accept { mint_amount } => try_accept(deps, env, info, mint_amount),
         ExecuteMsg::Cancel {} => try_cancel(deps, info),
@@ -124,6 +128,7 @@ fn try_join(
     info: MessageInfo,
     denom: String,
     max_supply: Uint128,
+    name: Option<String>,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
@@ -158,6 +163,7 @@ fn try_join(
             no: Uint128::zero(),
             yes: Uint128::zero(),
             voters: vec![],
+            name,
         },
     )?;
 
@@ -311,6 +317,7 @@ fn try_accept(
             supply,
             max_supply: proposal.max_supply,
             weight: Uint128(weight),
+            name: proposal.name.unwrap_or_else(|| info.sender.to_string()),
         },
     )?;
 
@@ -1010,6 +1017,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1059,6 +1067,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128::zero(),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap_err();
@@ -1079,6 +1088,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "".into(),
+                name: None,
             },
         )
         .unwrap_err();
@@ -1100,6 +1110,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap_err();
@@ -1141,6 +1152,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1153,6 +1165,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap_err();
@@ -1194,6 +1207,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1248,6 +1262,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1302,6 +1317,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1396,6 +1412,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank1.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1410,6 +1427,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(2_000_000),
                 denom: "bank2.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1488,6 +1506,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1545,6 +1564,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1610,6 +1630,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100000000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1678,6 +1699,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100000000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1748,6 +1770,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1831,6 +1854,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1889,6 +1913,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -1993,6 +2018,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2071,6 +2097,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2166,6 +2193,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2244,6 +2272,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2324,6 +2353,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2405,6 +2435,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2540,6 +2571,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2626,6 +2658,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2717,6 +2750,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(1_000_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2857,6 +2891,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -2938,6 +2973,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -3106,6 +3142,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();
@@ -3189,6 +3226,7 @@ mod tests {
             ExecuteMsg::Join {
                 max_supply: Uint128(100_000),
                 denom: "bank.coin".into(),
+                name: None,
             },
         )
         .unwrap();

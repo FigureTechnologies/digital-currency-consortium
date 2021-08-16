@@ -310,7 +310,7 @@ First, create a proposal to join the consortium as `bank1`.
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"join":{"denom":"bank1.coin","max_supply":"50000000"}}' \
+    '{"join":{"denom":"bank1.coin","max_supply":"50000000","name":"Bank 1"}}' \
     --from bank1 \
     --keyring-backend test \
     --home build/node0 \
@@ -375,7 +375,7 @@ Create a proposal to join the consortium as `bank2`.
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"join":{"denom":"bank2.coin","max_supply":"50000000"}}' \
+    '{"join":{"denom":"bank2.coin","max_supply":"50000000","name":"Bank 2"}}' \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
@@ -567,8 +567,36 @@ NOTE: you can get the address for `bank2` with the following command:
 provenanced keys show -a bank2 --home build/node0 -t
 ```
 
-`bank2` can then redeem the tokens with the smart contract and receive `bank1.coin` tokens in
-return (ie the only available bank reserves in escrow).
+Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract. To query the
+redeemable reserve tokens in escrow:
+
+```bash
+provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+   '{"get_balances": {}}' \
+   --ascii \
+   -o json \
+   --chain-id chain-local -t | jq
+
+{
+  "data": {
+    "balances": [
+      {
+        "address": "tp1wm78cde9t7gyl6k8gnafgrek0627mpqs4qevgl",
+        "denom": "bank2.coin",
+        "amount": "0"
+      },
+      {
+        "address": "tp1p0datkknnsfkmzz34wqkenw7dmyw7ged2neeqp",
+        "denom": "bank1.coin",
+        "amount": "10000"
+      }
+    ]
+  }
+}
+```
+
+So, `bank2` can redeem for `bank1.coin` tokens as they are the only available member reserves
+in escrow.
 
 ```bash
 provenanced tx wasm execute \
