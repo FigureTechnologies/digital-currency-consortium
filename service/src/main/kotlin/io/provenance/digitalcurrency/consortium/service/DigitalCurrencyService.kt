@@ -1,11 +1,11 @@
 package io.provenance.digitalcurrency.consortium.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.google.protobuf.ByteString
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.extension.base64encodeToByteString
+import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -14,33 +14,44 @@ import java.util.UUID
 @Service
 class DigitalCurrencyService(
     private val pbcService: PbcService,
-    private val bankClientProperties: BankClientProperties,
-    private val mapper: ObjectMapper
+    private val bankClientProperties: BankClientProperties
 ) {
     private val log = logger()
 
     fun registerAddress(bankAccountUuid: UUID, blockchainAddress: String) {
         log.info("Registering bank account $bankAccountUuid for address $blockchainAddress with tag ${bankClientProperties.kycTagName}")
         transaction {
-            val existing = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
-
-            check(existing == null) {
-                "Bank account $bankAccountUuid is already registered for address ${existing!!.address}"
+            check(AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid) == null) {
+                "Bank account $bankAccountUuid is already registered for address $blockchainAddress"
             }
 
-            // TODO: assume that we will allow one address to have multiple bank account registrations?
+            val existingByAddress = AddressRegistrationRecord.findByAddress(blockchainAddress)
+            check(existingByAddress == null) {
+                "Address $blockchainAddress is already registerd for bank account uuid ${existingByAddress!!.bankAccountUuid}"
+            }
+
             AddressRegistrationRecord.insert(
                 bankAccountUuid = bankAccountUuid,
                 address = blockchainAddress
             )
+
+            tryKycTag(bankAccountUuid, blockchainAddress)
+        }
+    }
+
+    private fun tryKycTag(bankAccountUuid: UUID, blockchainAddress: String) {
+        pbcService.getAttributeByTagName(blockchainAddress, bankClientProperties.kycTagName).forEach {
+            // just remove if existing and replace. This really should not happen and if it does there should be only one
+            log.warn("Deleting existing ${bankClientProperties.kycTagName} for address $blockchainAddress")
+            pbcService.deleteAttribute(blockchainAddress, it.name)
         }
 
-        // TODO check to see if attr exists first?
-        // TODO exception handling
+        // TODO put this on a retry. If we actually have to delete, this will undoubtedly get a sequence number error
+        // should just return back to the bank and keep retrying until the attribute is added
         pbcService.addAttribute(
             address = blockchainAddress,
             tag = bankClientProperties.kycTagName,
-            payload = mapper.writeValueAsString(bankAccountUuid).base64encodeToByteString()
+            payload = ByteString.copyFrom(bankAccountUuid.toByteArray())
         )
     }
 

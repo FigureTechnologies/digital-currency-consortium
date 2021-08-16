@@ -2,7 +2,6 @@ package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.ByteString
-import cosmos.tx.v1beta1.ServiceOuterClass
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1beta1.Tx
 import io.grpc.Status.Code
@@ -10,6 +9,7 @@ import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.AttributeType
 import io.provenance.attribute.v1.MsgAddAttributeRequest
+import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.api.BurnRequest
 import io.provenance.digitalcurrency.consortium.api.ExecuteBurnRequest
 import io.provenance.digitalcurrency.consortium.api.ExecuteMintRequest
@@ -61,8 +61,8 @@ class PbcService(
     fun getAttributes(address: String): List<Attribute> =
         grpcClientService.new().attributes.getAllAttributes(address)
 
-    fun getAttributeByName(address: String, name: String): Attribute? =
-        getAttributes(address).firstOrNull { it.name == name }
+    fun getAttributeByTagName(address: String, tag: String): List<Attribute> =
+        getAttributes(address).filter { it.name == tag }
 
     fun addAttribute(address: String, tag: String, payload: ByteString) =
         grpcClientService.new().estimateAndBroadcastTx(
@@ -75,12 +75,20 @@ class PbcService(
                 .setValue(payload)
                 .build()
                 .toAny()
-                .toTxBody(),
-            // TODO this should be sync I think - we've had timeout issues where the initial
-            // error was the txn could not be included in a block, but then the tag
-            // eventually worked
-            mode = ServiceOuterClass.BroadcastMode.BROADCAST_MODE_BLOCK
+                .toTxBody()
         ).throwIfFailed("Add attribute failed")
+
+    fun deleteAttribute(address: String, tag: String) =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = MsgDeleteAttributeRequest.newBuilder()
+                .setOwner(managerAddress)
+                .setAccount(address)
+                .setName(tag)
+                .build()
+                .toAny()
+                .toTxBody()
+        ).throwIfFailed("Delete attribute failed")
 
     fun mintAndSwap(amount: BigInteger, address: String) =
         grpcClientService.new().estimateAndBroadcastTx(

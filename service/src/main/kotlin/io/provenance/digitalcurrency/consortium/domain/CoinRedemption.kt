@@ -47,8 +47,6 @@ class CoinRedemptionRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CRT, uuid) 
 enum class CoinRedemptionStatus {
     INSERTED,
     PENDING_REDEEM,
-    REDEEM_COMPLETE,
-    PENDING_BURN,
     COMPLETE,
     VALIDATION_FAILED
 }

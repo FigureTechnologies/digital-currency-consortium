@@ -26,7 +26,7 @@ CREATE TABLE address_registration(
     created TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
 );
 CREATE UNIQUE INDEX address_reg_bank_acct_idx ON address_registration(bank_account_uuid);
-CREATE INDEX address_reg_addr_idx ON address_registration(address);
+CREATE UNIQUE INDEX address_reg_addr_idx ON address_registration(address);
 
 CREATE TABLE tx_request(
     uuid UUID NOT NULL PRIMARY KEY,
