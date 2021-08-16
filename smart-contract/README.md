@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a prototype and not ready for use on any network.
+Alpha: this smart contract has been verified on a Provenance localnet.
 
 ## Blockchain Setup
 
