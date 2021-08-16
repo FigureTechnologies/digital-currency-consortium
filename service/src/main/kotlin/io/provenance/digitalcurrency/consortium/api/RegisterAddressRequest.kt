@@ -20,10 +20,8 @@ import javax.validation.constraints.NotNull
 )
 data class RegisterAddressRequest(
     @ApiModelProperty(
-        value = """
-            A unique uuid generated and persisted by the bank. This will be used for subsequent coin mints 
-            (fiat deposits from the customer) and redemptions (fiat deposits to the customer).
-            """,
+        value = "A unique uuid generated and persisted by the bank. " +
+            "This will be used for subsequent coin mints (fiat deposits from the customer) and redemptions (fiat deposits to the customer).",
         required = true
     )
     @get:NotNull val bankAccountUuid: UUID,

@@ -1,7 +1,11 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED
+import org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED
+import org.gradle.api.tasks.testing.logging.TestLogEvent.SKIPPED
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     kotlin(PluginIds.KotlinSpring) version PluginVersions.Kotlin
+    id(PluginIds.KotlinAllOpen) version "1.5.30-RC"
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
     id(PluginIds.Protobuf)
 }
@@ -26,6 +30,7 @@ dependencies {
         it(Libraries.Jackson) {
             exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
         }
+        it(Libraries.JacksonHubspot)
 
         it(Libraries.PbcProto)
         it(Libraries.GoogleProto)
@@ -62,6 +67,7 @@ dependencies {
         it(Libraries.ExposedJdbc)
 
         it(Libraries.BouncyCastle)
+        it(Libraries.Coroutines)
         it(Libraries.KethereumBip32)
         it(Libraries.KethereumBip39)
         it(Libraries.KethereumCrypto)
@@ -73,18 +79,30 @@ dependencies {
         it(Libraries.KomputingBip44)
     }
 
-    // testImplementation.let {
-    //     it(Libraries.JunitJupiterApi)
-    //     it(Libraries.JunitJupiterParams)
-    //     it(Libraries.JunitCommons)
-    //     it(Libraries.SpringBootStarterTest)
-    //     it(Libraries.Mockito)
-    //     it(Libraries.TestContainersPostgres)
-    //     it(Libraries.TestContainers)
-    //     it(Libraries.TestContainersJunitJupiter)
-    // }
-    //
-    // testRuntimeOnly(Libraries.JunitJupiterEngine)
+    testImplementation.let {
+        it(Libraries.JunitJupiterApi)
+        it(Libraries.JunitJupiterParams)
+        it(Libraries.JunitCommons)
+        it(Libraries.SpringBootStarterTest)
+        it(Libraries.Mockito)
+        it(Libraries.TestContainersPostgres)
+        it(Libraries.TestContainers)
+        it(Libraries.TestContainersJunitJupiter)
+    }
+
+    testRuntimeOnly(Libraries.JunitJupiterEngine)
+}
+
+tasks.test {
+    useJUnitPlatform {}
+    testLogging {
+        events(
+            PASSED,
+            SKIPPED,
+            FAILED
+        )
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
 }
 
 // Spring boot settings

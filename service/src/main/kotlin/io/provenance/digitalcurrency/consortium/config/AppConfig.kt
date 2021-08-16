@@ -7,10 +7,13 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import com.tinder.scarlet.Scarlet
 import com.tinder.scarlet.messageadapter.moshi.MoshiMessageAdapter
 import com.tinder.scarlet.streamadapter.rxjava2.RxJava2StreamAdapterFactory
 import com.tinder.scarlet.websocket.okhttp.newWebSocketFactory
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
+import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.pbclient.GrpcClientOpts
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.stream.EventStreamFactory
@@ -29,7 +32,9 @@ import java.util.concurrent.TimeUnit
     value = [
         EventStreamProperties::class,
         ServiceProperties::class,
-        ProvenanceProperties::class
+        ProvenanceProperties::class,
+        BankClientProperties::class,
+        CoroutineProperties::class
     ]
 )
 class AppConfig : WebMvcConfigurer {
@@ -38,6 +43,7 @@ class AppConfig : WebMvcConfigurer {
     fun mapper(): ObjectMapper = ObjectMapper()
         .registerKotlinModule()
         .registerModule(JavaTimeModule())
+        .registerModule(ProtobufModule())
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
         .setSerializationInclusion(JsonInclude.Include.NON_NULL)
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
@@ -50,6 +56,11 @@ class AppConfig : WebMvcConfigurer {
         threadPoolTaskScheduler.poolSize = 5
         return threadPoolTaskScheduler
     }
+
+    @Bean
+    @NotTest
+    fun eventStreamFactory(rpcClient: RpcClient, eventStreamBuilder: Scarlet.Builder) =
+        EventStreamFactory(rpcClient, eventStreamBuilder)
 
     @Bean
     fun eventStreamBuilder(eventStreamProperties: EventStreamProperties): Scarlet.Builder {
@@ -74,6 +85,6 @@ class AppConfig : WebMvcConfigurer {
         GrpcClientOpts(provenanceProperties.chainId, provenanceProperties.uri())
 
     @Bean
-    fun eventStreamFactory(rpcClient: RpcClient, eventStreamBuilder: Scarlet.Builder) =
-        EventStreamFactory(rpcClient, eventStreamBuilder)
+    fun bankClient(mapper: ObjectMapper, bankClientProperties: BankClientProperties): BankClient =
+        BankClient.Builder(bankClientProperties.uri, mapper).build()
 }

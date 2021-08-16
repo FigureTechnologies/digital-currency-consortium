@@ -57,8 +57,6 @@ class RpcEventStream(
     }
 
     fun streamEvents() {
-        // TODO: concurrency - need to limit how many times this function is called??? Used to limit based on consumer id... probably need to use redis to do this... and ensure cleaned up when shutting down if do
-
         // start event loop to start listening for events
         try {
             startEventLoop()
@@ -172,7 +170,7 @@ class RpcEventStream(
         shutdown()
     }
 
-    fun shutdown(removeShutdownHook: Boolean = true) {
+    private fun shutdown(removeShutdownHook: Boolean = true) {
         log.info("Cleaning up EventStream Websocket")
         shuttingDown.countDown()
         lifecycle.onNext(Lifecycle.State.Stopped.WithReason(ShutdownReason.GRACEFUL))
@@ -210,7 +208,7 @@ class RpcEventStream(
         return results.txsResults?.flatMapIndexed { index, tx ->
             val txHash = block.block.data.txs[index].hash()
             tx.events
-                .filter { it.shouldStream() }
+                .filter { it.shouldStream(txHash) }
                 .map { event ->
                     StreamEvent(
                         height = results.height,
@@ -223,17 +221,20 @@ class RpcEventStream(
         } ?: emptyList()
     }
 
-    private fun Event.shouldStream(): Boolean {
+    private fun Event.shouldStream(txHash: String): Boolean {
         log.info("EVENT $this")
-        return eventTypes.contains(type) || // check for simple event type match first
-            eventTypes.isEmpty() || // no filtering requested
-            eventTypes.firstOrNull { // Check for "event_type:attribute_key" matches.
-            it.contains(':') && it.split(':').let { elements ->
-                elements.size == 2 &&
-                    elements[0] == type && // event type match
-                    attributes.firstOrNull { attribute -> attribute.key == elements[1] } != null // at least one attribute match
-            }
-        } != null
+        return txHash.isNotBlank() &&
+            (
+                eventTypes.contains(type) || // check for simple event type match first
+                    eventTypes.isEmpty() || // no filtering requested
+                    eventTypes.firstOrNull { // Check for "event_type:attribute_key" matches.
+                    it.contains(':') && it.split(':').let { elements ->
+                        elements.size == 2 &&
+                            elements[0] == type && // event type match
+                            attributes.firstOrNull { attribute -> attribute.key == elements[1] } != null // at least one attribute match
+                    }
+                } != null
+                )
     }
 
     private fun String.hash(): String = sha256(BaseEncoding.base64().decode(this)).toHexString()

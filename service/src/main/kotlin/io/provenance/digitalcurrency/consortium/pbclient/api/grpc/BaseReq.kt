@@ -3,6 +3,7 @@ package io.provenance.digitalcurrency.consortium.pbclient.api.grpc
 import com.google.protobuf.ByteString
 import cosmos.auth.v1beta1.Auth
 import cosmos.base.v1beta1.CoinOuterClass.Coin
+import cosmos.crypto.secp256k1.Keys
 import cosmos.tx.signing.v1beta1.Signing.SignMode
 import cosmos.tx.v1beta1.TxOuterClass.AuthInfo
 import cosmos.tx.v1beta1.TxOuterClass.Fee
@@ -11,14 +12,15 @@ import cosmos.tx.v1beta1.TxOuterClass.ModeInfo.Single
 import cosmos.tx.v1beta1.TxOuterClass.SignDoc
 import cosmos.tx.v1beta1.TxOuterClass.SignerInfo
 import cosmos.tx.v1beta1.TxOuterClass.TxBody
-// import io.provenance.digitalcurrency.consortium.wallet.account.Key
+import io.provenance.digitalcurrency.consortium.extension.toAny
+import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
 
 data class BaseReqSigner(
-    // val key: Key,
+    val key: KeyI,
     val sequenceOffset: Int = 0,
     val account: Auth.BaseAccount? = null
 ) {
-    // fun pubKeyAny() = Keys.PubKey.newBuilder().setKey(key.publicKey()).build().toAny()
+    fun pubKeyAny() = Keys.PubKey.newBuilder().setKey(key.publicKey()).build().toAny()
 }
 
 data class BaseReq(

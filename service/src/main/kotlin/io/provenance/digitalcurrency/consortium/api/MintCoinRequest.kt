@@ -34,7 +34,7 @@ data class MintCoinRequest(
     @get:NotNull val bankAccountUUID: UUID,
 
     @ApiModelProperty(
-        value = "The amount of fiat in USD to send to the customer.",
+        value = "The amount of fiat in USD to mint to the customer's address.",
         required = true,
         allowableValues = "Greater than 0"
     )
