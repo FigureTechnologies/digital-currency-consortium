@@ -1,14 +1,11 @@
 name: Build and Publish
 
 on:
-  release:
-    types: [created]
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  - release:
+    types:
+      - created
+  - push
+  - pull_request
 
 jobs:
 
