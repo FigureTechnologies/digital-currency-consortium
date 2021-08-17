@@ -1,9 +1,12 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.config.logger
+import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import io.swagger.annotations.ApiParam
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.context.request.async.DeferredResult
+import java.util.UUID
 import java.util.concurrent.ForkJoinPool
 import javax.validation.Valid
 
@@ -27,7 +31,10 @@ import javax.validation.Valid
     produces = MediaType.APPLICATION_JSON_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
-class DigitalCurrencyController(private val digitalCurrencyService: DigitalCurrencyService) {
+class DigitalCurrencyController(
+    private val digitalCurrencyService: DigitalCurrencyService,
+    private val pbcService: PbcService
+) {
 
     private val log by lazy { logger() }
 
@@ -44,11 +51,11 @@ class DigitalCurrencyController(private val digitalCurrencyService: DigitalCurre
         @Valid
         @ApiParam(value = "RegisterAddressRequest")
         @RequestBody request: RegisterAddressRequest
-    ): DeferredResult<ResponseEntity<*>> {
+    ): DeferredResult<ResponseEntity<UUID>> {
         val (bankAccountUuid, address) = request
         digitalCurrencyService.registerAddress(bankAccountUuid, address)
 
-        val output = DeferredResult<ResponseEntity<*>>()
+        val output = DeferredResult<ResponseEntity<UUID>>()
         output.setResult(ResponseEntity.ok(bankAccountUuid))
 
         ForkJoinPool.commonPool().submit {
@@ -74,9 +81,30 @@ class DigitalCurrencyController(private val digitalCurrencyService: DigitalCurre
         @Valid
         @ApiParam(value = "MintCoinRequest")
         @RequestBody request: MintCoinRequest
-    ): ResponseEntity<*> {
+    ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, amount) = request
         digitalCurrencyService.mintCoin(uuid, bankAccountUuid, amount)
         return ResponseEntity.ok(uuid)
+    }
+
+    @PostMapping(MEMBER_V1)
+    fun joinConsortium(
+        @Valid
+        @RequestBody request: JoinConsortiumRequest
+    ): ResponseEntity<String> {
+        log.info("Try joining consortium: $request")
+        val (name, maxSupplyUsd) = request
+        pbcService.join(name, maxSupplyUsd.toCoinAmount())
+        return ResponseEntity.ok("Join Proposal Created")
+    }
+
+    // TODO in the future this will accept the proposal id.
+    // TODO should validate the proposal exists but this is a hand jam to get this first bank through
+    // for now on start up we are accepting ourselves so the id is the bank address
+    @PostMapping(ACCEPTS_V1)
+    fun acceptProposal(): ResponseEntity<String> {
+        log.info("Try accepting consortium proposal")
+        pbcService.accept()
+        return ResponseEntity.ok("Proposal Accepted")
     }
 }

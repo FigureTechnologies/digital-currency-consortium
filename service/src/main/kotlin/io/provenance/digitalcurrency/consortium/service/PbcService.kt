@@ -10,10 +10,14 @@ import io.provenance.attribute.v1.Attribute
 import io.provenance.attribute.v1.AttributeType
 import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
+import io.provenance.digitalcurrency.consortium.api.AcceptRequest
 import io.provenance.digitalcurrency.consortium.api.BurnRequest
+import io.provenance.digitalcurrency.consortium.api.ExecuteAcceptRequest
 import io.provenance.digitalcurrency.consortium.api.ExecuteBurnRequest
+import io.provenance.digitalcurrency.consortium.api.ExecuteJoinRequest
 import io.provenance.digitalcurrency.consortium.api.ExecuteMintRequest
 import io.provenance.digitalcurrency.consortium.api.ExecuteRedeemRequest
+import io.provenance.digitalcurrency.consortium.api.JoinRequest
 import io.provenance.digitalcurrency.consortium.api.MintRequest
 import io.provenance.digitalcurrency.consortium.api.RedeemRequest
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
@@ -96,7 +100,7 @@ class PbcService(
                 )
             ),
             txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(provenanceProperties.contractAdminAddress)
+                .setSender(managerAddress)
                 .setContract(provenanceProperties.contractAddress)
                 .setMsg(
                     mapper.writeValueAsString(
@@ -117,7 +121,7 @@ class PbcService(
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(BaseReqSigner(managerKey)),
             txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(provenanceProperties.contractAdminAddress)
+                .setSender(managerAddress)
                 .setContract(provenanceProperties.contractAddress)
                 .setMsg(
                     mapper.writeValueAsString(
@@ -138,7 +142,7 @@ class PbcService(
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(BaseReqSigner(managerKey)),
             txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(provenanceProperties.contractAdminAddress)
+                .setSender(managerAddress)
                 .setContract(provenanceProperties.contractAddress)
                 .setMsg(
                     mapper.writeValueAsString(
@@ -153,4 +157,44 @@ class PbcService(
                 .toAny()
                 .toTxBody()
         ).throwIfFailed("Burn failed")
+
+    fun join(name: String, maxSupply: BigInteger) =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = Tx.MsgExecuteContract.newBuilder()
+                .setSender(managerAddress)
+                .setContract(provenanceProperties.contractAddress)
+                .setMsg(
+                    mapper.writeValueAsString(
+                        ExecuteJoinRequest(
+                            join = JoinRequest(
+                                denom = bankClientProperties.denom,
+                                maxSupply = maxSupply.toString(),
+                                name = name
+                            )
+                        )
+                    ).toByteString()
+                )
+                .build()
+                .toAny()
+                .toTxBody()
+        ).throwIfFailed("Join failed")
+
+    fun accept() =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = Tx.MsgExecuteContract.newBuilder()
+                .setSender(managerAddress)
+                .setContract(provenanceProperties.contractAddress)
+                .setMsg(
+                    mapper.writeValueAsString(
+                        ExecuteAcceptRequest(
+                            accept = AcceptRequest()
+                        )
+                    ).toByteString()
+                )
+                .build()
+                .toAny()
+                .toTxBody()
+        ).throwIfFailed("Accept failed")
 }

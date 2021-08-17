@@ -28,7 +28,7 @@ class DigitalCurrencyService(
 
             val existingByAddress = AddressRegistrationRecord.findByAddress(blockchainAddress)
             check(existingByAddress == null) {
-                "Address $blockchainAddress is already registerd for bank account uuid ${existingByAddress!!.bankAccountUuid}"
+                "Address $blockchainAddress is already registered for bank account uuid ${existingByAddress!!.bankAccountUuid}"
             }
 
             AddressRegistrationRecord.insert(

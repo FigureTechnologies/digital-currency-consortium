@@ -21,7 +21,7 @@ data class ExecuteRedeemRequest(
 
 data class RedeemRequest(
     val amount: String,
-    @JsonProperty("reserve_denom") val reserveDenom: String,
+    @JsonProperty("reserve_denom") val reserveDenom: String
 )
 
 @JsonInclude(Include.NON_NULL)
@@ -31,4 +31,24 @@ data class ExecuteBurnRequest(
 
 data class BurnRequest(
     val amount: String
+)
+
+@JsonInclude(Include.NON_NULL)
+data class ExecuteJoinRequest(
+    val join: JoinRequest? = null
+)
+
+data class JoinRequest(
+    val denom: String,
+    @JsonProperty("max_supply") val maxSupply: String,
+    val name: String
+)
+
+@JsonInclude(Include.NON_NULL)
+data class ExecuteAcceptRequest(
+    val accept: AcceptRequest? = null
+)
+
+data class AcceptRequest(
+    @JsonProperty("mint_amount") val mintAmount: String = "0"
 )
