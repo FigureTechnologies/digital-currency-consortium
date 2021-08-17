@@ -49,6 +49,8 @@ pub struct JoinProposal {
     pub yes: Uint128,
     // The addresses of members that have voted.
     pub voters: Vec<Addr>,
+    // The name of the proposed member (optional).
+    pub name: Option<String>,
 }
 
 /// Member state.
@@ -67,6 +69,8 @@ pub struct Member {
     pub joined: Uint128,
     // The member's voting weight.
     pub weight: Uint128,
+    // The name of the member (or just the address if not provided in the join proposal).
+    pub name: String,
 }
 
 pub fn config(storage: &mut dyn Storage) -> Singleton<State> {
