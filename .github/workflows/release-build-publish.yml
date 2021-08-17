@@ -36,6 +36,13 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build :service:jacocoTestReport --refresh-dependencies -PartifactVersion=$VERSION
 
+      - name: Upload Service Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: service
+          path: service/build/libs/*.jar
+        if: github.event_name == 'release'
+
   docker_build:
     name: Build and Push to Docker Registry
     needs: java_build
@@ -87,6 +94,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Download Service Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: service
+          path: service/build/libs
 
       - name: Build and push service docker
         uses: docker/build-push-action@v2
