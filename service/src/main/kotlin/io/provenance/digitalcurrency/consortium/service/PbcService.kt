@@ -31,8 +31,6 @@ import io.provenance.digitalcurrency.consortium.wallet.account.KeyRing
 import org.springframework.stereotype.Service
 import java.math.BigInteger
 
-val TIMEOUT_EXCEPTION_MESSAGE = "timed out waiting for tx to be included in a block"
-
 @Service
 class PbcService(
     private val grpcClientService: GrpcClientService,
