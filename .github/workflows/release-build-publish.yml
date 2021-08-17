@@ -39,18 +39,8 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean build :service:jacocoTestReport --refresh-dependencies -PartifactVersion=$VERSION
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: service
-          path: service/build/libs/*.jar
-
   docker_build:
-    name: Build and Push to GitHub Docker Package Registry
-    needs: java_build
-    strategy:
-      matrix:
-        project: [service]
+    name: Build and Push to Docker Registry
 
     runs-on: ubuntu-latest
 
@@ -72,25 +62,20 @@ jobs:
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ matrix.project }}
+          IMAGE_ID=provenanceio/digital-currency-consortium-service
 
-          DOCKER_TAGS=$IMAGE_ID:$VERSION
+          TAGS=$IMAGE_ID:$VERSION
 
           PRERELEASE=${{ github.event.release.prerelease }}
           echo PRERELEASE=$PRERELEASE
 
           if [ "$PRERELEASE" == "false" ]; then
-              DOCKER_TAGS=$DOCKER_TAGS,$IMAGE_ID:latest
+              TAGS=$TAGS,$IMAGE_ID:latest
           fi
 
-          echo "DOCKER_TAGS=$DOCKER_TAGS" >> $GITHUB_ENV
-
-      - name: Setup QEMU
-        id: qemu
-        uses: docker/setup-qemu-action@v1
-        with:
-          image: tonistiigi/binfmt:latest
-          platforms: all
+          echo ::set-output name=version::${VERSION}
+          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
       - name: Set up Docker Buildx
         id: buildx
@@ -98,23 +83,24 @@ jobs:
         with:
           install: true
 
-      - name: Available platforms
-        run: echo ${{ steps.qemu.outputs.platforms }}
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
         with:
-          name: ${{ matrix.project }}
-          path: ${{ matrix.project }}/build/libs
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log into registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Build and push
+      - name: Build and push service docker
         uses: docker/build-push-action@v2
         with:
-          context: ${{ matrix.project }}
-          file: ${{ matrix.project }}/docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          file: docker/Dockerfile-service
+          context: .
           push: true
-          tags: ${{ env.DOCKER_TAGS }}
+          tags: ${{ steps.prep.outputs.tags }}
+
+      - name: Build and push database docker
+        uses: docker/build-push-action@v2
+        with:
+          file: docker/Dockerfile-database
+          context: .
+          push: true
+          tags: provenanceio/digital-currency-consortium-database:latest
