@@ -2,6 +2,7 @@ package io.provenance.digitalcurrency.consortium.web
 
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
+import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.context.request.async.DeferredResult
+import java.util.concurrent.ForkJoinPool
 import javax.validation.Valid
 
 @Validated
@@ -25,6 +28,8 @@ import javax.validation.Valid
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
 class DigitalCurrencyController(private val digitalCurrencyService: DigitalCurrencyService) {
+
+    private val log by lazy { logger() }
 
     @PostMapping(REGISTRATION_V1)
     @ApiOperation(
@@ -39,10 +44,23 @@ class DigitalCurrencyController(private val digitalCurrencyService: DigitalCurre
         @Valid
         @ApiParam(value = "RegisterAddressRequest")
         @RequestBody request: RegisterAddressRequest
-    ): ResponseEntity<*> {
+    ): DeferredResult<ResponseEntity<*>> {
         val (bankAccountUuid, address) = request
         digitalCurrencyService.registerAddress(bankAccountUuid, address)
-        return ResponseEntity.ok(bankAccountUuid)
+
+        val output = DeferredResult<ResponseEntity<*>>()
+        output.setResult(ResponseEntity.ok(bankAccountUuid))
+
+        ForkJoinPool.commonPool().submit {
+            log.info("Processing kyc tag in separate thread")
+            try {
+                digitalCurrencyService.tryKycTag(bankAccountUuid, address)
+            } catch (e: InterruptedException) {
+                log.error("interrupted deferred thread - could not complete registration for $bankAccountUuid and $address")
+            }
+        }
+
+        return output
     }
 
     @PostMapping(MINT_V1)

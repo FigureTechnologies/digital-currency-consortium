@@ -1,16 +1,22 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import com.google.protobuf.ByteString
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.reset
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
+import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationTable
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintTable
+import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.deleteAll
@@ -42,6 +48,9 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
     @SpyBean
     lateinit var digitalCurrencyService: DigitalCurrencyService
+
+    @Autowired
+    lateinit var bankClientProperties: BankClientProperties
 
     @BeforeEach
     fun beforeEach() {
@@ -79,8 +88,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
                 blockchainAddress = TEST_ADDRESS
             ).execute(UUID::class.java)
 
-            // TODO
-            // verify(pbcService).addAttribute()...
+            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -109,8 +117,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val response = request.execute(UUID::class.java)
 
-            // TODO
-            // verify(pbcService).addAttribute()...
+            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -130,8 +137,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val responseError = request.execute(String::class.java)
 
-            // TODO
-            // verify(pbcService, never()).addAttribute()...
+            verify(pbcService).addAttribute(any(), any(), any())
 
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
@@ -142,7 +148,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
         }
 
         @Test
-        fun `service method error should return error`() {
+        fun `service method error should error`() {
             val uuid = UUID.randomUUID()
             val request = RegisterAddressRequest(
                 bankAccountUuid = uuid,
@@ -153,10 +159,26 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val responseError = request.execute(String::class.java)
 
-            // TODO
-            // verify(pbcService, never()).addAttribute()...
+            verify(pbcService, never()).addAttribute(any(), any(), any())
 
-            assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
+            assertTrue(responseError.statusCode.is5xxServerError, "Response is 500")
+        }
+
+        @Test
+        fun `tag method error will return 200 and retry`() {
+            val uuid = UUID.randomUUID()
+            val request = RegisterAddressRequest(
+                bankAccountUuid = uuid,
+                blockchainAddress = TEST_ADDRESS
+            )
+
+            whenever(digitalCurrencyService.tryKycTag(uuid, TEST_ADDRESS)).doAnswer { throw Exception() }
+
+            val responseError = request.execute(String::class.java)
+
+            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
+
+            assertTrue(responseError.statusCode.is2xxSuccessful, "Response is 200")
         }
     }
 
@@ -175,7 +197,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
         fun `duplicate request should return error`() {
             val uuid = UUID.randomUUID()
 
-            val registration = transaction {
+            transaction {
                 insertRegisteredAddress(
                     uuid,
                     TEST_ADDRESS
@@ -192,9 +214,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val response = request.execute(UUID::class.java)
 
-            // TODO
-            // verify(pbcService).swap(address)
-
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
             assertEquals(uuid, response.body!!, "Response is the bank account uuid")
@@ -208,9 +227,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
             }
 
             val responseError = request.execute(String::class.java)
-
-            // TODO
-            // verify(pbcService).swap(address)
 
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
@@ -232,9 +248,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
             )
 
             val responseError = request.execute(String::class.java)
-
-            // TODO
-            // verify(pbcService, never()).swap(address)
 
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")

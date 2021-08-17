@@ -6,6 +6,7 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
+import io.provenance.digitalcurrency.consortium.util.retry
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -34,25 +35,23 @@ class DigitalCurrencyService(
                 bankAccountUuid = bankAccountUuid,
                 address = blockchainAddress
             )
-
-            tryKycTag(bankAccountUuid, blockchainAddress)
         }
     }
 
-    private fun tryKycTag(bankAccountUuid: UUID, blockchainAddress: String) {
+    fun tryKycTag(bankAccountUuid: UUID, blockchainAddress: String) {
         pbcService.getAttributeByTagName(blockchainAddress, bankClientProperties.kycTagName).forEach {
             // just remove if existing and replace. This really should not happen and if it does there should be only one
             log.warn("Deleting existing ${bankClientProperties.kycTagName} for address $blockchainAddress")
             pbcService.deleteAttribute(blockchainAddress, it.name)
         }
 
-        // TODO put this on a retry. If we actually have to delete, this will undoubtedly get a sequence number error
-        // should just return back to the bank and keep retrying until the attribute is added
-        pbcService.addAttribute(
-            address = blockchainAddress,
-            tag = bankClientProperties.kycTagName,
-            payload = ByteString.copyFrom(bankAccountUuid.toByteArray())
-        )
+        retry {
+            pbcService.addAttribute(
+                address = blockchainAddress,
+                tag = bankClientProperties.kycTagName,
+                payload = ByteString.copyFrom(bankAccountUuid.toByteArray())
+            )
+        }
     }
 
     fun mintCoin(uuid: UUID, bankAccountUuid: UUID, amount: BigDecimal) =
