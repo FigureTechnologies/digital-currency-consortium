@@ -40,8 +40,7 @@ class ProvenanceProperties(
     val grpcChannelUrl: String,
     val chainId: String,
     val mainNet: String,
-    val contractAddress: String,
-    val contractAdminAddress: String
+    val contractAddress: String
 ) {
     fun uri() = URI(grpcChannelUrl)
     fun mainNet() = mainNet == "true"
