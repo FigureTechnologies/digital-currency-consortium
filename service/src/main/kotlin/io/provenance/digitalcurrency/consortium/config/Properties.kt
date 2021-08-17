@@ -73,3 +73,10 @@ class CoroutineProperties(
     val numWorkers: String,
     val pollingDelayMs: String
 )
+
+@ConstructorBinding
+@ConfigurationProperties(prefix = "coin.movement")
+@Validated
+class CoinMovementProperties(
+    val pollingDelayMs: String,
+)

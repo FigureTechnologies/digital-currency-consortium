@@ -136,3 +136,32 @@ private fun StreamEvent.toWithdraw(height: Long): Withdraw =
         height = height,
         txHash = txHash
     )
+
+const val MINT_EVENT = "provenance.marker.v1.EventMarkerMint"
+
+data class Mint(
+    val administrator: String,
+    val denom: String,
+    val coins: String,
+    val toAddress: String,
+    val height: Long,
+    val txHash: String
+)
+
+typealias Mints = List<Mint>
+
+fun EventBatch.mints(): Mints = events
+    .filter { it.eventType == MINT_EVENT }
+    .map { event ->
+        event.toMint(this.height)
+    }
+
+private fun StreamEvent.toMint(height: Long): Mint =
+    Mint(
+        administrator = findAttribute(ATTRIBUTE_ADMINISTRATOR),
+        denom = findAttribute(ATTRIBUTE_DENOM),
+        coins = findAttribute(ATTRIBUTE_COINS),
+        toAddress = findAttribute(ATTRIBUTE_TO),
+        height = height,
+        txHash = txHash
+    )

@@ -34,7 +34,8 @@ import java.util.concurrent.TimeUnit
         ServiceProperties::class,
         ProvenanceProperties::class,
         BankClientProperties::class,
-        CoroutineProperties::class
+        CoroutineProperties::class,
+        CoinMovementProperties::class,
     ]
 )
 class AppConfig : WebMvcConfigurer {

@@ -1,14 +1,28 @@
 package io.provenance.digitalcurrency.consortium.stream
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.reset
+import com.nhaarman.mockitokotlin2.whenever
 import io.provenance.digitalcurrency.consortium.TestContainer
+import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
+import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
+import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
+import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
+import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockResponse
+import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.PartSetHeader
+import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
+import io.provenance.digitalcurrency.consortium.randomTxHash
 import io.provenance.digitalcurrency.consortium.service.PbcService
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
+import java.time.OffsetDateTime
 
 @TestContainer
 class EventStreamConsumerTest(
@@ -16,26 +30,37 @@ class EventStreamConsumerTest(
 ) {
     @Autowired
     private lateinit var eventStreamProperties: EventStreamProperties
+    @Autowired
+    private lateinit var bankClientProperties: BankClientProperties
 
     @MockBean
     private lateinit var eventStreamFactory: EventStreamFactory
 
     @MockBean
     lateinit var pbcService: PbcService
+    lateinit var rpcClient: RpcClient
 
     class EventStreamConsumerWrapper(
         eventStreamFactory: EventStreamFactory,
         pbcService: PbcService,
+        rpcClient: RpcClient,
+        bankClientProperties: BankClientProperties,
         eventStreamProperties: EventStreamProperties,
         serviceProperties: ServiceProperties
     ) : EventStreamConsumer(
         eventStreamFactory,
         pbcService,
+        rpcClient,
+        bankClientProperties,
         eventStreamProperties,
         serviceProperties
     ) {
-        fun testHandleEvents(burns: Burns = listOf(), withdraws: Withdraws = listOf(), markerTransfers: MarkerTransfers = listOf()) {
-            super.handleEvents(0L, burns, withdraws, markerTransfers)
+        fun testHandleEvents(burns: Burns = listOf(), withdraws: Withdraws = listOf(), markerTransfers: MarkerTransfers = listOf(), mints: Mints = listOf()) {
+            super.handleEvents(0L, burns, withdraws, markerTransfers, mints)
+        }
+
+        fun testHandleCoinMovementEvents(burns: Burns = listOf(), withdraws: Withdraws = listOf(), markerTransfers: MarkerTransfers = listOf(), mints: Mints = listOf()) {
+            super.handleEvents(0L, burns, withdraws, markerTransfers, mints)
         }
     }
 
@@ -51,9 +76,68 @@ class EventStreamConsumerTest(
         eventStreamConsumerWrapper = EventStreamConsumerWrapper(
             eventStreamFactory,
             pbcService,
+            rpcClient,
+            bankClientProperties,
             eventStreamProperties,
             serviceProperties
         )
+    }
+
+    @Test
+    fun `coinMovement - events without bank parties are ignored`() {
+        val blockTime = OffsetDateTime.now()
+        val blockResponse = BlockResponse(
+            block = Block(
+                header = BlockHeader(0, blockTime.toString()),
+                data = BlockData(emptyList()),
+            ),
+            blockId = BlockId("", PartSetHeader(0, ""))
+        )
+        val mint = Mint(
+            txHash = randomTxHash(),
+            toAddress = "toAddr",
+            administrator = "adminAddr",
+            coins = "100",
+            denom = "usdf.c",
+            height = 0,
+        )
+        val transfer = MarkerTransfer(
+            txHash = randomTxHash(),
+            toAddress = "toAddr",
+            fromAddress = "fromAddr",
+            amount = "100",
+            denom = "usdf.c",
+            height = 0,
+        )
+        val withdraw = Withdraw(
+            txHash = randomTxHash(),
+            toAddress = "toAddr",
+            administrator = "adminAddr",
+            coins = "100",
+            denom = "usdf.c",
+            height = 0,
+        )
+
+        whenever(rpcClient.fetchBlock(any())).thenReturn(blockResponse)
+        whenever(pbcService.getAttributes(any())).thenReturn(emptyList())
+
+        eventStreamConsumerWrapper.testHandleEvents(
+            mints = listOf(mint),
+            withdraws = listOf(withdraw),
+            markerTransfers = listOf(transfer),
+        )
+
+        Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
+    }
+
+    @Test
+    fun `coinMovement - block reentry is ignored`() {
+
+    }
+
+    @Test
+    fun `coinMovement - mints, withraws, and transfers for bank parties are persisted`() {
+
     }
 
     // @Test
