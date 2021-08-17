@@ -25,7 +25,7 @@ open class CoinRedemptionEntityClass : BaseRequestEntityClass<CRT, CoinRedemptio
         this.updated = OffsetDateTime.now()
     }
 
-    fun updateStatus(uuid: EntityID<UUID>, newStatus: CoinRedemptionStatus) =
+    fun updateStatus(uuid: UUID, newStatus: CoinRedemptionStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
             it.updated = OffsetDateTime.now()
@@ -48,5 +48,5 @@ enum class CoinRedemptionStatus {
     INSERTED,
     PENDING_REDEEM,
     COMPLETE,
-    VALIDATION_FAILED
+    EXCEPTION
 }

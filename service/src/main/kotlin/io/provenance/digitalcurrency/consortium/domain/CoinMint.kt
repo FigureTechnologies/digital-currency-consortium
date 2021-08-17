@@ -27,7 +27,7 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
         this.updated = OffsetDateTime.now()
     }
 
-    fun updateStatus(uuid: EntityID<UUID>, newStatus: CoinMintStatus) =
+    fun updateStatus(uuid: UUID, newStatus: CoinMintStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
             it.updated = OffsetDateTime.now()
@@ -49,5 +49,5 @@ enum class CoinMintStatus {
     INSERTED,
     PENDING_MINT,
     COMPLETE,
-    VALIDATION_FAILED
+    EXCEPTION
 }

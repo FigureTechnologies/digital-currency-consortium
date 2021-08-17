@@ -25,7 +25,7 @@ open class CoinBurnEntityClass : BaseRequestEntityClass<CBT, CoinBurnRecord>(CBT
         this.updated = OffsetDateTime.now()
     }
 
-    fun updateStatus(uuid: EntityID<UUID>, newStatus: CoinBurnStatus) =
+    fun updateStatus(uuid: UUID, newStatus: CoinBurnStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
             it.updated = OffsetDateTime.now()
@@ -47,5 +47,5 @@ enum class CoinBurnStatus {
     INSERTED,
     PENDING_BURN,
     COMPLETE,
-    VALIDATION_FAILED
+    EXCEPTION
 }

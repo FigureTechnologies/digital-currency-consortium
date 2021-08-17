@@ -6,10 +6,11 @@ import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.math.RoundingMode
 
 // convert coins to USD (100 coins == $1.00 USD)
 fun BigInteger.toUSDAmount(): BigDecimal =
-    this.toBigDecimal().divide(100.toBigDecimal()).setScale(2)
+    this.toBigDecimal().divide(100.toBigDecimal(), 2, RoundingMode.UNNECESSARY)
 
 // convert USD amount to coins (100 coins == $1.00 USD)
 fun BigDecimal.toCoinAmount(): BigInteger =

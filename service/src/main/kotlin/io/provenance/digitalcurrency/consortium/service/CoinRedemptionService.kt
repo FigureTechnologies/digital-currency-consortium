@@ -11,23 +11,16 @@ import org.springframework.stereotype.Service
 
 @Service
 class CoinRedemptionService(private val pbcService: PbcService) {
-    private val log by lazy { logger() }
+    private val log = logger()
 
     fun createEvent(coinRedemptionRecord: CoinRedemptionRecord) {
-        check(coinRedemptionRecord.status == CoinRedemptionStatus.INSERTED) {
-            CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id, CoinRedemptionStatus.VALIDATION_FAILED)
-            "Unexpected coin redemption status ${coinRedemptionRecord.status} for creating event ${coinRedemptionRecord.id}"
-        }
         // There should not be any tx events at this point or all event should have an error status
         val existingEvents: List<TxStatusRecord> =
             TxStatusRecord.findByTxRequestUuid(coinRedemptionRecord.id.value)
         check(
             existingEvents.isEmpty() ||
                 existingEvents.filter { it.status == TxStatus.ERROR }.size == existingEvents.size
-        ) {
-            CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id, CoinRedemptionStatus.VALIDATION_FAILED)
-            "Redemption event already exists"
-        }
+        ) { "Redemption event already exists" }
 
         try {
             val txResponse = pbcService.redeem(coinRedemptionRecord.coinAmount.toBigInteger()).txResponse
@@ -37,18 +30,13 @@ class CoinRedemptionService(private val pbcService: PbcService) {
                 txRequestUuid = coinRedemptionRecord.id.value,
                 type = TxType.MARKER_REDEEM
             )
-            CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id, CoinRedemptionStatus.PENDING_REDEEM)
+            CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id.value, CoinRedemptionStatus.PENDING_REDEEM)
         } catch (e: Exception) {
             log.error("redeem contract failed; it will retry.", e)
         }
     }
 
     fun eventComplete(coinRedemptionRecord: CoinRedemptionRecord) {
-        check(coinRedemptionRecord.status == CoinRedemptionStatus.PENDING_REDEEM) {
-            CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id, CoinRedemptionStatus.VALIDATION_FAILED)
-            "Unexpected coin redemption status ${coinRedemptionRecord.status }for completing redemption uuid ${coinRedemptionRecord.id.value}"
-        }
-
         val completedEvent: TxStatusRecord? =
             TxStatusRecord.findByTxRequestUuid(coinRedemptionRecord.id.value).toList().firstOrNull {
                 (it.status == TxStatus.COMPLETE) && (it.type == TxType.MARKER_REDEEM)
@@ -61,7 +49,7 @@ class CoinRedemptionService(private val pbcService: PbcService) {
                     coinRedemption = coinRedemptionRecord,
                     coinAmount = coinRedemptionRecord.coinAmount
                 )
-                CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id, CoinRedemptionStatus.COMPLETE)
+                CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id.value, CoinRedemptionStatus.COMPLETE)
             } catch (e: Exception) {
                 log.error("prepping for burn failed; it will retry.", e)
             }

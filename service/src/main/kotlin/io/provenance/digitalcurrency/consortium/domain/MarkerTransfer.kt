@@ -31,7 +31,7 @@ open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransfe
             this.updated = OffsetDateTime.now()
         }
 
-    fun updateStatus(uuid: EntityID<UUID>, newStatus: MarkerTransferStatus) =
+    fun updateStatus(uuid: UUID, newStatus: MarkerTransferStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
             it.updated = OffsetDateTime.now()
@@ -57,5 +57,6 @@ class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseRequestRecord(MTT, uuid) 
 
 enum class MarkerTransferStatus {
     INSERTED,
-    COMPLETE
+    COMPLETE,
+    EXCEPTION
 }

@@ -14,23 +14,16 @@ class CoinMintService(
     private val pbcService: PbcService,
     private val bankClient: BankClient
 ) {
-    private val log by lazy { logger() }
+    private val log = logger()
 
     fun createEvent(coinMintRecord: CoinMintRecord) {
-        check(coinMintRecord.status == CoinMintStatus.INSERTED) {
-            CoinMintRecord.updateStatus(coinMintRecord.id, CoinMintStatus.VALIDATION_FAILED)
-            "Unexpected coin mint status ${coinMintRecord.status} for creating event ${coinMintRecord.id} "
-        }
         // There should not be any tx events at this point or all event should have an error status
         val existingEvents: List<TxStatusRecord> =
             TxStatusRecord.findByTxRequestUuid(coinMintRecord.id.value)
         check(
             existingEvents.isEmpty() ||
                 existingEvents.filter { it.status == TxStatus.ERROR }.size == existingEvents.size
-        ) {
-            CoinMintRecord.updateStatus(coinMintRecord.id, CoinMintStatus.VALIDATION_FAILED)
-            "Mint/swap contract already called"
-        }
+        ) { "Mint/swap contract already called" }
 
         try {
             val txResponse = pbcService.mintAndSwap(
@@ -43,18 +36,13 @@ class CoinMintService(
                 txRequestUuid = coinMintRecord.id.value,
                 type = TxType.MARKER_WITHDRAW
             )
-            CoinMintRecord.updateStatus(coinMintRecord.id, CoinMintStatus.PENDING_MINT)
+            CoinMintRecord.updateStatus(coinMintRecord.id.value, CoinMintStatus.PENDING_MINT)
         } catch (e: Exception) {
             log.error("Mint/swap contract failed; it will retry.", e)
         }
     }
 
     fun eventComplete(coinMintRecord: CoinMintRecord) {
-        check(coinMintRecord.status == CoinMintStatus.PENDING_MINT) {
-            CoinMintRecord.updateStatus(coinMintRecord.id, CoinMintStatus.VALIDATION_FAILED)
-            "Unexpected coin mint status ${coinMintRecord.status} for completing mint uuid ${coinMintRecord.id}"
-        }
-
         val completedEvent: TxStatusRecord? =
             TxStatusRecord.findByTxRequestUuid(coinMintRecord.id.value).toList().firstOrNull {
                 (it.status == TxStatus.COMPLETE) && (it.type == TxType.MARKER_WITHDRAW)
@@ -67,7 +55,7 @@ class CoinMintService(
                     coinMintRecord.id.value,
                     CoinMintStatus.COMPLETE.toString()
                 )
-                CoinMintRecord.updateStatus(coinMintRecord.id, CoinMintStatus.COMPLETE)
+                CoinMintRecord.updateStatus(coinMintRecord.id.value, CoinMintStatus.COMPLETE)
             } catch (e: Exception) {
                 log.error("updating mint status at bank failed; it will retry.", e)
             }

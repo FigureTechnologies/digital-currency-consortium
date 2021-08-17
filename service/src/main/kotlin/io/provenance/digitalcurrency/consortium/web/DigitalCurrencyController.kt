@@ -36,7 +36,7 @@ class DigitalCurrencyController(
     private val pbcService: PbcService
 ) {
 
-    private val log by lazy { logger() }
+    private val log = logger()
 
     @PostMapping(REGISTRATION_V1)
     @ApiOperation(
