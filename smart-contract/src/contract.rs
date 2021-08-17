@@ -32,9 +32,6 @@ pub fn instantiate(
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during instantiate"));
     }
-    if msg.dcc_denom.len() < MIN_DENOM_LEN {
-        return Err(contract_err("invalid dcc denom"));
-    }
     if msg.quorum_pct.is_zero() || msg.quorum_pct > Decimal::percent(100) {
         return Err(contract_err("invalid quorum percent"));
     }
@@ -61,6 +58,10 @@ pub fn instantiate(
     // Create the dcc marker and grant permissions if it doesn't exist.
     let mut res = Response::new();
     if !marker_exists(deps.as_ref(), &msg.dcc_denom) {
+        // If we need to create the marker, validate denom length.
+        if msg.dcc_denom.len() < MIN_DENOM_LEN {
+            return Err(contract_err("invalid denom length"));
+        }
         res.add_message(create_marker(
             0,
             msg.dcc_denom.clone(),
