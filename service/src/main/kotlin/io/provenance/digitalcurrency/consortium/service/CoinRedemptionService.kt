@@ -28,7 +28,7 @@ class CoinRedemptionService(private val pbcService: PbcService) {
             TxStatusRecord.insert(
                 txResponse = txResponse,
                 txRequestUuid = coinRedemptionRecord.id.value,
-                type = TxType.MARKER_REDEEM
+                type = TxType.REDEEM_CONTRACT
             )
             CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id.value, CoinRedemptionStatus.PENDING_REDEEM)
         } catch (e: Exception) {
@@ -39,7 +39,7 @@ class CoinRedemptionService(private val pbcService: PbcService) {
     fun eventComplete(coinRedemptionRecord: CoinRedemptionRecord) {
         val completedEvent: TxStatusRecord? =
             TxStatusRecord.findByTxRequestUuid(coinRedemptionRecord.id.value).toList().firstOrNull {
-                (it.status == TxStatus.COMPLETE) && (it.type == TxType.MARKER_REDEEM)
+                (it.status == TxStatus.COMPLETE) && (it.type == TxType.REDEEM_CONTRACT)
             }
 
         if (completedEvent != null) {

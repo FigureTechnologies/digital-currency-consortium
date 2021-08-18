@@ -34,8 +34,13 @@ class EventStreamConsumerTest(
         eventStreamProperties,
         serviceProperties
     ) {
-        fun testHandleEvents(burns: Burns = listOf(), withdraws: Withdraws = listOf(), markerTransfers: MarkerTransfers = listOf()) {
-            super.handleEvents(0L, burns, withdraws, markerTransfers)
+        fun testHandleEvents(
+            mints: Mints = listOf(),
+            burns: Burns = listOf(),
+            redemptions: Redemptions = listOf(),
+            transfers: Transfers = listOf()
+        ) {
+            super.handleEvents(0L, mints, burns, redemptions, transfers)
         }
     }
 

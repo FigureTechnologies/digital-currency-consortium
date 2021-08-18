@@ -68,8 +68,8 @@ enum class TxStatus {
 }
 
 enum class TxType {
-    MARKER_TRANSFER,
-    MARKER_WITHDRAW,
-    MARKER_REDEEM,
-    MARKER_BURN
+    TRANSFER_CONTRACT,
+    MINT_CONTRACT,
+    REDEEM_CONTRACT,
+    BURN_CONTRACT
 }

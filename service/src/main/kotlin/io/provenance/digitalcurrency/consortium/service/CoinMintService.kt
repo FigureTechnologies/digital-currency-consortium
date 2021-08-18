@@ -34,7 +34,7 @@ class CoinMintService(
             TxStatusRecord.insert(
                 txResponse = txResponse,
                 txRequestUuid = coinMintRecord.id.value,
-                type = TxType.MARKER_WITHDRAW
+                type = TxType.MINT_CONTRACT
             )
             CoinMintRecord.updateStatus(coinMintRecord.id.value, CoinMintStatus.PENDING_MINT)
         } catch (e: Exception) {
@@ -45,16 +45,18 @@ class CoinMintService(
     fun eventComplete(coinMintRecord: CoinMintRecord) {
         val completedEvent: TxStatusRecord? =
             TxStatusRecord.findByTxRequestUuid(coinMintRecord.id.value).toList().firstOrNull {
-                (it.status == TxStatus.COMPLETE) && (it.type == TxType.MARKER_WITHDRAW)
+                (it.status == TxStatus.COMPLETE) && (it.type == TxType.MINT_CONTRACT)
             }
 
         if (completedEvent != null) {
             log.info("Completing mint/swap contract by notifying bank")
             try {
-                bankClient.updateMintStatus(
+                val response = bankClient.updateMintStatus(
                     coinMintRecord.id.value,
                     CoinMintStatus.COMPLETE.toString()
                 )
+
+                log.info("response $response")
                 CoinMintRecord.updateStatus(coinMintRecord.id.value, CoinMintStatus.COMPLETE)
             } catch (e: Exception) {
                 log.error("updating mint status at bank failed; it will retry.", e)

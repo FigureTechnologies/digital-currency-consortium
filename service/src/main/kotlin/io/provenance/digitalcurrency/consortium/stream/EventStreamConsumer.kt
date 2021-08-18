@@ -24,8 +24,8 @@ class EventStreamConsumer(
 ) {
     private val log = logger()
 
-    // We're only interested in transfer events from pbc
-    private val eventTypes = listOf(MARKER_TRANSFER_EVENT, WITHDRAW_EVENT, BURN_EVENT)
+    // We're only interested in specific wasm events from pbc
+    private val eventTypes = listOf(WASM_EVENT)
 
     // The current event stream ID
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
@@ -45,7 +45,7 @@ class EventStreamConsumer(
             ?: transaction { EventStreamRecord.insert(eventStreamId, epochHeight) }.lastBlockHeight
         val responseObserver =
             EventStreamResponseObserver<EventBatch> { batch ->
-                handleEvents(batch.height, batch.burns(), batch.withdraws(), batch.transfers())
+                handleEvents(batch.height, batch.mints(), batch.burns(), batch.redemptions(), batch.transfers())
             }
 
         log.info("Starting event stream at height $lastHeight")
@@ -55,20 +55,27 @@ class EventStreamConsumer(
         handleStream(responseObserver, log)
     }
 
-    protected fun handleEvents(blockHeight: Long, burns: Burns, withdraws: Withdraws, markerTransfers: MarkerTransfers) {
+    protected fun handleEvents(
+        blockHeight: Long,
+        mints: Mints,
+        burns: Burns,
+        redemptions: Redemptions,
+        transfers: Transfers
+    ) {
         val events =
-            burns.map { Triple(it.txHash, TxType.MARKER_BURN, it) } +
-                withdraws.map { Triple(it.txHash, TxType.MARKER_WITHDRAW, it) } +
-                markerTransfers.map { Triple(it.txHash, TxType.MARKER_TRANSFER, it) }
+            mints.map { Triple(it.txHash, TxType.MINT_CONTRACT, it) } +
+                burns.map { Triple(it.txHash, TxType.BURN_CONTRACT, it) } +
+                redemptions.map { Triple(it.txHash, TxType.REDEEM_CONTRACT, it) } +
+                transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) }
 
         events.forEach { (txHash, type, event) ->
             log.info("event stream found txhash $txHash and type $type [event = {$event}]")
             val txStatusRecord = transaction { TxStatusRecord.findByTxHash(txHash) }
             if (transaction { txStatusRecord.empty() }) {
-                if (event is MarkerTransfer &&
-                    transaction { MarkerTransferRecord.findByTxHash(txHash) == null } &&
-                    event.toAddress == pbcService.managerAddress &&
-                    event.denom == serviceProperties.dccDenom
+                if (event is Transfer &&
+                    event.recipient == pbcService.managerAddress &&
+                    event.denom == serviceProperties.dccDenom &&
+                    transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
                 ) {
                     pbcService.getTransaction(txHash)
                         ?.takeIf {
@@ -77,10 +84,10 @@ class EventStreamConsumer(
                             log.info("persist received transfer for txhash $txHash")
                             transaction {
                                 MarkerTransferRecord.insert(
-                                    fromAddress = event.fromAddress,
-                                    toAddress = event.toAddress,
+                                    fromAddress = event.sender,
+                                    toAddress = event.recipient,
                                     denom = event.denom,
-                                    coins = event.amount,
+                                    amount = event.amount,
                                     height = event.height,
                                     txHash = txHash
                                 )

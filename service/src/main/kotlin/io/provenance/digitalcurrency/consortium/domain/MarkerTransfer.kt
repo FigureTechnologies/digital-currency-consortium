@@ -17,12 +17,12 @@ object MarkerTransferTable : BaseRequestTable(name = "marker_transfer") {
 }
 
 open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
-    fun insert(fromAddress: String, denom: String, coins: String, toAddress: String, height: Long, txHash: String) =
+    fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
         new(UUID.randomUUID()) {
             this.fromAddress = fromAddress
             this.toAddress = toAddress
-            this.coinAmount = coins.toLong()
-            fiatAmount = coins.toBigInteger().toUSDAmount()
+            this.coinAmount = amount.toLong()
+            fiatAmount = amount.toBigInteger().toUSDAmount()
             this.denom = denom
             this.height = height
             this.txHash = txHash

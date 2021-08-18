@@ -1,138 +1,145 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-private const val ATTRIBUTE_ADMINISTRATOR = "administrator"
+private const val ATTRIBUTE_ACTION = "action"
+private const val ATTRIBUTE_CONTRACT_ADDRESS = "contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
-private const val ATTRIBUTE_COINS = "coins"
 private const val ATTRIBUTE_DENOM = "denom"
-private const val ATTRIBUTE_FROM = "from_address"
-private const val ATTRIBUTE_TO = "to_address"
+private const val ATTRIBUTE_RESERVE_DENOM = "reserve_denom"
+private const val ATTRIBUTE_WITHDRAW_DENOM = "withdraw_denom"
+private const val ATTRIBUTE_WITHDRAW_ADDRESS = "withdraw_address"
+private const val ATTRIBUTE_MEMBER_ID = "member_id"
+private const val ATTRIBUTE_SENDER = "sender"
+private const val ATTRIBUTE_RECIPIENT = "recipient"
 
-private fun StreamEvent.findAttribute(key: String): String =
+private const val MINT_ACTION = "mint"
+private const val TRANSFER_ACTION = "transfer"
+private const val REDEEM_ACTION = "redeem"
+private const val BURN_ACTION = "burn"
+
+const val WASM_EVENT = "wasm"
+
+private fun StreamEvent.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
     this.attributes.firstOrNull { it.key == key }?.value?.removeSurrounding("\"") ?: ""
 
-// This is after the burn
-// Event(
-//  type=provenance.marker.v1.EventMarkerBurn,
-//  attributes=[
-//          Attribute(key='amount', value='"500"'),
-//          Attribute(key='denom', value='"dccbank1.coin"'),
-//          Attribute(key='administrator', value='"tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz"')
-//      ]
-//  )
-const val BURN_EVENT = "provenance.marker.v1.EventMarkerBurn"
+fun EventBatch.mints(): Mints =
+    events
+        .filter { event ->
+            val action = event.getAttribute(ATTRIBUTE_ACTION)
+            event.eventType == WASM_EVENT &&
+                action == MINT_ACTION
+        }.map { event -> event.toMint() }
 
-data class Burn(
-    val burnedBy: String,
-    val denom: String,
+typealias Mints = List<Mint>
+
+data class Mint(
+    val contractAddress: String,
     val amount: String,
+    val denom: String,
+    val withdrawDenom: String,
+    val withdrawAddress: String,
+    val memberId: String,
     val height: Long,
     val txHash: String
 )
+
+private fun StreamEvent.toMint(): Mint =
+    Mint(
+        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
+        amount = getAttribute(ATTRIBUTE_AMOUNT),
+        denom = getAttribute(ATTRIBUTE_DENOM),
+        withdrawDenom = getAttribute(ATTRIBUTE_WITHDRAW_DENOM),
+        withdrawAddress = getAttribute(ATTRIBUTE_WITHDRAW_ADDRESS),
+        memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
+        height = height,
+        txHash = txHash
+    )
+
+fun EventBatch.burns(): Burns =
+    events
+        .filter { event ->
+            val action = event.getAttribute(ATTRIBUTE_ACTION)
+            event.eventType == WASM_EVENT &&
+                action == BURN_ACTION
+        }.map { event -> event.toBurn() }
 
 typealias Burns = List<Burn>
 
-fun EventBatch.burns(): Burns = events
-    .filter { it.eventType == BURN_EVENT }
-    .map { event ->
-        event.toBurn(this.height)
-    }
-
-private fun StreamEvent.toBurn(height: Long): Burn =
-    Burn(
-        burnedBy = findAttribute(ATTRIBUTE_ADMINISTRATOR),
-        denom = findAttribute(ATTRIBUTE_DENOM),
-        amount = findAttribute(ATTRIBUTE_AMOUNT),
-        height = height,
-        txHash = txHash
-    )
-
-// this is the coin receipt when Figure Equity Solutions transfers for redemption
-// Event(
-//  type=provenance.marker.v1.EventMarkerTransfer,
-//  attributes=[
-//          Attribute(key='amount', value='"500"'),
-//          Attribute(key='denom', value='"centiusdx"'),
-//          Attribute(key='administrator', value='"tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz"'),
-//          Attribute(key='to_address', value='"tp1f6cg6gg3esxnk8jstnlq7htcv5fzrjrf6qvjr7"'),
-//          Attribute(key='from_address', value='"tp1mpseerdwvmtx6tcatpknnssfw7f88503vcv56d"')
-//      ]
-//  )
-const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
-
-data class MarkerTransfer(
-    val fromAddress: String,
-    val toAddress: String,
+data class Burn(
+    val contractAddress: String,
     val amount: String,
     val denom: String,
+    val memberId: String,
     val height: Long,
     val txHash: String
 )
 
-typealias MarkerTransfers = List<MarkerTransfer>
-
-fun EventBatch.transfers(): MarkerTransfers = events
-    .filter { it.eventType == MARKER_TRANSFER_EVENT }
-    .map { event ->
-        event.toMarkerTransfer(this.height)
-    }
-
-private fun StreamEvent.toMarkerTransfer(height: Long): MarkerTransfer =
-    MarkerTransfer(
-        fromAddress = findAttribute(ATTRIBUTE_FROM),
-        toAddress = findAttribute(ATTRIBUTE_TO),
-        amount = findAttribute(ATTRIBUTE_AMOUNT),
-        denom = findAttribute(ATTRIBUTE_DENOM),
+private fun StreamEvent.toBurn(): Burn =
+    Burn(
+        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
+        amount = getAttribute(ATTRIBUTE_AMOUNT),
+        denom = getAttribute(ATTRIBUTE_DENOM),
+        memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
         height = height,
         txHash = txHash
     )
 
-// This is after the mint contract is called
-// Event(
-//  type=provenance.marker.v1.EventMarkerWithdraw,
-//  attributes=[
-//          Attribute(key='coins', value='"12345centiusdx"'),
-//          Attribute(key='denom', value='"centiusdx"'),
-//          Attribute(key='administrator', value='"tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz"'),
-//          Attribute(key='to_address', value='"tp1kgtu7nw8e5lu3dg8x6cfvpwqxw9h4j3jzlllz7"')
-//      ]
-//  )
+fun EventBatch.redemptions(): Redemptions =
+    events
+        .filter { event ->
+            val action = event.getAttribute(ATTRIBUTE_ACTION)
+            event.eventType == WASM_EVENT &&
+                action == REDEEM_ACTION
+        }.map { event -> event.toRedemption() }
 
-// this is after the redeem contract is called
-// Event(
-//  type=provenance.marker.v1.EventMarkerWithdraw,
-//  attributes=[
-//          Attribute(key='coins', value='"500dccbank1.coin"'),
-//          Attribute(key='denom', value='"dccbank1.coin"'),
-//          Attribute(key='administrator', value='"tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz"'),
-//          Attribute(key='to_address', value='"tp1f6cg6gg3esxnk8jstnlq7htcv5fzrjrf6qvjr7"')
-//      ]
-//  )
-const val WITHDRAW_EVENT = "provenance.marker.v1.EventMarkerWithdraw"
+typealias Redemptions = List<Redemption>
 
-data class Withdraw(
-    val administrator: String,
-    val denom: String,
-    val coins: String,
-    val toAddress: String,
+data class Redemption(
+    val contractAddress: String,
+    val amount: String,
+    val reserveDenom: String,
+    val memberId: String,
     val height: Long,
     val txHash: String
 )
 
-typealias Withdraws = List<Withdraw>
+private fun StreamEvent.toRedemption(): Redemption =
+    Redemption(
+        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
+        amount = getAttribute(ATTRIBUTE_AMOUNT),
+        reserveDenom = getAttribute(ATTRIBUTE_RESERVE_DENOM),
+        memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
+        height = height,
+        txHash = txHash
+    )
 
-fun EventBatch.withdraws(): Withdraws = events
-    .filter { it.eventType == WITHDRAW_EVENT }
-    .map { event ->
-        event.toWithdraw(this.height)
-    }
+fun EventBatch.transfers(): Transfers =
+    events
+        .filter { event ->
+            val action = event.getAttribute(ATTRIBUTE_ACTION)
+            event.eventType == WASM_EVENT &&
+                action == TRANSFER_ACTION
+        }.map { event -> event.toTransfer() }
 
-private fun StreamEvent.toWithdraw(height: Long): Withdraw =
-    Withdraw(
-        administrator = findAttribute(ATTRIBUTE_ADMINISTRATOR),
-        denom = findAttribute(ATTRIBUTE_DENOM),
-        coins = findAttribute(ATTRIBUTE_COINS),
-        toAddress = findAttribute(ATTRIBUTE_TO),
+typealias Transfers = List<Transfer>
+
+data class Transfer(
+    val contractAddress: String,
+    val amount: String,
+    val denom: String,
+    val sender: String,
+    val recipient: String,
+    val height: Long,
+    val txHash: String
+)
+
+private fun StreamEvent.toTransfer(): Transfer =
+    Transfer(
+        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
+        amount = getAttribute(ATTRIBUTE_AMOUNT),
+        denom = getAttribute(ATTRIBUTE_DENOM),
+        sender = getAttribute(ATTRIBUTE_SENDER),
+        recipient = getAttribute(ATTRIBUTE_RECIPIENT),
         height = height,
         txHash = txHash
     )

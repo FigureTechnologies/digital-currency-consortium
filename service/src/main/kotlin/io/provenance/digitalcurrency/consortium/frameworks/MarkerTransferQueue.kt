@@ -64,7 +64,7 @@ class MarkerTransferQueue(
                         TxStatusRecord.insert(
                             txResponse = txResponse,
                             txRequestUuid = message.id,
-                            type = TxType.MARKER_TRANSFER
+                            type = TxType.TRANSFER_CONTRACT
                         ).also {
                             it.status = TxStatus.COMPLETE
                         }

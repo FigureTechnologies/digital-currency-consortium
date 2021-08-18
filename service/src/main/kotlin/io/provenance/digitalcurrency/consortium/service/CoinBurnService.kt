@@ -32,7 +32,7 @@ class CoinBurnService(
             TxStatusRecord.insert(
                 txResponse = txResponse,
                 txRequestUuid = coinBurnRecord.id.value,
-                type = TxType.MARKER_BURN
+                type = TxType.BURN_CONTRACT
             )
             CoinBurnRecord.updateStatus(coinBurnRecord.id.value, CoinBurnStatus.PENDING_BURN)
         } catch (e: Exception) {
@@ -43,20 +43,21 @@ class CoinBurnService(
     fun eventComplete(coinBurnRecord: CoinBurnRecord) {
         val completedEvent: TxStatusRecord? =
             TxStatusRecord.findByTxRequestUuid(coinBurnRecord.id.value).toList().firstOrNull {
-                (it.status == TxStatus.COMPLETE) && (it.type == TxType.MARKER_BURN)
+                (it.status == TxStatus.COMPLETE) && (it.type == TxType.BURN_CONTRACT)
             }
 
         if (completedEvent != null) {
             log.info("Completing burn contract by notifying bank to send fiat")
             if (coinBurnRecord.coinRedemption != null) {
                 try {
-                    bankClient.depositFiat(
+                    val response = bankClient.depositFiat(
                         DepositFiatRequest(
                             uuid = coinBurnRecord.id.value,
                             bankAccountUUID = coinBurnRecord.coinRedemption!!.addressRegistration.bankAccountUuid,
                             amount = coinBurnRecord.fiatAmount
                         )
                     )
+                    log.info("response $response")
                     CoinBurnRecord.updateStatus(coinBurnRecord.id.value, CoinBurnStatus.COMPLETE)
                 } catch (e: Exception) {
                     log.error("sending fiat deposit request to bank failed; it will retry.", e)
