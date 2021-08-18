@@ -1,0 +1,7 @@
+FROM openjdk:11-jre
+
+COPY ./service/build/libs/*.jar /service.jar
+
+EXPOSE 8080/tcp
+
+CMD java -jar /service.jar

@@ -1,2 +1,2 @@
-# usdf-consortium
-USDF Consortium middleware - interface between banks and USDF SCs.
+# digital-currency-consortium
+Digital Currency Consortium middleware - interface between banks and digital currency smart contracts.

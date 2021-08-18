@@ -1,0 +1,18 @@
+{
+	record_count: 3,
+	records: [
+		{
+			"txid": "ED73C59FB76CC57389C42A65C684A7F2B9E98F48AD0648A17579A2B0A5EAA03F", // should be used to determine uniqueness of this record
+			"from_address": "tp1nqhrlwn978ryekpppgae2zgxnwkcv6v4mz8srz", // will contain the smart contract address for MINT and BURN events
+			"from_address_bank_uuid": "23cb20c2-cbd1-4918-aa2e-e432a61e0877", // this can be empty in some cases
+			"to_address": "tp16dgm6zg63hk6r6v3xmvzcshx45pmvevwxgvye4",
+			"to_address_bank_uuid": "e478ca2c-acdf-4b57-b256-f8cc098d6a6d", // this can be empty in some cases
+			"block_height": "1825946",
+			"timestamp": "2021-08-16T11:14:16.511Z", // iso 8601 timestamp
+			"amount": "100",
+			"denom": "centiusdx",
+			"type": "TRANSFER" // MINT|BURN|TRANSFER
+		},
+		...
+	]
+}

@@ -1,0 +1,50 @@
+version: '3.9'
+services:
+  digital-currency-consortium-postgres:
+    image: provenanceio/digital-currency-consortium-database:latest
+    container_name: digital-currency-consortium-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5432:5432
+
+  digital-currency-consortium-service:
+    image: provenanceio/digital-currency-consortium-service:0.1.0-develop-beta-1
+    container_name: digital-currency-consortium-service
+    ports:
+      - 8080:8080
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_HOST=digital-currency-consortium-postgres
+      - DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_consortium
+      - DB_PORT=5432
+      - DB_NAME=digital_currency_consortium
+      - DB_SCHEMA=digital_currency_consortium
+      - DB_CONNECTION_POOL_SIZE=5
+      - PROVENANCE_MAINNET=false
+      - PROVENANCE_CHAIN_ID=chain-local
+      # Hits the locally running node
+      - GRPC_CHANNEL_URL=http://host.docker.internal:9090
+      - EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1
+      - EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657
+      - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
+      - EVENT_STREAM_EPOCH=0
+      # the mnemonic for your bank key
+      - MANAGER_KEY=TODO
+      # the url of your bank middleware
+      - BANK_URI=TODO
+      # the name that you bound for your kyc tage
+      - KYC_TAG_NAME=TODO
+      # the address of the stored/initiated smart contract
+      - CONTRACT_ADDRESS=TODO
+      # the name of the digital currency denom
+      - DCC_DENOM=TODO
+      # your desired bank denom
+      - BANK_DENOM=TODO
+    depends_on:
+      - digital-currency-consortium-postgres
+    links:
+      - "digital-currency-consortium-postgres"

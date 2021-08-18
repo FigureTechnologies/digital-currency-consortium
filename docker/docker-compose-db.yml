@@ -1,0 +1,12 @@
+version: '3.9'
+services:
+  digital-currency-consortium-postgres:
+    image: postgres:13.2
+    container_name: postgres-local
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password1
+    ports:
+      - 5432:5432
+    volumes:
+      - ./db-init:/docker-entrypoint-initdb.d/
