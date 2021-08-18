@@ -47,7 +47,13 @@ class EventStreamConsumer(
             ?: transaction { EventStreamRecord.insert(eventStreamId, epochHeight) }.lastBlockHeight
         val responseObserver =
             EventStreamResponseObserver<EventBatch> { batch ->
-                handleEvents(batch.height, batch.mints(), batch.burns(), batch.redemptions(), batch.transfers())
+                handleEvents(
+                    batch.height,
+                    batch.mints(provenanceProperties.contractAddress),
+                    batch.burns(provenanceProperties.contractAddress),
+                    batch.redemptions(provenanceProperties.contractAddress),
+                    batch.transfers(provenanceProperties.contractAddress)
+                )
             }
 
         log.info("Starting event stream at height $lastHeight")
@@ -76,7 +82,6 @@ class EventStreamConsumer(
             if (transaction { txStatusRecord.empty() }) {
                 if (event is Transfer &&
                     event.recipient == pbcService.managerAddress &&
-                    event.contractAddress == provenanceProperties.contractAddress &&
                     event.denom == serviceProperties.dccDenom &&
                     transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
                 ) {
