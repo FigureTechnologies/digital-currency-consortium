@@ -34,3 +34,14 @@ fun UUID.toByteArray(): ByteArray {
 
     return buffer.array()
 }
+
+fun ByteArray.toUuid(): UUID {
+    require(this.size == 16) { "ByteArray to UUID requires exactly 16 bytes" }
+
+    val buffer = ByteBuffer.wrap(this)
+
+    val first = buffer.long
+    val second = buffer.long
+
+    return UUID(first, second)
+}

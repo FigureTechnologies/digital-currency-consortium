@@ -20,7 +20,8 @@ data class Block(
 )
 
 data class BlockHeader(
-    val height: Long
+    val height: Long,
+    val time: String,
 )
 
 data class BlockData(
