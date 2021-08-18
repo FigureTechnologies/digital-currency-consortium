@@ -68,5 +68,8 @@ class CoinRedemptionQueue(
 
     override fun onMessageFailure(message: CoinRedemptionDirective, e: Exception) {
         log.error("redemption queue got error for uuid ${message.id}", e)
+        transaction {
+            CoinRedemptionRecord.updateStatus(message.id, CoinRedemptionStatus.EXCEPTION)
+        }
     }
 }

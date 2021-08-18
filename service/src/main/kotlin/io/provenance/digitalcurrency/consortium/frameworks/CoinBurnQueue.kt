@@ -46,11 +46,6 @@ class CoinBurnQueue(
         transaction {
             CoinBurnRecord.findForUpdate(message.id).first().let { coinBurn ->
                 withMdc(*coinBurn.mdc()) {
-                    check(
-                        coinBurn.status == CoinBurnStatus.INSERTED ||
-                            coinBurn.status == CoinBurnStatus.PENDING_BURN
-                    ) { "Invalid coin burn status for queue processing" }
-
                     when (coinBurn.status) {
                         CoinBurnStatus.INSERTED -> coinBurnService.createEvent(coinBurn)
                         CoinBurnStatus.PENDING_BURN -> coinBurnService.eventComplete(coinBurn)
@@ -68,5 +63,6 @@ class CoinBurnQueue(
 
     override fun onMessageFailure(message: CoinBurnDirective, e: Exception) {
         log.error("burn queue got error for uuid ${message.id}", e)
+        transaction { CoinBurnRecord.updateStatus(message.id, CoinBurnStatus.EXCEPTION) }
     }
 }

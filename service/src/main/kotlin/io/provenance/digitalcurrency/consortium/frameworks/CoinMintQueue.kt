@@ -68,5 +68,6 @@ class CoinMintQueue(
 
     override fun onMessageFailure(message: CoinMintDirective, e: Exception) {
         log.error("mint queue got error for uuid ${message.id}", e)
+        transaction { CoinMintRecord.updateStatus(message.id, CoinMintStatus.EXCEPTION) }
     }
 }

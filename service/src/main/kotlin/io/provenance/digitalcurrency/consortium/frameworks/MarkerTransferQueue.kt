@@ -56,12 +56,15 @@ class MarkerTransferQueue(
                         !it.isFailed()
                     }?.let { txResponse ->
                         val registration = AddressRegistrationRecord.findByAddress(transfer.fromAddress)
-                        check(registration != null) { "Address is not registered" }
+                        check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
+                        check(
+                            TxStatusRecord.findByTxHash(transfer.txHash).empty()
+                        ) { "Marker transfer for ${transfer.txHash} already handled" }
 
                         TxStatusRecord.insert(
                             txResponse = txResponse,
                             txRequestUuid = message.id,
-                            type = TxType.MARKER_TRANSFER
+                            type = TxType.TRANSFER_CONTRACT
                         ).also {
                             it.status = TxStatus.COMPLETE
                         }
@@ -72,7 +75,7 @@ class MarkerTransferQueue(
                             coinAmount = transfer.coinAmount
                         )
 
-                        MarkerTransferRecord.updateStatus(transfer.id, MarkerTransferStatus.COMPLETE)
+                        MarkerTransferRecord.updateStatus(transfer.id.value, MarkerTransferStatus.COMPLETE)
                     }
                 }
             }
@@ -85,6 +88,7 @@ class MarkerTransferQueue(
     }
 
     override fun onMessageFailure(message: MarkerTransferDirective, e: Exception) {
-        log.error("marker transfer queue got error for tx request uuid ${message.id}; will retry on next round", e)
+        log.error("marker transfer queue got error for tx request uuid ${message.id}", e)
+        transaction { MarkerTransferRecord.updateStatus(message.id, MarkerTransferStatus.EXCEPTION) }
     }
 }

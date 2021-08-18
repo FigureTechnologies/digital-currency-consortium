@@ -912,3 +912,28 @@ provenanced tx wasm execute \
     --yes \
     --testnet | jq
 ```
+
+## Upgrade the Consortium Wasm
+
+If there are code modications to the consortium wasm, the contract logic needs to be updated on chain. Perform
+the step in the [Store the Consortium Wasm](#-store-the-consortium-wasm) section and then perform a migration of the wasm:
+
+```bash
+provenanced tx wasm migrate \
+    tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+    2 \
+    '{}' \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto \
+    --fees 500000000nhash \
+    --broadcast-mode block \
+    --yes \
+    --testnet
+
+```
+
+Note in this example that `2` is the new code id that was the output of the store command. Replace that with whatever
+code id is returned when you store the updated contract.

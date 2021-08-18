@@ -222,7 +222,6 @@ class RpcEventStream(
     }
 
     private fun Event.shouldStream(txHash: String): Boolean {
-        log.info("EVENT $this")
         return txHash.isNotBlank() &&
             (
                 eventTypes.contains(type) || // check for simple event type match first

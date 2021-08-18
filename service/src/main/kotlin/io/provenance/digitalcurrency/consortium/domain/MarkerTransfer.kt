@@ -17,12 +17,12 @@ object MarkerTransferTable : BaseRequestTable(name = "marker_transfer") {
 }
 
 open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
-    fun insert(fromAddress: String, denom: String, coins: String, toAddress: String, height: Long, txHash: String) =
+    fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
         new(UUID.randomUUID()) {
             this.fromAddress = fromAddress
             this.toAddress = toAddress
-            this.coinAmount = coins.toLong()
-            fiatAmount = coins.toBigInteger().toUSDAmount()
+            this.coinAmount = amount.toLong()
+            fiatAmount = amount.toBigInteger().toUSDAmount()
             this.denom = denom
             this.height = height
             this.txHash = txHash
@@ -31,7 +31,7 @@ open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransfe
             this.updated = OffsetDateTime.now()
         }
 
-    fun updateStatus(uuid: EntityID<UUID>, newStatus: MarkerTransferStatus) =
+    fun updateStatus(uuid: UUID, newStatus: MarkerTransferStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
             it.updated = OffsetDateTime.now()
@@ -57,5 +57,6 @@ class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseRequestRecord(MTT, uuid) 
 
 enum class MarkerTransferStatus {
     INSERTED,
-    COMPLETE
+    COMPLETE,
+    EXCEPTION
 }
