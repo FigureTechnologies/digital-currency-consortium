@@ -1,6 +1,7 @@
 package io.provenance.digitalcurrency.consortium.stream
 
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
+import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
@@ -20,6 +21,7 @@ class EventStreamConsumer(
     private val eventStreamFactory: EventStreamFactory,
     private val pbcService: PbcService,
     eventStreamProperties: EventStreamProperties,
+    private val provenanceProperties: ProvenanceProperties,
     private val serviceProperties: ServiceProperties
 ) {
     private val log = logger()
@@ -74,6 +76,7 @@ class EventStreamConsumer(
             if (transaction { txStatusRecord.empty() }) {
                 if (event is Transfer &&
                     event.recipient == pbcService.managerAddress &&
+                    event.contractAddress == provenanceProperties.contractAddress &&
                     event.denom == serviceProperties.dccDenom &&
                     transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
                 ) {
