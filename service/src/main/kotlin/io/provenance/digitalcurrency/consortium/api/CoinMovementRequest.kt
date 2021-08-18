@@ -25,17 +25,27 @@ data class CoinMovementRequestItem(
     @get:NotNull val txid: String,
 
     @ApiModelProperty(
-        value = "The bank uuid associated with the \"from address\" if one exists.",
+        value = "A blockchain address.",
         required = true
     )
     @get:NotNull val from_address: String,
+
+    @ApiModelProperty(
+        value = "The bank uuid associated with the \"from address\" if one exists.",
+        required = true
+    )
     val from_address_bank_uuid: UUID?,
+
+    @ApiModelProperty(
+        value = "A blockchain address.",
+        required = true
+    )
+    @get:NotNull val to_address: String,
 
     @ApiModelProperty(
         value = "The bank uuid associated with the \"to address\" if one exists.",
         required = true
     )
-    @get:NotNull val to_address: String,
     val to_address_bank_uuid: UUID?,
 
     @ApiModelProperty(
