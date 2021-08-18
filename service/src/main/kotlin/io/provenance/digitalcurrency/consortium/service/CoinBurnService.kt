@@ -57,6 +57,7 @@ class CoinBurnService(
                             amount = coinBurnRecord.fiatAmount
                         )
                     )
+                    // TODO this isn't erroring if the bank middleware isn't running
                     log.info("response $response")
                     CoinBurnRecord.updateStatus(coinBurnRecord.id.value, CoinBurnStatus.COMPLETE)
                 } catch (e: Exception) {
