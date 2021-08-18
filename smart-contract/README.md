@@ -103,8 +103,7 @@ provenanced tx bank send \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 200000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -119,8 +118,7 @@ provenanced tx bank send \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 200000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -135,8 +133,7 @@ provenanced tx bank send \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 200000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -151,8 +148,7 @@ provenanced tx bank send \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 200000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -172,7 +168,7 @@ provenanced tx name bind \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -189,7 +185,7 @@ provenanced tx name bind \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -206,7 +202,7 @@ provenanced tx name bind \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -225,7 +221,7 @@ provenanced tx attribute add \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -244,7 +240,7 @@ provenanced tx attribute add \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -267,8 +263,7 @@ provenanced tx wasm store dcc.wasm \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 4000000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -291,8 +286,7 @@ provenanced tx wasm instantiate 1 '{"dcc_denom":"usdf.local","quorum_pct":"0.01"
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -315,8 +309,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -342,8 +335,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -359,8 +351,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -380,8 +371,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -397,8 +387,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -414,8 +403,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -444,8 +432,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -506,8 +493,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -554,8 +540,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -567,53 +552,24 @@ NOTE: you can get the address for `bank2` with the following command:
 provenanced keys show -a bank2 --home build/node0 -t
 ```
 
-Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract. To query the
-redeemable reserve tokens in escrow:
-
-```bash
-provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-   '{"get_balances": {}}' \
-   --ascii \
-   -o json \
-   --chain-id chain-local -t | jq
-
-{
-  "data": {
-    "balances": [
-      {
-        "address": "tp1wm78cde9t7gyl6k8gnafgrek0627mpqs4qevgl",
-        "denom": "bank2.coin",
-        "amount": "0"
-      },
-      {
-        "address": "tp1p0datkknnsfkmzz34wqkenw7dmyw7ged2neeqp",
-        "denom": "bank1.coin",
-        "amount": "10000"
-      }
-    ]
-  }
-}
-```
-
-So, `bank2` can redeem for `bank1.coin` tokens as they are the only available member reserves
-in escrow.
+Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract.
 
 ```bash
 provenanced tx wasm execute \
     tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
-    '{"redeem":{"amount":"5000","reserve_denom":"bank1.coin"}}' \
+    '{"redeem":{"amount":"5000"}}' \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
 ```
 
-You can now see that `bank2` holds reserve tokens from `bank1`
+You can now see that `bank2` holds reserve tokens minted by `bank1`, since these were the only
+reserve tokens available for redemption.
 
 ```bash
 provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
@@ -640,8 +596,8 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
 ```
 
 Now, `bank2` can deliver the cash/fiat to `user2` (off chain process). In addition, `bank2` can
-request the debt from `bank1` be paid (again, off chain). They can also sit on the reserve tokens
-and swap them for `usdf.local` when another user provides cash/fiat.
+request the debt from `bank1` be paid (TODO: member transfer). They can also sit on the reserve
+tokens and swap them for `usdf.local` when another user provides cash/fiat.
 
 ## Swap
 
@@ -657,8 +613,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -702,8 +657,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -719,8 +673,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -737,8 +690,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -759,8 +711,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -776,8 +727,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -813,8 +763,7 @@ provenanced tx bank send \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 200000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -830,8 +779,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -848,8 +796,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -863,8 +810,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq
@@ -906,8 +852,7 @@ provenanced tx wasm execute \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet | jq

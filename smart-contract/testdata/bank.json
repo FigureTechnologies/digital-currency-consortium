@@ -1,6 +1,11 @@
 {
     "address": "bank.marker",
-    "coins": [],
+    "coins": [
+        {
+            "amount": "5000",
+            "denom": "bank.coin"
+        }
+    ],
     "account_number": 2,
     "sequence": 0,
     "permissions": [
