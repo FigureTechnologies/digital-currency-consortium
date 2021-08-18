@@ -163,7 +163,7 @@ class EventStreamConsumer(
                 val toAddressBankUuid = pbcService.getAttributes(event.toAddress).bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
-                if (toAddressBankUuid != null && fromAddressBankUuid != null) {
+                if (toAddressBankUuid != null || fromAddressBankUuid != null) {
                     // TODO (steve) change to upsert
                     transaction {
                         CoinMovementRecord.insert(
