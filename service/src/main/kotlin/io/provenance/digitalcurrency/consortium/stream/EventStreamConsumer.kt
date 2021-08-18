@@ -8,6 +8,7 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
+import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -87,62 +88,70 @@ class EventStreamConsumer(
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (toAddressBankUuid != null && fromAddressBankUuid != null) {
                     // TODO (steve) change to upsert
-                    CoinMovementRecord.insert(
-                        txHash = txHash,
-                        fromAddress = event.fromAddress,
-                        fromAddressBankUuid = fromAddressBankUuid,
-                        toAddress = event.toAddress,
-                        toAddressBankUuid = toAddressBankUuid,
-                        blockHeight = event.height,
-                        blockTime = OffsetDateTime.parse(block.header.time),
-                        amount = event.amount,
-                        denom = event.denom,
-                        type = TRANSFER,
-                    )
+                    transaction {
+                        CoinMovementRecord.insert(
+                            txHash = txHash,
+                            fromAddress = event.fromAddress,
+                            fromAddressBankUuid = fromAddressBankUuid,
+                            toAddress = event.toAddress,
+                            toAddressBankUuid = toAddressBankUuid,
+                            blockHeight = event.height,
+                            blockTime = OffsetDateTime.parse(block.header.time),
+                            amount = event.amount,
+                            denom = event.denom,
+                            type = TRANSFER,
+                        )
+                    }
                 }
             } else if (event is Withdraw) {
                 log.debug("Withdraw - tx: $txHash to: ${event.toAddress} amount: ${event.coins} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
+                // TODO (steve) move to getAttributes by tag name
                 val toAddressBankUuid = pbcService.getAttributes(event.toAddress).bankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
                     // TODO (steve) change to upsert
-                    CoinMovementRecord.insert(
-                        txHash = txHash,
-                        fromAddress = event.administrator,
-                        fromAddressBankUuid = null,
-                        toAddress = event.toAddress,
-                        toAddressBankUuid = toAddressBankUuid,
-                        blockHeight = event.height,
-                        blockTime = OffsetDateTime.parse(block.header.time),
-                        amount = event.coins,
-                        denom = event.denom,
-                        type = BURN,
-                    )
+                    transaction {
+                        CoinMovementRecord.insert(
+                            txHash = txHash,
+                            fromAddress = event.administrator,
+                            fromAddressBankUuid = null,
+                            toAddress = event.toAddress,
+                            toAddressBankUuid = toAddressBankUuid,
+                            blockHeight = event.height,
+                            blockTime = OffsetDateTime.parse(block.header.time),
+                            amount = event.coins,
+                            denom = event.denom,
+                            type = BURN,
+                        )
+                    }
                 }
             } else if (event is Mint) {
                 log.debug("Mint - tx: $txHash to: ${event.toAddress} amount: ${event.coins} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
+                // TODO (steve) move to getAttributes by tag name
                 val toAddressBankUuid = pbcService.getAttributes(event.toAddress).bankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
                     // TODO (steve) change to upsert
-                    CoinMovementRecord.insert(
-                        txHash = txHash,
-                        fromAddress = event.administrator,
-                        fromAddressBankUuid = null,
-                        toAddress = event.toAddress,
-                        toAddressBankUuid = toAddressBankUuid,
-                        blockHeight = event.height,
-                        blockTime = OffsetDateTime.parse(block.header.time),
-                        amount = event.coins,
-                        denom = event.denom,
-                        type = BURN,
-                    )
+                    transaction {
+                        CoinMovementRecord.insert(
+                            txHash = txHash,
+                            fromAddress = event.administrator,
+                            fromAddressBankUuid = null,
+                            toAddress = event.toAddress,
+                            toAddressBankUuid = toAddressBankUuid,
+                            blockHeight = event.height,
+                            blockTime = OffsetDateTime.parse(block.header.time),
+                            amount = event.coins,
+                            denom = event.denom,
+                            type = MINT,
+                        )
+                    }
                 }
             }
         }

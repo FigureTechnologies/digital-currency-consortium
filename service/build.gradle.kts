@@ -85,6 +85,7 @@ dependencies {
         it(Libraries.JunitCommons)
         it(Libraries.SpringBootStarterTest)
         it(Libraries.Mockito)
+        it(Libraries.Mockk)
         it(Libraries.TestContainersPostgres)
         it(Libraries.TestContainers)
         it(Libraries.TestContainersJunitJupiter)

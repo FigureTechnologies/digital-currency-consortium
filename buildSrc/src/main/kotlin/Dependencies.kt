@@ -50,7 +50,8 @@ object Versions {
     // Testing
     const val JunitJupiter = "5.7.1"
     const val JunitCommons = "1.7.0"
-    const val Mockito = "2.2.0"
+    const val Mockito = "3.2.0"
+    const val Mockk = "1.12.0"
     const val TestContainers = "1.15.1"
 
     const val KtLint = "0.42.1"
@@ -123,7 +124,8 @@ object Libraries {
     const val JunitJupiterParams = "org.junit.jupiter:junit-jupiter-params:${Versions.JunitJupiter}"
     const val JunitCommons = "org.junit.platform:junit-platform-commons:${Versions.JunitCommons}"
     const val SpringBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${Versions.SpringBoot}"
-    const val Mockito = "com.nhaarman.mockitokotlin2:mockito-kotlin:${Versions.Mockito}"
+    const val Mockito = "org.mockito.kotlin:mockito-kotlin:${Versions.Mockito}"
+    const val Mockk = "io.mockk:mockk:${Versions.Mockk}"
     const val TestContainersPostgres = "org.testcontainers:postgresql:${Versions.TestContainers}"
     const val TestContainers = "org.testcontainers:testcontainers:${Versions.TestContainers}"
     const val TestContainersJunitJupiter = "org.testcontainers:junit-jupiter:${Versions.TestContainers}"

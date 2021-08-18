@@ -53,7 +53,7 @@ open class CoinMovementEntityClass : StringEntityClass<CoinMovementRecord>(CoinM
         amount: String,
         denom: String,
         type: String,
-    ) = new(txHash) {
+    ) = findById(txHash) ?: new(txHash) {
         this.fromAddress = fromAddress
         this.fromAddressBankUuid = fromAddressBankUuid
         this.toAddress = toAddress
@@ -63,6 +63,7 @@ open class CoinMovementEntityClass : StringEntityClass<CoinMovementRecord>(CoinM
         this.amount = amount
         this.denom = denom
         this.type = type
+        this.created = OffsetDateTime.now()
     }
 }
 

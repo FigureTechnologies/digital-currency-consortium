@@ -59,7 +59,7 @@ class CoinMovementMonitor(
 
         // TODO (steve) send batch to nycb's endpoint
 
-        transaction { CoinMovementBookmarkRecord.update(eventStreamId, endBlock) }
+        transaction { CoinMovementBookmarkRecord.update(eventStreamId, endBlock + 1) }
     }
 }
 
