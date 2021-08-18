@@ -7,7 +7,6 @@ plugins {
     id(PluginIds.Idea)
     id(PluginIds.Jacoco)
     id(PluginIds.Protobuf) version PluginVersions.Protobuf
-    id(PluginIds.TestLogger) version PluginVersions.TestLogger apply false
 }
 
 allprojects {
@@ -30,7 +29,6 @@ subprojects {
         plugin(PluginIds.Kotlin)
         plugin(PluginIds.Idea)
         plugin(PluginIds.Protobuf)
-        plugin(PluginIds.TestLogger)
         plugin(PluginIds.Jacoco)
     }
 
@@ -44,15 +42,6 @@ subprojects {
     tasks.withType<KotlinCompile> {
         kotlinOptions {
             jvmTarget = "11"
-        }
-    }
-
-    plugins.withType<com.adarshr.gradle.testlogger.TestLoggerPlugin> {
-        configure<com.adarshr.gradle.testlogger.TestLoggerExtension> {
-            theme = com.adarshr.gradle.testlogger.theme.ThemeType.STANDARD
-            showCauses = true
-            slowThreshold = 1000
-            showSummary = true
         }
     }
 
@@ -72,6 +61,20 @@ subprojects {
             xml.required.set(false)
             csv.required.set(false)
             html.outputLocation.set(layout.buildDirectory.dir("jacocoHtml"))
+        }
+    }
+
+    val testListener = CustomTestLoggingListener(project)
+    tasks.withType<Test> {
+        useJUnitPlatform()
+        systemProperty("spring.profiles.active", "development")
+        testLogging {
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            showStandardStreams = true
+        }
+        addTestListener(testListener)
+        doLast {
+            testListener.printStats(project)
         }
     }
 

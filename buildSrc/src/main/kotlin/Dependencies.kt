@@ -8,8 +8,7 @@ object PluginIds {
     const val Jacoco = "jacoco"
     const val Protobuf = "com.google.protobuf"
     const val SpringBoot = "org.springframework.boot"
-
-    const val TestLogger = "com.adarshr.test-logger"
+    const val KotlinAllOpen = "org.jetbrains.kotlin.plugin.allopen"
 }
 
 object PluginVersions {
@@ -19,12 +18,11 @@ object PluginVersions {
     const val Flyway = "7.12.1"
     const val Protobuf = "0.8.17"
     const val SpringBoot = "2.5.3"
-
-    const val TestLogger = "2.1.1"
 }
 
 object Versions {
     const val Kotlin = PluginVersions.Kotlin
+    const val Coroutines = "1.5.1"
 
     const val Jacoco = "0.8.7"
 
@@ -32,13 +30,13 @@ object Versions {
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.5.0"
-    const val PbcMarkerProto = "master-+"
 
     const val BouncyCastle = "1.63"
     const val Exposed = "0.33.1"
     const val Feign = "11.6"
     const val Flyway = PluginVersions.Flyway
     const val Jackson = "2.12.2"
+    const val JacksonHubspot = "0.9.12"
     const val JavaxValidation = "2.0.0.Final"
     const val Kethereum = "0.83.4"
     const val Komputing = "0.1"
@@ -50,10 +48,10 @@ object Versions {
     const val SpringBoot = PluginVersions.SpringBoot
 
     // Testing
-    // const val JunitJupiter = "5.7.1"
-    // const val JunitCommons = "1.7.0"
-    // const val Mockito = "2.2.0"
-    // const val TestContainers = "1.15.1"
+    const val JunitJupiter = "5.7.1"
+    const val JunitCommons = "1.7.0"
+    const val Mockito = "2.2.0"
+    const val TestContainers = "1.15.1"
 
     const val KtLint = "0.42.1"
 }
@@ -63,6 +61,7 @@ object Libraries {
     const val KotlinStdlib = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.Kotlin}"
     const val KotlinStdlibJdk8 = "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${Versions.Kotlin}"
     const val KotlinAllOpen = "org.jetbrains.kotlin:kotlin-allopen:${Versions.Kotlin}"
+    const val Coroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.Coroutines}"
 
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"
     const val LogbackClassic = "ch.qos.logback.contrib:logback-json-classic:${Versions.Logback}"
@@ -71,13 +70,13 @@ object Libraries {
     const val GoogleProto = "com.google.protobuf:protobuf-java:${Versions.Protobuf}"
     const val GoogleProtoJavaUtil = "com.google.protobuf:protobuf-java-util:${Versions.Protobuf}"
     const val Protobuf = "com.google.protobuf:protobuf-java:${PluginVersions.Protobuf}"
-    const val PbcMarkerProto = "io.provenance:marker-blockchain-proto:${Versions.PbcMarkerProto}"
     const val PbcProto = "io.provenance.protobuf:pb-proto-java:${Versions.PbcProto}"
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
     const val FeignSlf4j = "io.github.openfeign:feign-slf4j:${Versions.Feign}"
     const val Jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
+    const val JacksonHubspot = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonHubspot}"
 
     const val GrpcAlts = "io.grpc:grpc-alts:${Versions.Grpc}"
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
@@ -119,15 +118,15 @@ object Libraries {
     const val JavaxValidation = "javax.validation:validation-api:${Versions.JavaxValidation}"
 
     // Testing
-    // const val JunitJupiterApi = "org.junit.jupiter:junit-jupiter-api:${Versions.JunitJupiter}"
-    // const val JunitJupiterEngine = "org.junit.jupiter:junit-jupiter-engine:${Versions.JunitJupiter}"
-    // const val JunitJupiterParams = "org.junit.jupiter:junit-jupiter-params:${Versions.JunitJupiter}"
-    // const val JunitCommons = "org.junit.platform:junit-platform-commons:${Versions.JunitCommons}"
-    // const val SpringBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${Versions.SpringBoot}"
-    // const val Mockito = "com.nhaarman.mockitokotlin2:mockito-kotlin:${Versions.Mockito}"
-    // const val TestContainersPostgres = "org.testcontainers:postgresql:${Versions.TestContainers}"
-    // const val TestContainers = "org.testcontainers:testcontainers:${Versions.TestContainers}"
-    // const val TestContainersJunitJupiter = "org.testcontainers:junit-jupiter:${Versions.TestContainers}"
+    const val JunitJupiterApi = "org.junit.jupiter:junit-jupiter-api:${Versions.JunitJupiter}"
+    const val JunitJupiterEngine = "org.junit.jupiter:junit-jupiter-engine:${Versions.JunitJupiter}"
+    const val JunitJupiterParams = "org.junit.jupiter:junit-jupiter-params:${Versions.JunitJupiter}"
+    const val JunitCommons = "org.junit.platform:junit-platform-commons:${Versions.JunitCommons}"
+    const val SpringBootStarterTest = "org.springframework.boot:spring-boot-starter-test:${Versions.SpringBoot}"
+    const val Mockito = "com.nhaarman.mockitokotlin2:mockito-kotlin:${Versions.Mockito}"
+    const val TestContainersPostgres = "org.testcontainers:postgresql:${Versions.TestContainers}"
+    const val TestContainers = "org.testcontainers:testcontainers:${Versions.TestContainers}"
+    const val TestContainersJunitJupiter = "org.testcontainers:junit-jupiter:${Versions.TestContainers}"
 
     const val KtLint = "com.pinterest:ktlint:${Versions.KtLint}"
 }

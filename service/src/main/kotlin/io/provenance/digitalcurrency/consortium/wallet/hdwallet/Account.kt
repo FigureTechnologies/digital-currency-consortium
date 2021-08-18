@@ -27,7 +27,7 @@ import java.security.KeyException
 /**
  * An Account is a key pair in a hierarchy of keys contained within a `wallet`.  For Provenance an account will be one of
  * two main types; a root account which holds the primary key pair for a wallet that is used to generate all other accounts,
- * keys and addresses, and a normal account which is generated from a root acccount.
+ * keys and addresses, and a normal account which is generated from a root account.
  *
  * Each account type is based on a key pair of eXtended keys [xpub, xprv].  The private key can be zeroed out meaning the
  * account instance can only generate public keys.  Each account can generate two sets of 2^31 addresses (normal, hardened)

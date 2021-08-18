@@ -14,7 +14,6 @@ DIRECT COPY
  * specific language governing permissions and limitations under the License.
  */
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
-import org.bouncycastle.jcajce.provider.digest.Keccak
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
 
@@ -35,39 +34,6 @@ object Hash {
         } catch (e: NoSuchAlgorithmException) {
             throw RuntimeException("Couldn't find a $algorithm provider", e)
         }
-    }
-
-    /**
-     * Keccak-256 hash function.
-     *
-     * @param hexInput hex encoded input data with optional 0x prefix
-     * @return hash value as hex encoded string
-     */
-    fun sha3(hexInput: String): String {
-        val bytes: ByteArray = Numeric.hexStringToByteArray(hexInput)
-        val result = sha3(bytes)
-        return Numeric.toHexString(result)
-    }
-    /**
-     * Keccak-256 hash function.
-     *
-     * @param input binary encoded input data
-     * @param offset of start of data
-     * @param length of data
-     * @return hash value
-     */
-    /**
-     * Keccak-256 hash function.
-     *
-     * @param input binary encoded input data
-     * @return hash value
-     */
-    @JvmOverloads
-    fun sha3(input: ByteArray, offset: Int = 0, length: Int = input.size): ByteArray {
-        val kecc: Keccak.DigestKeccak =
-            Keccak.Digest256()
-        kecc.update(input, offset, length)
-        return kecc.digest()
     }
 
     /**

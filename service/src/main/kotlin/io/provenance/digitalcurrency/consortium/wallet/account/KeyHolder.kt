@@ -6,9 +6,9 @@ import org.kethereum.bip39.model.MnemonicWords
 import org.kethereum.bip39.toSeed
 
 interface KeyHolder : Bip32Serializable {
-    // fun keyring(index: Int): KeyRing
-    // fun keyRing(index: Int) = keyring(index)
-    // fun defaultKeyRing() = keyring(0)
+    fun keyring(index: Int): KeyRing
+    fun keyRing(index: Int) = keyring(index)
+    fun defaultKeyRing() = keyring(0)
 }
 
 abstract class BaseKeyHolder(protected val root: Account) : KeyHolder {
@@ -52,6 +52,6 @@ open class InMemoryKeyHolder(root: Account) : BaseKeyHolder(root) {
             )
     }
 
-    // override fun keyring(index: Int): KeyRing = InMemoryKeyRing(childAccount(index))
+    override fun keyring(index: Int): KeyRing = InMemoryKeyRing(childAccount(index))
     override fun serialize() = root.serialize()
 }
