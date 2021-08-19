@@ -3,10 +3,21 @@ package io.provenance.digitalcurrency.consortium.extension
 import cosmos.base.abci.v1beta1.Abci.TxResponse
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.digitalcurrency.consortium.config.PbcException
+import io.provenance.digitalcurrency.consortium.config.logger
+
+private val log = logger("PbcException")
 
 fun TxResponse.isFailed() = code > 0 && !codespace.isNullOrBlank() && rawLog.isNotBlank() && logsCount == 0
+fun TxResponse.details() =
+    """
+        Error Code: $code
+        Raw log: $rawLog
+        Height: $height
+        Tx Hash: $txhash
+    """.trimIndent()
 
 fun ServiceOuterClass.BroadcastTxResponse.throwIfFailed(msg: String): ServiceOuterClass.BroadcastTxResponse {
+    log.error("PBC Response: ${this.txResponse.details()}")
     if (txResponse.isFailed() || txResponse.txhash.isEmpty()) {
         throw PbcException(msg, txResponse)
     }
