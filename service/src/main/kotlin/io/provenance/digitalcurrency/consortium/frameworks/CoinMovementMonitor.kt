@@ -45,7 +45,8 @@ class CoinMovementMonitor(
                 } catch (t: Throwable) {
                     log.warn("Could not send batch", t)
 
-                    Thread.sleep(30 * 1_000L)
+                    // Thread.sleep(30 * 1_000L)
+                    Thread.sleep(pollingDelayMillis)
                 }
             }
         }
