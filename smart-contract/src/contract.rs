@@ -507,6 +507,9 @@ fn try_redeem(
     res.add_attribute("member_id", info.sender);
     res.add_attribute("redeem_amount", amount);
     res.add_attribute("redeem_denom", &state.dcc_denom);
+    // Legacy events to not break current middleware
+    res.add_attribute("amount", amount);
+    res.add_attribute("reserve_denom", &reserve_denom);
     Ok(res)
 }
 
