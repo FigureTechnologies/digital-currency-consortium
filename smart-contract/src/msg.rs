@@ -48,7 +48,7 @@ pub enum ExecuteMsg {
     // Redeem dcc tokens for reserve tokens.
     Redeem {
         amount: Uint128,
-        reserve_denom: Option<String>, // If provided, redeem for this denom exclusively.
+        reserve_denom: Option<String>, // If provided, redeem for this reserve denom first.
     },
     // Swap reserve tokens for dcc tokens.
     Swap {

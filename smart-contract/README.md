@@ -860,7 +860,7 @@ provenanced tx wasm execute \
 
 ## Upgrade the Consortium Wasm
 
-If there are code modications to the consortium wasm, the contract logic needs to be updated on chain. Perform
+If there are code modifications to the consortium wasm, the contract logic needs to be updated on chain. Perform
 the step in the [Store the Consortium Wasm](#-store-the-consortium-wasm) section and then perform a migration of the wasm:
 
 ```bash
@@ -877,7 +877,6 @@ provenanced tx wasm migrate \
     --broadcast-mode block \
     --yes \
     --testnet
-
 ```
 
 Note in this example that `2` is the new code id that was the output of the store command. Replace that with whatever
