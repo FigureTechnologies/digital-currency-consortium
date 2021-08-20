@@ -101,15 +101,17 @@
         "redeem": {
           "type": "object",
           "required": [
-            "amount",
-            "reserve_denom"
+            "amount"
           ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
             "reserve_denom": {
-              "type": "string"
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         }
