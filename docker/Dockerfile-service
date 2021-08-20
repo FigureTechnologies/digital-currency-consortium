@@ -1,7 +1,8 @@
 FROM openjdk:11-jre
 
+ADD ./docker/docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./service/build/libs/*.jar /service.jar
 
 EXPOSE 8080/tcp
 
-CMD java -jar /service.jar
+ENTRYPOINT ./docker-entrypoint.sh /service.jar

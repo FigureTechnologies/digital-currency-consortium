@@ -62,7 +62,9 @@ class CoinMovementMonitor(
 
         log.debug("sending batch $request")
 
-        bankClient.persistCoinMovement(request)
+        if (request.record_count > 0) {
+            bankClient.persistCoinMovement(request)
+        }
 
         transaction { CoinMovementBookmarkRecord.update(eventStreamId, endBlock) }
     }
