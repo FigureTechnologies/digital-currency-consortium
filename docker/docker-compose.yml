@@ -10,7 +10,7 @@ services:
       - 5432:5432
 
   digital-currency-consortium-service:
-    image: provenanceio/digital-currency-consortium-service:0.1.0-develop-beta-1
+    image: provenanceio/digital-currency-consortium-service:latest
     container_name: digital-currency-consortium-service
     ports:
       - 8080:8080
