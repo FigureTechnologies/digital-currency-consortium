@@ -15,9 +15,11 @@ import java.util.UUID
 @Headers("Content-Type: application/json")
 interface BankClient {
 
+    class EmptyRequest
+
     // TODO need to make this a registration - hard-coded for NYCB right now
     @RequestLine("POST /bankmember/api/v1/mints/complete/{uuid}")
-    fun completeMint(@Param("uuid") uuid: UUID): ResponseEntity<String>
+    fun completeMint(@Param("uuid") uuid: UUID, request: EmptyRequest = EmptyRequest()): ResponseEntity<String>
 
     // TODO need to make this a registration - hard-coded for NYCB right now
     @RequestLine("POST /bankmember/api/v1/fiat/deposits")
