@@ -17,6 +17,7 @@ interface BankClient {
 
     // TODO need to make this a registration - hard-coded for NYCB right now
     @RequestLine("POST /bankmember/api/v1/mints/complete/{uuid}")
+    @Headers("Content-Length: 0")
     fun completeMint(@Param("uuid") uuid: UUID): ResponseEntity<String>
 
     // TODO need to make this a registration - hard-coded for NYCB right now
