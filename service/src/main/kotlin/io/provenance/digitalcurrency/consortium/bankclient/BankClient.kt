@@ -17,15 +17,12 @@ interface BankClient {
 
     class EmptyRequest
 
-    // TODO need to make this a registration - hard-coded for NYCB right now
-    @RequestLine("POST /bankmember/api/v1/mints/complete/{uuid}")
+    @RequestLine("POST /nycb/api/v1/mints/complete/{uuid}")
     fun completeMint(@Param("uuid") uuid: UUID, request: EmptyRequest = EmptyRequest()): ResponseEntity<String>
 
-    // TODO need to make this a registration - hard-coded for NYCB right now
-    @RequestLine("POST /bankmember/api/v1/fiat/deposits")
+    @RequestLine("POST /nycb/api/v1/fiat/deposits")
     fun depositFiat(request: DepositFiatRequest): ResponseEntity<String>
 
-    // TODO need to make this a registration - hard-coded for NYCB right now
     @RequestLine("POST /nycb/api/v1/transactions/logship")
     fun persistCoinMovement(request: CoinMovementRequest): ResponseEntity<String>
 
