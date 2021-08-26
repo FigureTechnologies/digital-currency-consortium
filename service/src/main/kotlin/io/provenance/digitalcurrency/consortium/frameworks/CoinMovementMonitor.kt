@@ -69,19 +69,19 @@ class CoinMovementMonitor(
 }
 
 fun List<CoinMovementRecord>.toOutput() = CoinMovementRequest(
-    record_count = this.size,
-    records = this.map { coinMovement ->
+    recordCount = this.size,
+    transactions = this.map { coinMovement ->
         CoinMovementRequestItem(
-            txid = coinMovement.txHash.value,
-            from_address = coinMovement.fromAddress,
-            from_address_bank_uuid = coinMovement.fromAddressBankUuid,
-            to_address = coinMovement.toAddress,
-            to_address_bank_uuid = coinMovement.toAddressBankUuid,
-            block_height = coinMovement.blockHeight.toString(),
+            txId = coinMovement.txHash.value,
+            fromAddress = coinMovement.fromAddress,
+            fromAddressBankUuid = coinMovement.fromAddressBankUuid,
+            toAddress = coinMovement.toAddress,
+            toAddressBankUuid = coinMovement.toAddressBankUuid,
+            blockHeight = coinMovement.blockHeight.toString(),
             timestamp = coinMovement.blockTime,
             amount = coinMovement.amount,
             denom = coinMovement.denom,
-            type = coinMovement.type,
+            transactionType = coinMovement.type,
         )
     }
 )

@@ -22,37 +22,37 @@ data class CoinMovementRequestItem(
         value = "A unique id for this request.",
         required = true
     )
-    @get:NotNull val txid: String,
+    @get:NotNull val txId: String,
 
     @ApiModelProperty(
         value = "A blockchain address.",
         required = true
     )
-    @get:NotNull val from_address: String,
+    @get:NotNull val fromAddress: String,
 
     @ApiModelProperty(
         value = "The bank uuid associated with the \"from address\" if one exists.",
         required = true
     )
-    val from_address_bank_uuid: UUID?,
+    val fromAddressBankUuid: UUID?,
 
     @ApiModelProperty(
         value = "A blockchain address.",
         required = true
     )
-    @get:NotNull val to_address: String,
+    @get:NotNull val toAddress: String,
 
     @ApiModelProperty(
         value = "The bank uuid associated with the \"to address\" if one exists.",
         required = true
     )
-    val to_address_bank_uuid: UUID?,
+    val toAddressBankUuid: UUID?,
 
     @ApiModelProperty(
         value = "The block this transaction was included in.",
         required = true
     )
-    @get:NotNull val block_height: String,
+    @get:NotNull val blockHeight: String,
 
     @ApiModelProperty(
         value = "The timestamp as reported in the block header.",
@@ -76,7 +76,7 @@ data class CoinMovementRequestItem(
         value = "The type of this record (MINT|TRANSFER|BURN).",
         required = true
     )
-    @get:NotNull val type: String,
+    @get:NotNull val transactionType: String,
 )
 
 data class CoinMovementRequest(
@@ -84,11 +84,11 @@ data class CoinMovementRequest(
         value = "The count of records in this request.",
         required = true
     )
-    @get:NotNull val record_count: Int,
+    @get:NotNull val recordCount: Int,
 
     @ApiModelProperty(
         value = "The record items.",
         required = true
     )
-    @get:NotNull val records: List<CoinMovementRequestItem>,
+    @get:NotNull val transactions: List<CoinMovementRequestItem>,
 )
