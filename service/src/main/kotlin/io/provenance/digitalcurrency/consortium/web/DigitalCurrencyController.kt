@@ -5,6 +5,7 @@ import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
+import io.provenance.digitalcurrency.consortium.service.BalanceReportService
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
@@ -32,6 +33,7 @@ import javax.validation.Valid
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
 class DigitalCurrencyController(
+    private val balanceReportService: BalanceReportService,
     private val digitalCurrencyService: DigitalCurrencyService,
     private val pbcService: PbcService
 ) {
@@ -106,5 +108,13 @@ class DigitalCurrencyController(
         log.info("Try accepting consortium proposal")
         pbcService.accept()
         return ResponseEntity.ok("Proposal Accepted")
+    }
+
+    @PostMapping(BALANCES_V1)
+    @ApiOperation(value = "Kickoff a daily balance report")
+    fun createBalanceReport(): ResponseEntity<String> {
+        balanceReportService.createReport()
+
+        return ResponseEntity.ok("Report initialized")
     }
 }

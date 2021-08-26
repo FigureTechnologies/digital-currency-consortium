@@ -79,3 +79,10 @@ class CoroutineProperties(
 class CoinMovementProperties(
     val pollingDelayMs: String,
 )
+
+@ConstructorBinding
+@ConfigurationProperties(prefix = "balance.report")
+@Validated
+class BalanceReportProperties(
+    val pollingDelayMs: String,
+)

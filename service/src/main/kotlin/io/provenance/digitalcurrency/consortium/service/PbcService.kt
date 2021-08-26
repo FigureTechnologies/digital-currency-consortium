@@ -53,6 +53,12 @@ class PbcService(
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
 
+    fun getCoinBalance(address: String) =
+        grpcClientService.new().accounts.getAccountCoins(address)
+            .firstOrNull { it.denom == bankClientProperties.denom }
+            ?.amount
+            ?: "0"
+
     fun getTransaction(txHash: String): GetTxResponse? =
         try {
             grpcClientService.new().transactions.getTx(txHash)

@@ -7,6 +7,7 @@ import feign.Param
 import feign.RequestLine
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
+import io.provenance.digitalcurrency.consortium.api.BalanceRequest
 import io.provenance.digitalcurrency.consortium.api.CoinMovementRequest
 import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
 import org.springframework.http.ResponseEntity
@@ -25,6 +26,9 @@ interface BankClient {
 
     @RequestLine("POST /nycb/api/v1/transactions/logship")
     fun persistCoinMovement(request: CoinMovementRequest): ResponseEntity<String>
+
+    @RequestLine("POST /nycb/api/v1/transactions/balreport")
+    fun persistBalanceReport(request: BalanceRequest): ResponseEntity<String>
 
     class Builder(
         private val url: String,
