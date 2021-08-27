@@ -38,7 +38,7 @@ import java.math.BigInteger
 @Service
 class PbcService(
     private val grpcClientService: GrpcClientService,
-    serviceProperties: ServiceProperties,
+    private val serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
     private val bankClientProperties: BankClientProperties
@@ -52,6 +52,12 @@ class PbcService(
     init {
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
+
+    fun getCoinBalance(address: String) =
+        grpcClientService.new().accounts.getAccountCoins(address)
+            .firstOrNull { it.denom == serviceProperties.dccDenom }
+            ?.amount
+            ?: "0"
 
     fun getTransaction(txHash: String): GetTxResponse? =
         try {

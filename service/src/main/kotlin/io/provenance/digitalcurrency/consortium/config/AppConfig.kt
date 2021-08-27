@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit
         BankClientProperties::class,
         CoroutineProperties::class,
         CoinMovementProperties::class,
+        BalanceReportProperties::class,
     ]
 )
 class AppConfig : WebMvcConfigurer {
