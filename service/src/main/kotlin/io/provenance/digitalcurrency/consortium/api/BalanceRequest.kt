@@ -13,7 +13,7 @@ data class BalanceRequestItem(
     @get:NotNull val uuid: UUID,
 
     @ApiModelProperty(
-        value = "A blockchain address.",
+        value = "The blockchain address of this record.",
         required = true
     )
     @get:NotNull val address: String,

@@ -1,6 +1,6 @@
 CREATE TABLE balance_report(
     uuid UUID NOT NULL PRIMARY KEY,
-    created TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc')
+    created TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc'),
     completed TIMESTAMPTZ,
     sent TIMESTAMPTZ
 );

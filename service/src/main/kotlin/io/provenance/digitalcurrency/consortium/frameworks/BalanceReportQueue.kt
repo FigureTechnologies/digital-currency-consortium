@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
+import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryRecord
@@ -22,13 +22,13 @@ class BalanceReportOutcome(
 
 @Component
 class BalanceReportQueue(
-    bankClientProperties: BankClientProperties,
+    serviceProperties: ServiceProperties,
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
 ) : ActorModel<BalanceReportDirective, BalanceReportOutcome> {
 
     private val log = logger()
-    private val denom = bankClientProperties.denom
+    private val denom = serviceProperties.dccDenom
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {

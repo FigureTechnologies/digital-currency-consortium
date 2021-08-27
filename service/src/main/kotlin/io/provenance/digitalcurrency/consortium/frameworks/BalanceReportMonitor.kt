@@ -23,6 +23,7 @@ class BalanceReportMonitor(
     private val log = logger()
 
     private val pollingDelayMillis: Long = balanceReportProperties.pollingDelayMs.toLong()
+    private val pageSize = balanceReportProperties.pageSize.toInt()
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {
@@ -42,8 +43,6 @@ class BalanceReportMonitor(
         }
     }
 
-    private val pageSize = 50
-
     fun iteration() {
         transaction {
             val balanceReport = BalanceReportRecord.findNotSent().forUpdate().firstOrNull()
@@ -56,17 +55,29 @@ class BalanceReportMonitor(
             val totalPages = ((count / pageSize) + if (count % pageSize == 0L) 0 else 1).toInt()
             var currPage = 1
 
-            while (currPage <= totalPages) {
-                val offset = (currPage.toLong() - 1L) * pageSize
-                val output = BalanceEntryRecord.findByReport(balanceReport)
-                    .limit(pageSize, offset)
-                    .orderBy(BalanceEntryTable.address to ASC)
-                    .toList()
-                    .toOutput(balanceReport, currPage, totalPages)
+            log.info("balance report has count [$count] total pages [$totalPages}")
 
-                bankClient.persistBalanceReport(output)
+            when {
+                totalPages > 0 -> {
+                    while (currPage <= totalPages) {
+                        val offset = (currPage.toLong() - 1L) * pageSize
+                        log.debug("querying for page [$currPage] at offset [$offset]")
 
-                currPage += 1
+                        val output = BalanceEntryRecord.findByReport(balanceReport)
+                            .limit(pageSize, offset)
+                            .orderBy(BalanceEntryTable.address to ASC)
+                            .toList()
+                            .toOutput(balanceReport, currPage, totalPages)
+
+                        bankClient.persistBalanceReport(output)
+
+                        currPage += 1
+                    }
+                }
+                else -> {
+                    log.info("empty report")
+                    bankClient.persistBalanceReport(emptyList<BalanceEntryRecord>().toOutput(balanceReport, 0, 0))
+                }
             }
 
             balanceReport.markSent()

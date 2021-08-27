@@ -84,5 +84,6 @@ class CoinMovementProperties(
 @ConfigurationProperties(prefix = "balance.report")
 @Validated
 class BalanceReportProperties(
+    val pageSize: String,
     val pollingDelayMs: String,
 )

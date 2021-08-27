@@ -6,9 +6,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 
 @Service
-class BalanceReportService(
-    private val pbcService: PbcService,
-) {
+class BalanceReportService {
     private val log = logger()
 
     fun createReport() {
