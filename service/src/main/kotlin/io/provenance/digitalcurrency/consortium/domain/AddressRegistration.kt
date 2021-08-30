@@ -12,6 +12,8 @@ typealias ART = AddressRegistrationTable
 object AddressRegistrationTable : UUIDTable(name = "address_registration", columnName = "uuid") {
     val bankAccountUuid = uuid("bank_account_uuid")
     val address = text("address")
+    val status = enumerationByName("status", 15, AddressRegistrationStatus::class)
+    val txHash = text("tx_hash").nullable()
     val created = offsetDatetime("created")
 }
 
@@ -28,8 +30,14 @@ open class AddressRegistrationEntityClass : UUIDEntityClass<AddressRegistrationR
     ) = new(uuid) {
         this.bankAccountUuid = bankAccountUuid
         this.address = address
+        this.status = AddressRegistrationStatus.INSERTED
         this.created = OffsetDateTime.now()
     }
+
+    fun findPending() =
+        find { ART.status inList listOf(AddressRegistrationStatus.INSERTED, AddressRegistrationStatus.PENDING_TAG) }
+
+    fun findForUpdate(uuid: UUID) = find { ART.id eq uuid }.forUpdate()
 }
 
 class AddressRegistrationRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {
@@ -37,5 +45,13 @@ class AddressRegistrationRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {
 
     var bankAccountUuid by ART.bankAccountUuid
     var address by ART.address
+    var status by ART.status
+    var txHash by ART.txHash
     var created by ART.created
+}
+
+enum class AddressRegistrationStatus {
+    INSERTED,
+    PENDING_TAG,
+    COMPLETE
 }

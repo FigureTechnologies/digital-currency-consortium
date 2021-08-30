@@ -18,9 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.context.request.async.DeferredResult
 import java.util.UUID
-import java.util.concurrent.ForkJoinPool
 import javax.validation.Valid
 
 @Validated
@@ -53,23 +51,10 @@ class DigitalCurrencyController(
         @Valid
         @ApiParam(value = "RegisterAddressRequest")
         @RequestBody request: RegisterAddressRequest
-    ): DeferredResult<ResponseEntity<UUID>> {
+    ): ResponseEntity<UUID> {
         val (bankAccountUuid, address) = request
         digitalCurrencyService.registerAddress(bankAccountUuid, address)
-
-        val output = DeferredResult<ResponseEntity<UUID>>()
-        output.setResult(ResponseEntity.ok(bankAccountUuid))
-
-        ForkJoinPool.commonPool().submit {
-            log.info("Processing kyc tag in separate thread")
-            try {
-                digitalCurrencyService.tryKycTag(bankAccountUuid, address)
-            } catch (e: InterruptedException) {
-                log.error("interrupted deferred thread - could not complete registration for $bankAccountUuid and $address")
-            }
-        }
-
-        return output
+        return ResponseEntity.ok(bankAccountUuid)
     }
 
     @PostMapping(MINT_V1)
