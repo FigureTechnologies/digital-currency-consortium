@@ -7,15 +7,11 @@ import java.util.UUID
 import javax.validation.constraints.NotNull
 
 /**
- * Request to the bank to deposit fiat to the user's bank account.
- *
- * @param uuid Unique UUID for this request
- * @param bankAccountUUID The bank account UUID passed to the middleware in the address registration
- * @param amount The amount in USD to deposit to the user's bank account
+ * Details of a coin movement for the bank's reporting needs.
  */
 @ApiModel(
     value = "CoinMovementRequestItem",
-    description = "Request that the bank persist coin movement records."
+    description = "Details of a particular coin movement sent to the bank."
 )
 data class CoinMovementRequestItem(
     @ApiModelProperty(
@@ -79,6 +75,13 @@ data class CoinMovementRequestItem(
     @get:NotNull val transactionType: String,
 )
 
+/**
+ * Aggregator of coin movements for the bank's reporting needs
+ */
+@ApiModel(
+    value = "CoinMovementRequest",
+    description = "Request that the bank persist coin movement records."
+)
 data class CoinMovementRequest(
     @ApiModelProperty(
         value = "The count of records in this request.",

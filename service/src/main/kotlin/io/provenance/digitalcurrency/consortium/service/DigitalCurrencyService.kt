@@ -1,12 +1,9 @@
 package io.provenance.digitalcurrency.consortium.service
 
-import com.google.protobuf.ByteString
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.extension.toByteArray
-import io.provenance.digitalcurrency.consortium.util.retry
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -14,7 +11,6 @@ import java.util.UUID
 
 @Service
 class DigitalCurrencyService(
-    private val pbcService: PbcService,
     private val bankClientProperties: BankClientProperties
 ) {
     private val log = logger()
@@ -34,22 +30,6 @@ class DigitalCurrencyService(
             AddressRegistrationRecord.insert(
                 bankAccountUuid = bankAccountUuid,
                 address = blockchainAddress
-            )
-        }
-    }
-
-    fun tryKycTag(bankAccountUuid: UUID, blockchainAddress: String) {
-        pbcService.getAttributeByTagName(blockchainAddress, bankClientProperties.kycTagName).forEach {
-            // just remove if existing and replace. This really should not happen and if it does there should be only one
-            log.warn("Deleting existing ${bankClientProperties.kycTagName} for address $blockchainAddress")
-            pbcService.deleteAttribute(blockchainAddress, it.name)
-        }
-
-        retry {
-            pbcService.addAttribute(
-                address = blockchainAddress,
-                tag = bankClientProperties.kycTagName,
-                payload = ByteString.copyFrom(bankAccountUuid.toByteArray())
             )
         }
     }

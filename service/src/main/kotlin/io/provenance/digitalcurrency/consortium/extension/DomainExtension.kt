@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.extension
 
+import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
@@ -46,4 +47,11 @@ fun CoinBurnRecord.mdc() = listOf(
     "status" to status,
     "coin amount" to coinAmount,
     "redemption" to coinRedemption?.id?.value
+).toTypedArray()
+
+fun AddressRegistrationRecord.mdc() = listOf(
+    "uuid" to id.value,
+    "address" to address,
+    "status" to status,
+    "txhash" to txHash
 ).toTypedArray()

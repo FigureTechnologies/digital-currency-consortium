@@ -6,6 +6,8 @@ import cosmos.tx.v1beta1.ServiceOuterClass
 import java.time.OffsetDateTime
 import kotlin.random.Random
 
+const val TEST_ADDRESS = "test-address"
+
 private val charPool: List<Char> = ('a'..'z') + ('0'..'9')
 fun randomTxHash() = (1..64)
     .map { Random.nextInt(0, charPool.size) }
@@ -27,5 +29,31 @@ fun getDefaultResponse(txHash: String): ServiceOuterClass.BroadcastTxResponse = 
             .setCodespace("")
             .setCode(0)
             .setHeight(0)
+            .build()
+    ).build()
+
+fun getTransactionResponse(txHash: String): ServiceOuterClass.GetTxResponse = ServiceOuterClass.GetTxResponse.newBuilder()
+    .setTxResponse(
+        Abci.TxResponse.newBuilder()
+            .setTimestamp(OffsetDateTime.now().toString())
+            .setRawLog("")
+            .setTxhash(txHash)
+            .setTx(Any.getDefaultInstance())
+            .setCodespace("")
+            .setCode(0)
+            .setHeight(0)
+            .build()
+    ).build()
+
+fun getErrorTransactionResponse(txHash: String): ServiceOuterClass.GetTxResponse = ServiceOuterClass.GetTxResponse.newBuilder()
+    .setTxResponse(
+        Abci.TxResponse.newBuilder()
+            .setTimestamp(OffsetDateTime.now().toString())
+            .setRawLog("error")
+            .setTxhash(txHash)
+            .setTx(Any.getDefaultInstance())
+            .setCodespace("something")
+            .setCode(11)
+            .setHeight(1000)
             .build()
     ).build()

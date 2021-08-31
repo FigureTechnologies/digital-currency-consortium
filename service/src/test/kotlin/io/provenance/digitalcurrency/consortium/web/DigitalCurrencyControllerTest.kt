@@ -1,16 +1,14 @@
 package io.provenance.digitalcurrency.consortium.web
 
-import com.google.protobuf.ByteString
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
+import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationTable
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintTable
-import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.deleteAll
@@ -49,9 +47,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
     @SpyBean
     lateinit var digitalCurrencyService: DigitalCurrencyService
 
-    @Autowired
-    lateinit var bankClientProperties: BankClientProperties
-
     @BeforeEach
     fun beforeEach() {
         reset(pbcService)
@@ -65,8 +60,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
             AddressRegistrationTable.deleteAll()
         }
     }
-
-    private val TEST_ADDRESS = "test-address"
 
     @Nested
     inner class RegisterAddressTest {
@@ -88,7 +81,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
                 blockchainAddress = TEST_ADDRESS
             ).execute(UUID::class.java)
 
-            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
+            verify(pbcService, never()).addAttribute(any(), any(), any())
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -117,7 +110,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val response = request.execute(UUID::class.java)
 
-            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
+            verify(pbcService, never()).addAttribute(any(), any(), any())
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -137,7 +130,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val responseError = request.execute(String::class.java)
 
-            verify(pbcService).addAttribute(any(), any(), any())
+            verify(pbcService, never()).addAttribute(any(), any(), any())
 
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
@@ -162,23 +155,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
             verify(pbcService, never()).addAttribute(any(), any(), any())
 
             assertTrue(responseError.statusCode.is5xxServerError, "Response is 500")
-        }
-
-        @Test
-        fun `tag method error will return 200 and retry`() {
-            val uuid = UUID.randomUUID()
-            val request = RegisterAddressRequest(
-                bankAccountUuid = uuid,
-                blockchainAddress = TEST_ADDRESS
-            )
-
-            whenever(digitalCurrencyService.tryKycTag(uuid, TEST_ADDRESS)).doAnswer { throw Exception() }
-
-            val responseError = request.execute(String::class.java)
-
-            verify(pbcService).addAttribute(TEST_ADDRESS, bankClientProperties.kycTagName, ByteString.copyFrom(uuid.toByteArray()))
-
-            assertTrue(responseError.statusCode.is2xxSuccessful, "Response is 200")
         }
     }
 
