@@ -79,7 +79,7 @@ data class CoinMovementRequestItem(
  * Aggregator of coin movements for the bank's reporting needs
  */
 @ApiModel(
-    value = "CoinMovementRequestItem",
+    value = "CoinMovementRequest",
     description = "Request that the bank persist coin movement records."
 )
 data class CoinMovementRequest(
