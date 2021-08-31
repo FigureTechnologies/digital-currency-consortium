@@ -5,6 +5,7 @@ import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
+import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import org.springframework.stereotype.Service
 
@@ -46,7 +47,15 @@ class AddressTagService(
             pbcService.getAttributeByTagName(addressRegistrationRecord.address, bankClientProperties.kycTagName)
         when (existing.isEmpty()) {
             true -> {
-                log.info("blockchain tag not done yet - will check next iteration.")
+                val response = pbcService.getTransaction(addressRegistrationRecord.txHash!!)
+                if (response == null || response.txResponse.isFailed()) {
+                    // need to retry
+                    log.info("Tag failed - resetting record to retry")
+                    addressRegistrationRecord.status = AddressRegistrationStatus.INSERTED
+                    addressRegistrationRecord.txHash = null
+                } else {
+                    log.info("blockchain tag not done yet - will check next iteration.")
+                }
             }
             false -> {
                 log.info("tag completed")

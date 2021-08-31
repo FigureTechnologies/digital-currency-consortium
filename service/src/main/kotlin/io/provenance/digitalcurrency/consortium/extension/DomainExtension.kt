@@ -52,5 +52,6 @@ fun CoinBurnRecord.mdc() = listOf(
 fun AddressRegistrationRecord.mdc() = listOf(
     "uuid" to id.value,
     "address" to address,
-    "status" to status
+    "status" to status,
+    "txhash" to txHash
 ).toTypedArray()
