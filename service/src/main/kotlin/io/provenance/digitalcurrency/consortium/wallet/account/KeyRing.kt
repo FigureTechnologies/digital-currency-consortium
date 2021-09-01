@@ -18,8 +18,8 @@ abstract class BaseKeyRing(protected val root: Account) : KeyRing {
 
     override fun id() = root.bech32Address()
 
-    fun childAccount(index: Int): Account = synchronized(lock) {
-        return root.childAccount(index, internalAddress = false, hardenAddress = true, stripPrivateKey = false).also {
+    fun childAccount(index: Int, hardenAddress: Boolean): Account = synchronized(lock) {
+        return root.childAccount(index, internalAddress = false, hardenAddress = hardenAddress, stripPrivateKey = false).also {
             if (it.type() != Account.AccountType.ADDRESS)
                 throw IllegalArgumentException("Unable to use type ${root.type()}/${it.type()} as a KeyRing")
         }
@@ -31,7 +31,7 @@ open class InMemoryKeyRing(root: Account) : BaseKeyRing(root) {
         private val lock = Object()
     }
 
-    override fun key(index: Int): KeyI = InMemoryKey(childAccount(index))
+    override fun key(index: Int): KeyI = InMemoryKey(childAccount(index, !root.isMainnet()))
 
     override fun serialize(): String = synchronized(lock) {
         return root.serialize()
