@@ -5,6 +5,7 @@ import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
+import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReq.Companion.DEFAULT_GAS_DENOM
 import io.provenance.digitalcurrency.consortium.service.BalanceReportService
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -14,6 +15,7 @@ import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -101,5 +103,11 @@ class DigitalCurrencyController(
         balanceReportService.createReport()
 
         return ResponseEntity.ok("Report initialized")
+    }
+
+    @GetMapping(GAS_BALANCE_V1)
+    @ApiOperation(value = "Get the balance of gas for an address")
+    fun getGasBalance(): ResponseEntity<String> {
+        return ResponseEntity.ok(pbcService.getCoinBalance(denom = DEFAULT_GAS_DENOM))
     }
 }
