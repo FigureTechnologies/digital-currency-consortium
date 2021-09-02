@@ -53,9 +53,9 @@ class PbcService(
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
 
-    fun getCoinBalance(address: String) =
+    fun getCoinBalance(address: String = managerAddress, denom: String = serviceProperties.dccDenom) =
         grpcClientService.new().accounts.getAccountCoins(address)
-            .firstOrNull { it.denom == serviceProperties.dccDenom }
+            .firstOrNull { it.denom == denom }
             ?.amount
             ?: "0"
 
