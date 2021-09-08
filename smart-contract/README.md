@@ -1,16 +1,12 @@
 # Digital Currency Consortium (DCC) Smart Contact
 
-## Status
-
-Alpha: this smart contract has been verified on a Provenance localnet.
-
 ## Blockchain Setup
 
-Checkout provenance v1.5.0, clear all existing state, install the `provenanced` command,
+Checkout provenance v1.7.0, clear all existing state, install the `provenanced` command,
 and start a 4-node localnet.
 
 ```bash
-git checkout v1.5.0
+git checkout v1.7.0
 make clean
 make install
 make localnet-start
@@ -256,8 +252,8 @@ to the provenance root dir (ie where the localnet was started from).
 
 ```bash
 provenanced tx wasm store dcc.wasm \
-    --source "https://github.com/provenance-io/digital-currency-consortium/smart-contract" \
-    --builder "cosmwasm/rust-optimizer:0.11.5" \
+    --source "https://github.com/provenance-io/digital-currency-consortium/tree/main/smart-contract" \
+    --builder "cosmwasm/rust-optimizer:0.12.1" \
     --instantiate-only-address $(provenanced keys show -a node0 --keyring-backend test --home build/node0 --testnet) \
     --from node0 \
     --keyring-backend test \
@@ -596,8 +592,8 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
 ```
 
 Now, `bank2` can deliver the cash/fiat to `user2` (off chain process). In addition, `bank2` can
-request the debt from `bank1` be paid (TODO: member transfer). They can also sit on the reserve
-tokens and swap them for `usdf.local` when another user provides cash/fiat.
+request the debt from `bank1` be paid. They can also sit on the reserve tokens and swap them for
+`usdf.local` when another user provides cash/fiat.
 
 ## Swap
 
