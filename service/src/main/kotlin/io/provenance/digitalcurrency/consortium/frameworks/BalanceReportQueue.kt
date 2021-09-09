@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.config.BalanceReportProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
@@ -22,6 +23,7 @@ class BalanceReportOutcome(
 
 @Component
 class BalanceReportQueue(
+    balanceReportProperties: BalanceReportProperties,
     serviceProperties: ServiceProperties,
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
@@ -29,6 +31,7 @@ class BalanceReportQueue(
 
     private val log = logger()
     private val denom = serviceProperties.dccDenom
+    private val whitelistAddresses = balanceReportProperties.addresses
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {
@@ -53,7 +56,7 @@ class BalanceReportQueue(
             // TODO - paginate addresses query
             val addresses = AddressRegistrationRecord.all().map { it.address }
 
-            addresses.forEach { address ->
+            (addresses + whitelistAddresses).toSet().forEach { address ->
                 BalanceEntryRecord.insert(
                     report = balanceReport,
                     address = address,
