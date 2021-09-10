@@ -336,18 +336,6 @@ class EventStreamConsumerTest {
     fun `coinMovement - check v1 vs v2 output`() {
         transaction {
             CoinMovementRecord.insert(
-                txHash = "abc",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-            CoinMovementRecord.insert(
                 txHash = "abc-0",
                 fromAddress = "fromAddress",
                 fromAddressBankUuid = null,
@@ -366,6 +354,18 @@ class EventStreamConsumerTest {
         }
 
         transaction {
+            CoinMovementRecord.insert(
+                txHash = "abc-0",
+                fromAddress = "fromAddress",
+                fromAddressBankUuid = null,
+                toAddress = "toAddress",
+                toAddressBankUuid = null,
+                blockHeight = 0,
+                blockTime = OffsetDateTime.now(),
+                amount = "100",
+                denom = "coin",
+                type = "MINT",
+            )
             CoinMovementRecord.insert(
                 txHash = "xyz-0",
                 fromAddress = "fromAddress",
@@ -416,13 +416,13 @@ class EventStreamConsumerTest {
             )
         }
 
-        Assertions.assertEquals(5, transaction { CoinMovementRecord.all().count() })
+        Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
         Assertions.assertArrayEquals(
-            listOf("abc", "abc-0", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
+            listOf("abc-0", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
             transaction { CoinMovementRecord.all().toList() }.map { it._txHashV2.value }.sorted().toTypedArray(),
         )
         Assertions.assertArrayEquals(
-            listOf("abc", "abc", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
+            listOf("abc", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
             transaction { CoinMovementRecord.all().toList() }.toOutput().transactions.map { it.txId }.sorted().toTypedArray(),
         )
     }
