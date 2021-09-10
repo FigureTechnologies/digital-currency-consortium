@@ -17,8 +17,8 @@ fun TxResponse.details() =
     """.trimIndent()
 
 fun ServiceOuterClass.BroadcastTxResponse.throwIfFailed(msg: String): ServiceOuterClass.BroadcastTxResponse {
-    log.error("PBC Response: ${this.txResponse.details()}")
     if (txResponse.isFailed() || txResponse.txhash.isEmpty()) {
+        log.error("PBC Response: ${this.txResponse.details()}")
         throw PbcException(msg, txResponse)
     }
     return this
