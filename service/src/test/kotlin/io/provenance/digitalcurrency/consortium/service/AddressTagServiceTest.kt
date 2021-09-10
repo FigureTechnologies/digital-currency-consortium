@@ -67,7 +67,7 @@ class AddressTagServiceTest : DatabaseTest() {
                     TEST_ADDRESS,
                     bankClientProperties.kycTagName
                 )
-            ).thenReturn(listOf())
+            ).thenReturn(null)
             whenever(
                 pbcService.addAttribute(
                     TEST_ADDRESS, bankClientProperties.kycTagName,
@@ -106,13 +106,11 @@ class AddressTagServiceTest : DatabaseTest() {
             val registration = transaction { insertRegisteredAddress(uuid, TEST_ADDRESS) }
 
             whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(
-                listOf(
-                    Attribute
-                        .newBuilder()
-                        .setAddress(TEST_ADDRESS)
-                        .setName(bankClientProperties.kycTagName)
-                        .build()
-                )
+                Attribute
+                    .newBuilder()
+                    .setAddress(TEST_ADDRESS)
+                    .setName(bankClientProperties.kycTagName)
+                    .build()
             )
 
             transaction {
@@ -140,9 +138,7 @@ class AddressTagServiceTest : DatabaseTest() {
             val uuid = UUID.randomUUID()
             val registration = transaction { insertRegisteredAddress(uuid, TEST_ADDRESS) }
 
-            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(
-                listOf()
-            )
+            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
             whenever(
                 pbcService.addAttribute(
@@ -192,13 +188,11 @@ class AddressTagServiceTest : DatabaseTest() {
                     bankClientProperties.kycTagName
                 )
             ).thenReturn(
-                listOf(
-                    Attribute
-                        .newBuilder()
-                        .setAddress(TEST_ADDRESS)
-                        .setName(bankClientProperties.kycTagName)
-                        .build()
-                )
+                Attribute
+                    .newBuilder()
+                    .setAddress(TEST_ADDRESS)
+                    .setName(bankClientProperties.kycTagName)
+                    .build()
             )
 
             transaction {
@@ -228,9 +222,7 @@ class AddressTagServiceTest : DatabaseTest() {
                 }
             }
 
-            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(
-                listOf()
-            )
+            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
             whenever(pbcService.getTransaction(txHash)).thenReturn(getTransactionResponse(txHash))
 
@@ -261,9 +253,7 @@ class AddressTagServiceTest : DatabaseTest() {
                 }
             }
 
-            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(
-                listOf()
-            )
+            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
             whenever(pbcService.getTransaction(txHash)).thenReturn(null)
 
@@ -296,9 +286,7 @@ class AddressTagServiceTest : DatabaseTest() {
                 }
             }
 
-            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(
-                listOf()
-            )
+            whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
             whenever(pbcService.getTransaction(txHash)).thenReturn(getErrorTransactionResponse(txHash))
 

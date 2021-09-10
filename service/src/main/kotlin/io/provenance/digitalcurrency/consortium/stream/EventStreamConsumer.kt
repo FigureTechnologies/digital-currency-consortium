@@ -67,7 +67,12 @@ class EventStreamConsumer(
                     batch.transfers(provenanceProperties.contractAddress)
                 )
 
-                handleCoinMovementEvents(batch.height, batch)
+                handleCoinMovementEvents(
+                    batch.height,
+                    mints = batch.mints(provenanceProperties.contractAddress),
+                    burns = batch.transfers(provenanceProperties.contractAddress),
+                    transfers = batch.markerTransfers(),
+                )
 
                 transaction { EventStreamRecord.update(eventStreamId, batch.height) }
             }
@@ -79,108 +84,128 @@ class EventStreamConsumer(
         handleStream(responseObserver, log)
     }
 
-    private fun List<Attribute>.bankUuid(): UUID? = this.find { it.name == bankClientProperties.kycTagName }
-        ?.value
-        ?.toByteArray()
-        ?.toUuid()
+    private fun Attribute.bankUuid(): UUID = this.value.toByteArray().toUuid()
 
-    private fun handleCoinMovementEvents(blockHeight: Long, batch: EventBatch) {
+    data class MintWrapper(
+        val mint: Mint,
+        val toAddressBankUuid: UUID,
+    )
+
+    data class BurnWrapper(
+        val burn: Transfer,
+        val fromAddressBankUuid: UUID,
+    )
+
+    data class TransferWrapper(
+        val transfer: MarkerTransfer,
+        val toAddressBankUuid: UUID?,
+        val fromAddressBankUuid: UUID?,
+    )
+
+    fun String.uniqueHash(index: Int): String = "$this-$index"
+
+    fun handleCoinMovementEvents(blockHeight: Long, mints: Mints, burns: Transfers, transfers: MarkerTransfers) {
         // TODO (steve) is there a grpc endpoint for this?
         val block = rpcClient.fetchBlock(blockHeight).block
 
         // SC Mint events denote the "on ramp" for a bank user to get coin
-        batch.mints(provenanceProperties.contractAddress)
-            .filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
-            .forEach { event ->
+        val filteredMints = mints.filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
+            .mapNotNull { event ->
                 log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
 
                 // TODO (steve) implement caching
-                // TODO (steve) move to getAttributes by tag name
-                val toAddressBankUuid = pbcService.getAttributes(event.withdrawAddress).bankUuid()
+                val toAddressBankUuid = pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
-                    // TODO (steve) change to upsert
-                    transaction {
-                        CoinMovementRecord.insert(
-                            // TODO (steve) txhash is not unique in the general case so we have to fix this - but it works for now considering
-                            // we don't batch calls from this service at all
-                            txHash = event.txHash,
-                            fromAddress = event.memberId,
-                            fromAddressBankUuid = null,
-                            toAddress = event.withdrawAddress,
-                            toAddressBankUuid = toAddressBankUuid,
-                            blockHeight = event.height,
-                            blockTime = OffsetDateTime.parse(block.header.time),
-                            amount = event.amount,
-                            denom = event.withdrawDenom,
-                            type = MINT,
-                        )
-                    }
+                    MintWrapper(event, toAddressBankUuid)
+                } else {
+                    null
                 }
             }
 
         // SC Transfer events denote the "off ramp" for a bank user to redeem coin when the recipient is the bank address
-        batch.transfers(provenanceProperties.contractAddress)
-            .filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
-            .forEach { event ->
+        val filteredBurns = burns.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
+            .mapNotNull { event ->
                 log.debug("SC Transfer - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
-                // TODO (steve) move to getAttributes by tag name
-                val fromAddressBankUuid = pbcService.getAttributes(event.sender).bankUuid()
+                val fromAddressBankUuid = pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
-                    // TODO (steve) change to upsert
-                    transaction {
-                        CoinMovementRecord.insert(
-                            txHash = event.txHash,
-                            fromAddress = event.sender,
-                            fromAddressBankUuid = fromAddressBankUuid,
-                            toAddress = event.recipient,
-                            toAddressBankUuid = null,
-                            blockHeight = event.height,
-                            blockTime = OffsetDateTime.parse(block.header.time),
-                            amount = event.amount,
-                            denom = event.denom,
-                            type = BURN,
-                        )
-                    }
+                    BurnWrapper(event, fromAddressBankUuid)
+                } else {
+                    null
                 }
             }
 
         // general coin transfers outside of the SC are tracked require the EventMarkerTransfer event
-        // TODO (steve) filter where denom is what we care about
-        batch.markerTransfers()
-            .filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
-            .forEach { event ->
+        val filteredTransfers = transfers.filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
+            .filter { it.denom == bankClientProperties.denom }
+            .mapNotNull { event ->
                 log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
-                // TODO (steve) move to getAttributes by tag name
-                val fromAddressBankUuid = pbcService.getAttributes(event.fromAddress).bankUuid()
-                val toAddressBankUuid = pbcService.getAttributes(event.toAddress).bankUuid()
+                val fromAddressBankUuid = pbcService.getAttributeByTagName(event.fromAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val toAddressBankUuid = pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (toAddressBankUuid != null || fromAddressBankUuid != null) {
-                    // TODO (steve) change to upsert
-                    transaction {
-                        CoinMovementRecord.insert(
-                            txHash = event.txHash,
-                            fromAddress = event.fromAddress,
-                            fromAddressBankUuid = fromAddressBankUuid,
-                            toAddress = event.toAddress,
-                            toAddressBankUuid = toAddressBankUuid,
-                            blockHeight = event.height,
-                            blockTime = OffsetDateTime.parse(block.header.time),
-                            amount = event.amount,
-                            denom = event.denom,
-                            type = TRANSFER,
-                        )
-                    }
+                    TransferWrapper(event, toAddressBankUuid, fromAddressBankUuid)
+                } else {
+                    null
                 }
             }
+
+        transaction {
+            var index = 0
+
+            filteredMints.forEach { wrapper ->
+                CoinMovementRecord.insert(
+                    txHash = wrapper.mint.txHash.uniqueHash(index ++),
+                    fromAddress = wrapper.mint.memberId,
+                    fromAddressBankUuid = null,
+                    toAddress = wrapper.mint.withdrawAddress,
+                    toAddressBankUuid = wrapper.toAddressBankUuid,
+                    blockHeight = wrapper.mint.height,
+                    blockTime = OffsetDateTime.parse(block.header.time),
+                    amount = wrapper.mint.amount,
+                    denom = wrapper.mint.withdrawDenom,
+                    type = MINT,
+                )
+            }
+
+            filteredBurns.forEach { wrapper ->
+                CoinMovementRecord.insert(
+                    txHash = wrapper.burn.txHash.uniqueHash(index ++),
+                    fromAddress = wrapper.burn.sender,
+                    fromAddressBankUuid = wrapper.fromAddressBankUuid,
+                    toAddress = wrapper.burn.recipient,
+                    toAddressBankUuid = null,
+                    blockHeight = wrapper.burn.height,
+                    blockTime = OffsetDateTime.parse(block.header.time),
+                    amount = wrapper.burn.amount,
+                    denom = wrapper.burn.denom,
+                    type = BURN,
+                )
+            }
+
+            filteredTransfers.forEach { wrapper ->
+                CoinMovementRecord.insert(
+                    txHash = wrapper.transfer.txHash.uniqueHash(index ++),
+                    fromAddress = wrapper.transfer.fromAddress,
+                    fromAddressBankUuid = wrapper.fromAddressBankUuid,
+                    toAddress = wrapper.transfer.toAddress,
+                    toAddressBankUuid = wrapper.toAddressBankUuid,
+                    blockHeight = wrapper.transfer.height,
+                    blockTime = OffsetDateTime.parse(block.header.time),
+                    amount = wrapper.transfer.amount,
+                    denom = wrapper.transfer.denom,
+                    type = TRANSFER,
+                )
+            }
+        }
     }
 
     protected fun handleEvents(

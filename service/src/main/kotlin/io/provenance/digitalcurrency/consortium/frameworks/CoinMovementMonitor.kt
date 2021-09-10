@@ -58,7 +58,7 @@ class CoinMovementMonitor(
 
         log.info("starting coin movement push with boundaries [$bookmark, $endBlock]")
 
-        val request = transaction { CoinMovementRecord.findBatch(bookmark, endBlock) }.toOutput()
+        val request = transaction { CoinMovementRecord.findBatch(bookmark, endBlock).toOutput() }
 
         log.debug("sending batch $request")
 
@@ -72,7 +72,7 @@ fun List<CoinMovementRecord>.toOutput() = CoinMovementRequest(
     recordCount = this.size,
     transactions = this.map { coinMovement ->
         CoinMovementRequestItem(
-            txId = coinMovement.txHash.value,
+            txId = coinMovement.txHash(),
             fromAddress = coinMovement.fromAddress,
             fromAddressBankUuid = coinMovement.fromAddressBankUuid,
             toAddress = coinMovement.toAddress,
