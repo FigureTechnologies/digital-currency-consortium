@@ -5,6 +5,7 @@ import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.and
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -37,9 +38,15 @@ open class TxStatusEntityClass(txEventTable: TxStatusTable) : UUIDEntityClass<Tx
             this.created = OffsetDateTime.now()
         }
 
+    fun findForUpdate(uuid: UUID) = find { TST.id eq uuid }.forUpdate()
+
     fun findByTxHash(txHash: String) = find { TST.txHash eq txHash }
 
     fun findByTxRequestUuid(txRequestUuid: UUID): List<TxStatusRecord> = find { TST.txRequestUuid eq txRequestUuid }.toList()
+
+    fun findByExpired() = find {
+        (TST.created lessEq OffsetDateTime.now().minusSeconds(30)).and(TST.status eq TxStatus.PENDING)
+    }
 }
 
 class TxStatusRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {

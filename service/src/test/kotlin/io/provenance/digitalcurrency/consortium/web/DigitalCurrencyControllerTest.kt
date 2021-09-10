@@ -6,14 +6,10 @@ import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationTable
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinMintTable
 import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
 import io.provenance.digitalcurrency.consortium.service.PbcService
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -51,14 +47,6 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
     fun beforeEach() {
         reset(pbcService)
         reset(digitalCurrencyService)
-    }
-
-    @AfterEach
-    fun afterEach() {
-        transaction {
-            CoinMintTable.deleteAll()
-            AddressRegistrationTable.deleteAll()
-        }
     }
 
     @Nested

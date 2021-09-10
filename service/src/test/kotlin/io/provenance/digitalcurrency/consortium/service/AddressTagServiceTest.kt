@@ -6,7 +6,6 @@ import io.provenance.digitalcurrency.consortium.DatabaseTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TestContainer
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
-import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
@@ -14,9 +13,7 @@ import io.provenance.digitalcurrency.consortium.getDefaultResponse
 import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
 import io.provenance.digitalcurrency.consortium.getTransactionResponse
 import io.provenance.digitalcurrency.consortium.randomTxHash
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeAll
@@ -45,13 +42,6 @@ class AddressTagServiceTest : DatabaseTest() {
     @BeforeAll
     fun beforeAll() {
         addressTagService = AddressTagService(pbcService, bankClientProperties)
-    }
-
-    @AfterEach
-    fun afterEach() {
-        transaction {
-            ART.deleteAll()
-        }
     }
 
     @Nested
