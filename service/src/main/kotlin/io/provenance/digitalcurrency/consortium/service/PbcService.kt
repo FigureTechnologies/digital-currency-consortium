@@ -69,8 +69,8 @@ class PbcService(
     fun getAttributes(address: String): List<Attribute> =
         grpcClientService.new().attributes.getAllAttributes(address)
 
-    fun getAttributeByTagName(address: String, tag: String): List<Attribute> =
-        getAttributes(address).filter { it.name == tag }
+    fun getAttributeByTagName(address: String, tag: String): Attribute? =
+        getAttributes(address).find { it.name == tag }
 
     fun addAttribute(address: String, tag: String, payload: ByteString) =
         grpcClientService.new().estimateAndBroadcastTx(

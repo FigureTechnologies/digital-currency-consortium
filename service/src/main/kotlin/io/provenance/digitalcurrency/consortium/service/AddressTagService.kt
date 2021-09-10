@@ -19,7 +19,7 @@ class AddressTagService(
     fun createEvent(addressRegistrationRecord: AddressRegistrationRecord) {
         val existing =
             pbcService.getAttributeByTagName(addressRegistrationRecord.address, bankClientProperties.kycTagName)
-        when (existing.isEmpty()) {
+        when (existing == null) {
             true -> {
                 try {
                     pbcService.addAttribute(
@@ -45,7 +45,7 @@ class AddressTagService(
     fun eventComplete(addressRegistrationRecord: AddressRegistrationRecord) {
         val existing =
             pbcService.getAttributeByTagName(addressRegistrationRecord.address, bankClientProperties.kycTagName)
-        when (existing.isEmpty()) {
+        when (existing == null) {
             true -> {
                 val response = pbcService.getTransaction(addressRegistrationRecord.txHash!!)
                 if (response == null || response.txResponse.isFailed()) {

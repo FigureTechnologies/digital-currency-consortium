@@ -23,7 +23,8 @@ open class StringIdTable(name: String, columnName: String = "id") : IdTable<Stri
     override val primaryKey by lazy { super.primaryKey ?: PrimaryKey(id) }
 }
 
-object CoinMovementTable : StringIdTable(name = "coin_movement", columnName = "txid") {
+object CoinMovementTable : StringIdTable(name = "coin_movement", columnName = "txid_v2") {
+    val legacyTxHash = text("txid").nullable()
     val fromAddress = text("from_addr")
     val fromAddressBankUuid = uuid("from_addr_bank_uuid").nullable()
     val toAddress = text("to_addr")
@@ -53,24 +54,26 @@ open class CoinMovementEntityClass : StringEntityClass<CoinMovementRecord>(CoinM
         amount: String,
         denom: String,
         type: String,
-    ) = findById(txHash) ?: new(txHash) {
-        this.fromAddress = fromAddress
-        this.fromAddressBankUuid = fromAddressBankUuid
-        this.toAddress = toAddress
-        this.toAddressBankUuid = toAddressBankUuid
-        this.blockHeight = blockHeight
-        this.blockTime = blockTime
-        this.amount = amount
-        this.denom = denom
-        this.type = type
-        this.created = OffsetDateTime.now()
+    ) = CoinMovementTable.upsertDoNothing("coin_movement_pkey") {
+        it[id] = txHash
+        it[this.fromAddress] = fromAddress
+        it[this.fromAddressBankUuid] = fromAddressBankUuid
+        it[this.toAddress] = toAddress
+        it[this.toAddressBankUuid] = toAddressBankUuid
+        it[this.blockHeight] = blockHeight
+        it[this.blockTime] = blockTime
+        it[this.amount] = amount
+        it[this.denom] = denom
+        it[this.type] = type
+        it[this.created] = OffsetDateTime.now()
     }
 }
 
 class CoinMovementRecord(id: EntityID<String>) : Entity<String>(id) {
     companion object : CoinMovementEntityClass()
 
-    var txHash by CoinMovementTable.id
+    var _txHashV2 by CoinMovementTable.id
+    var _txHash by CoinMovementTable.legacyTxHash
     var fromAddress by CoinMovementTable.fromAddress
     var fromAddressBankUuid by CoinMovementTable.fromAddressBankUuid
     var toAddress by CoinMovementTable.toAddress
@@ -81,4 +84,6 @@ class CoinMovementRecord(id: EntityID<String>) : Entity<String>(id) {
     var denom by CoinMovementTable.denom
     var type by CoinMovementTable.type
     var created by CoinMovementTable.created
+
+    fun txHash(): String = _txHash ?: _txHashV2.value
 }

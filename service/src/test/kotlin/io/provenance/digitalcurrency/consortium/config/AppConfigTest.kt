@@ -10,10 +10,4 @@ class AppConfigTest {
 
     @Bean
     fun eventStreamFactory(): EventStreamFactory = mock()
-
-    // @Bean
-    // fun pbcService(): PbcService = mock()
-
-    // @Bean
-    // fun rpcClient(): RpcClient = mock()
 }
