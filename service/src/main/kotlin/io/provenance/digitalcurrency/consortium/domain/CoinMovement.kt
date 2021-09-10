@@ -54,17 +54,18 @@ open class CoinMovementEntityClass : StringEntityClass<CoinMovementRecord>(CoinM
         amount: String,
         denom: String,
         type: String,
-    ) = findById(txHash) ?: new(txHash) {
-        this.fromAddress = fromAddress
-        this.fromAddressBankUuid = fromAddressBankUuid
-        this.toAddress = toAddress
-        this.toAddressBankUuid = toAddressBankUuid
-        this.blockHeight = blockHeight
-        this.blockTime = blockTime
-        this.amount = amount
-        this.denom = denom
-        this.type = type
-        this.created = OffsetDateTime.now()
+    ) = CoinMovementTable.upsertDoNothing("coin_movement_pkey") {
+        it[id] = txHash
+        it[this.fromAddress] = fromAddress
+        it[this.fromAddressBankUuid] = fromAddressBankUuid
+        it[this.toAddress] = toAddress
+        it[this.toAddressBankUuid] = toAddressBankUuid
+        it[this.blockHeight] = blockHeight
+        it[this.blockTime] = blockTime
+        it[this.amount] = amount
+        it[this.denom] = denom
+        it[this.type] = type
+        it[this.created] = OffsetDateTime.now()
     }
 }
 
