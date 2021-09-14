@@ -10,8 +10,8 @@ import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import io.provenance.digitalcurrency.consortium.getDefaultResponse
+import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
 import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
-import io.provenance.digitalcurrency.consortium.getTransactionResponse
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -214,7 +214,7 @@ class AddressTagServiceTest : DatabaseTest() {
 
             whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
-            whenever(pbcService.getTransaction(txHash)).thenReturn(getTransactionResponse(txHash))
+            whenever(pbcService.getTransaction(txHash)).thenReturn(getDefaultTransactionResponse(txHash))
 
             transaction {
                 addressTagService.eventComplete(registration)

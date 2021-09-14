@@ -6,10 +6,14 @@ import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
+import io.provenance.digitalcurrency.consortium.domain.MTT
+import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
+import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
+import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
@@ -24,6 +28,7 @@ abstract class DatabaseTest {
             CRT.deleteAll()
             TST.deleteAll()
             ART.deleteAll()
+            MTT.deleteAll()
         }
     }
 
@@ -52,6 +57,26 @@ abstract class DatabaseTest {
             TxStatusRecord.insert(getDefaultResponse(txHash).txResponse, txRequestUuid, txType).also {
                 it.status = txStatus
                 it.created = created!!
+            }
+        }
+
+    fun insertMarkerTransfer(
+        txHash: String,
+        toAddress: String = TEST_ADDRESS,
+        denom: String
+    ): MarkerTransferRecord =
+        transaction {
+            MarkerTransferRecord.new(UUID.randomUUID()) {
+                this.fromAddress = TEST_ADDRESS
+                this.toAddress = toAddress
+                this.denom = denom
+                this.coinAmount = DEFAULT_AMOUNT.toLong()
+                this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
+                this.height = 50L
+                this.txHash = txHash
+                this.status = MarkerTransferStatus.INSERTED
+                this.created = OffsetDateTime.now()
+                this.updated = OffsetDateTime.now()
             }
         }
 }
