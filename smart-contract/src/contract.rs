@@ -51,7 +51,7 @@ pub fn instantiate(
         dcc_denom: msg.dcc_denom.clone(),
         vote_duration: msg.vote_duration,
         kyc_attrs,
-        admin_weight: msg.admin_weight.unwrap_or(Uint128(1)),
+        admin_weight: msg.admin_weight.unwrap_or_else(|| Uint128::new(1)),
     };
     config(deps.storage).save(&state)?;
 
@@ -62,23 +62,24 @@ pub fn instantiate(
         if msg.dcc_denom.len() < MIN_DENOM_LEN {
             return Err(contract_err("invalid denom length"));
         }
-        res.add_message(create_marker(
-            0,
-            msg.dcc_denom.clone(),
-            MarkerType::Restricted,
-        )?);
-        res.add_message(grant_marker_access(
-            &msg.dcc_denom,
-            env.contract.address,
-            MarkerAccess::all(),
-        )?);
-        res.add_message(grant_marker_access(
-            &msg.dcc_denom,
-            info.sender,
-            vec![MarkerAccess::Admin], // The contract admin is also a dcc marker admin
-        )?);
-        res.add_message(finalize_marker(&msg.dcc_denom)?);
-        res.add_message(activate_marker(&msg.dcc_denom)?);
+        res = res
+            .add_message(create_marker(
+                0,
+                msg.dcc_denom.clone(),
+                MarkerType::Restricted,
+            )?)
+            .add_message(grant_marker_access(
+                &msg.dcc_denom,
+                env.contract.address,
+                MarkerAccess::all(),
+            )?)
+            .add_message(grant_marker_access(
+                &msg.dcc_denom,
+                info.sender,
+                vec![MarkerAccess::Admin], // The contract admin is also a dcc marker admin
+            )?)
+            .add_message(finalize_marker(&msg.dcc_denom)?)
+            .add_message(activate_marker(&msg.dcc_denom)?);
     }
     Ok(res)
 }
@@ -169,17 +170,15 @@ fn try_join(
     )?;
 
     // Propose the member restricted marker and grant this contract exclusive access.
-    let mut res = Response::new();
-    res.add_message(create_marker(0, &denom, MarkerType::Restricted)?);
-    res.add_message(grant_marker_access(
-        &denom,
-        env.contract.address,
-        MarkerAccess::all(),
-    )?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "join");
-    res.add_attribute("join_proposal_id", info.sender.to_string());
+    let res = Response::new()
+        .add_message(create_marker(0, &denom, MarkerType::Restricted)?)
+        .add_message(grant_marker_access(
+            &denom,
+            env.contract.address,
+            MarkerAccess::all(),
+        )?)
+        .add_attribute("action", "join")
+        .add_attribute("join_proposal_id", info.sender.to_string());
     Ok(res)
 }
 
@@ -250,9 +249,9 @@ fn try_vote(
     proposals.save(key, &proposal)?;
 
     // Add wasm event attributes
-    let mut res = Response::new();
-    res.add_attribute("action", "vote");
-    res.add_attribute("join_proposal_id", id);
+    let res = Response::new()
+        .add_attribute("action", "vote")
+        .add_attribute("join_proposal_id", id);
     Ok(res)
 }
 
@@ -317,31 +316,32 @@ fn try_accept(
             joined: Uint128::from(env.block.height),
             supply,
             max_supply: proposal.max_supply,
-            weight: Uint128(weight),
+            weight: Uint128::new(weight),
             name: proposal.name.unwrap_or_else(|| info.sender.to_string()),
         },
     )?;
 
     // Finalize and activate the reserve marker.
-    let mut res = Response::new();
-    res.add_message(finalize_marker(&proposal.denom)?);
-    res.add_message(activate_marker(&proposal.denom)?);
+    let mut res = Response::new()
+        .add_message(finalize_marker(&proposal.denom)?)
+        .add_message(activate_marker(&proposal.denom)?);
 
     // If non-zero, mint the reserve token supply and withdraw to the member account.
     if !supply.is_zero() {
-        res.add_message(mint_marker_supply(supply.u128(), &proposal.denom)?);
-        res.add_message(withdraw_coins(
-            &proposal.denom,
-            supply.u128(),
-            &proposal.denom,
-            info.sender,
-        )?);
+        res = res
+            .add_message(mint_marker_supply(supply.u128(), &proposal.denom)?)
+            .add_message(withdraw_coins(
+                &proposal.denom,
+                supply.u128(),
+                &proposal.denom,
+                info.sender,
+            )?);
     }
 
     // Add wasm event attributes
-    res.add_attribute("action", "accept");
-    res.add_attribute("join_proposal_id", &proposal.id);
-    Ok(res)
+    Ok(res
+        .add_attribute("action", "accept")
+        .add_attribute("join_proposal_id", &proposal.id))
 }
 
 // Proposers can choose to cancel as long as they haven't already accepted.
@@ -365,13 +365,11 @@ fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg
     proposals.remove(key);
 
     // Cancel and destroy the reserve marker.
-    let mut res = Response::new();
-    res.add_message(cancel_marker(&proposal.denom)?);
-    res.add_message(destroy_marker(&proposal.denom)?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "cancel");
-    res.add_attribute("join_proposal_id", &proposal.id);
+    let res = Response::new()
+        .add_message(cancel_marker(&proposal.denom)?)
+        .add_message(destroy_marker(&proposal.denom)?)
+        .add_attribute("action", "cancel")
+        .add_attribute("join_proposal_id", &proposal.id);
     Ok(res)
 }
 
@@ -434,17 +432,17 @@ fn try_redeem(
                 c.amount.u128()
             };
             // Withdraw max amount from the requested marker.
-            res.add_message(withdraw_coins(
-                &reserve_denom,
-                wamt,
-                &reserve_denom,
-                info.sender.clone(),
-            )?);
+            res = res
+                .add_message(withdraw_coins(
+                    &reserve_denom,
+                    wamt,
+                    &reserve_denom,
+                    info.sender.clone(),
+                )?)
+                .add_attribute("withdraw_amount", Uint128::new(wamt))
+                .add_attribute("withdraw_denom", &reserve_denom);
             // Decrement the pending amount due
             remaining -= wamt;
-            // Add amount and denom to wasm event
-            res.add_attribute("withdraw_amount", Uint128(wamt));
-            res.add_attribute("withdraw_denom", &reserve_denom);
         }
     }
 
@@ -468,17 +466,17 @@ fn try_redeem(
                     balance.amount.u128()
                 };
                 // Withdraw avialable amount from the requested marker.
-                res.add_message(withdraw_coins(
-                    &balance.denom,
-                    wamt,
-                    &balance.denom,
-                    info.sender.clone(),
-                )?);
+                res = res
+                    .add_message(withdraw_coins(
+                        &balance.denom,
+                        wamt,
+                        &balance.denom,
+                        info.sender.clone(),
+                    )?)
+                    .add_attribute("withdraw_amount", Uint128::new(wamt))
+                    .add_attribute("withdraw_denom", &balance.denom);
                 // Decrement the pending amount due
                 remaining -= wamt;
-                // Add amount and denom to wasm event
-                res.add_attribute("withdraw_amount", Uint128(wamt));
-                res.add_attribute("withdraw_denom", &balance.denom);
             }
         }
     }
@@ -492,24 +490,20 @@ fn try_redeem(
     let dcc_marker = querier.get_marker_by_denom(&state.dcc_denom)?;
 
     // Escrow dcc in the marker account for burn.
-    res.add_message(transfer_marker_coins(
-        amount.u128(),
-        &state.dcc_denom,
-        dcc_marker.address,
-        info.sender.clone(),
-    )?);
-
-    // Burn the dcc tokens
-    res.add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "redeem");
-    res.add_attribute("member_id", info.sender);
-    res.add_attribute("redeem_amount", amount);
-    res.add_attribute("redeem_denom", &state.dcc_denom);
-    // Legacy events to not break current middleware
-    res.add_attribute("amount", amount);
-    res.add_attribute("reserve_denom", &reserve_denom);
+    res = res
+        .add_message(transfer_marker_coins(
+            amount.u128(),
+            &state.dcc_denom,
+            dcc_marker.address,
+            info.sender.clone(),
+        )?)
+        .add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?) // Burn the dcc tokens
+        .add_attribute("action", "redeem") // Add wasm event attributes
+        .add_attribute("member_id", info.sender)
+        .add_attribute("redeem_amount", amount)
+        .add_attribute("redeem_denom", &state.dcc_denom)
+        .add_attribute("amount", amount)
+        .add_attribute("reserve_denom", &reserve_denom);
     Ok(res)
 }
 
@@ -555,17 +549,15 @@ fn try_swap(
 
     // Transfer reserve token from member to marker. Note: This will eventually require an authz
     // call be made first to give the SC permission to move the tokens out of the member account.
-    let mut res = Response::new();
     let querier = ProvenanceQuerier::new(&deps.querier);
-    res.add_message(transfer_marker_coins(
-        amount.u128(),
-        &denom,
-        querier.get_marker_by_denom(&denom)?.address,
-        info.sender.clone(),
-    )?);
-
-    // Mint the required dcc.
-    res.add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?);
+    let mut res = Response::new()
+        .add_message(transfer_marker_coins(
+            amount.u128(),
+            &denom,
+            querier.get_marker_by_denom(&denom)?.address,
+            info.sender.clone(),
+        )?)
+        .add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?); // Mint the required dcc.
 
     // Determine where to withdraw the dcc tokens.
     let mut withdraw_address = info.sender.clone();
@@ -577,19 +569,18 @@ fn try_swap(
     }
 
     // Withdraw dcc from marker to sender.
-    res.add_message(withdraw_coins(
-        &state.dcc_denom,
-        amount.u128(),
-        &state.dcc_denom,
-        withdraw_address.clone(),
-    )?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "swap");
-    res.add_attribute("member_id", info.sender);
-    res.add_attribute("amount", amount);
-    res.add_attribute("denom", &denom);
-    res.add_attribute("withdraw_address", withdraw_address);
+    res = res
+        .add_message(withdraw_coins(
+            &state.dcc_denom,
+            amount.u128(),
+            &state.dcc_denom,
+            withdraw_address.clone(),
+        )?)
+        .add_attribute("action", "swap") // Add wasm event attributes
+        .add_attribute("member_id", info.sender)
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &denom)
+        .add_attribute("withdraw_address", withdraw_address);
     Ok(res)
 }
 
@@ -635,20 +626,18 @@ fn try_transfer(
     }
 
     // Transfer the dcc
-    let mut res = Response::new();
-    res.add_message(transfer_marker_coins(
-        amount.u128(),
-        &state.dcc_denom,
-        recipient.clone(),
-        info.sender.clone(),
-    )?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "transfer");
-    res.add_attribute("amount", amount);
-    res.add_attribute("denom", &state.dcc_denom);
-    res.add_attribute("sender", info.sender);
-    res.add_attribute("recipient", recipient);
+    let res = Response::new()
+        .add_message(transfer_marker_coins(
+            amount.u128(),
+            &state.dcc_denom,
+            recipient.clone(),
+            info.sender.clone(),
+        )?)
+        .add_attribute("action", "transfer")
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &state.dcc_denom)
+        .add_attribute("sender", info.sender)
+        .add_attribute("recipient", recipient);
     Ok(res)
 }
 
@@ -684,33 +673,34 @@ fn try_mint(
     members(deps.storage).save(key, &member)?;
 
     // Mint reserve
-    let mut res = Response::new();
-    res.add_message(mint_marker_supply(amount.u128(), &member.denom)?);
+    let mut res = Response::new().add_message(mint_marker_supply(amount.u128(), &member.denom)?);
 
     // Mint dcc if the withdraw address was provided.
     let state = config_read(deps.storage).load()?;
     if address.is_some() {
-        res.add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?);
+        res = res.add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?);
     }
 
     // Add wasm event attributes
-    res.add_attribute("action", "mint");
-    res.add_attribute("member_id", &member.id);
-    res.add_attribute("amount", amount);
-    res.add_attribute("denom", &member.denom);
+    res = res
+        .add_attribute("action", "mint")
+        .add_attribute("member_id", &member.id)
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &member.denom);
 
     // Withdraw either dcc or reserve token.
     match address {
         None => {
             // Withdraw minted reserve tokens to the member account.
-            res.add_message(withdraw_coins(
-                &member.denom,
-                amount.u128(),
-                &member.denom,
-                info.sender.clone(),
-            )?);
-            res.add_attribute("withdraw_denom", &member.denom);
-            res.add_attribute("withdraw_address", info.sender);
+            res = res
+                .add_message(withdraw_coins(
+                    &member.denom,
+                    amount.u128(),
+                    &member.denom,
+                    info.sender.clone(),
+                )?)
+                .add_attribute("withdraw_denom", &member.denom)
+                .add_attribute("withdraw_address", info.sender);
         }
         Some(a) => {
             // When withdrawing dcc tokens to a non-member account, ensure the recipient has the
@@ -720,14 +710,15 @@ fn try_mint(
                 ensure_attributes(deps.as_ref(), address.clone(), state.kyc_attrs)?;
             }
             // Withdraw minted dcc tokens to the provided account.
-            res.add_message(withdraw_coins(
-                &state.dcc_denom,
-                amount.u128(),
-                &state.dcc_denom,
-                address.clone(),
-            )?);
-            res.add_attribute("withdraw_denom", &state.dcc_denom);
-            res.add_attribute("withdraw_address", address);
+            res = res
+                .add_message(withdraw_coins(
+                    &state.dcc_denom,
+                    amount.u128(),
+                    &state.dcc_denom,
+                    address.clone(),
+                )?)
+                .add_attribute("withdraw_denom", &state.dcc_denom)
+                .add_attribute("withdraw_address", address);
         }
     };
     Ok(res)
@@ -762,7 +753,7 @@ fn try_burn(
     }
 
     // Update reserve supply and re-calculate weight for member.
-    member.supply = Uint128(member.supply.u128() - amount.u128());
+    member.supply = Uint128::new(member.supply.u128() - amount.u128());
     members(deps.storage).save(key, &member)?;
 
     // Get marker address using denom.
@@ -771,22 +762,18 @@ fn try_burn(
 
     // Transfer reserve token from member to marker. Note: This will eventually require an authz
     // call be made first to give the SC permission to move the tokens out of the member account.
-    let mut res = Response::new();
-    res.add_message(transfer_marker_coins(
-        amount.u128(),
-        &member.denom,
-        member_marker.address,
-        info.sender.clone(),
-    )?);
-
-    // Burn reserve
-    res.add_message(burn_marker_supply(amount.u128(), &member.denom)?);
-
-    // Add wasm event attributes
-    res.add_attribute("action", "burn");
-    res.add_attribute("member_id", &member.id);
-    res.add_attribute("amount", amount);
-    res.add_attribute("denom", &member.denom);
+    let res = Response::new()
+        .add_message(transfer_marker_coins(
+            amount.u128(),
+            &member.denom,
+            member_marker.address,
+            info.sender.clone(),
+        )?)
+        .add_message(burn_marker_supply(amount.u128(), &member.denom)?) // Burn reserve
+        .add_attribute("action", "burn")
+        .add_attribute("member_id", &member.id)
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &member.denom);
     Ok(res)
 }
 
@@ -800,7 +787,7 @@ fn try_add_kyc(
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during kyc add"));
     }
-    if name.is_empty() {
+    if name.trim().is_empty() {
         return Err(contract_err("kyc attribute name is empty"));
     }
 
@@ -820,10 +807,9 @@ fn try_add_kyc(
     config(deps.storage).save(&state)?;
 
     // Add wasm event attributes
-    let mut res = Response::new();
-    res.add_attribute("action", "add_kyc_attribute");
-    res.add_attribute("name", name);
-    Ok(res)
+    Ok(Response::new()
+        .add_attribute("action", "add_kyc_attribute")
+        .add_attribute("name", name))
 }
 
 // Remove an existing kyc attribute.
@@ -836,7 +822,7 @@ fn try_remove_kyc(
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during kyc remove"));
     }
-    if name.is_empty() {
+    if name.trim().is_empty() {
         return Err(contract_err("kyc attribute name is empty"));
     }
 
@@ -856,10 +842,9 @@ fn try_remove_kyc(
     config(deps.storage).save(&state)?;
 
     // Add wasm event attributes
-    let mut res = Response::new();
-    res.add_attribute("action", "remove_kyc_attribute");
-    res.add_attribute("name", name);
-    Ok(res)
+    Ok(Response::new()
+        .add_attribute("action", "remove_kyc_attribute")
+        .add_attribute("name", name))
 }
 
 // A helper function for creating generic contract errors.
@@ -889,7 +874,7 @@ fn ensure_attributes(deps: Deps, addr: Addr, attrs: Vec<String>) -> Result<(), C
 
 // Calculate the weight for a member based on reserve max supply.
 fn calculate_weight(max_supply: u128) -> u128 {
-    // Just return turncated usd equivalent for now...
+    // Just return the truncated usd equivalent for now...
     max_supply / 100
 }
 
@@ -1031,7 +1016,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(100),
+                vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1048,7 +1033,7 @@ mod tests {
         // Validate state values
         assert_eq!(config_state.dcc_denom, "dcc.coin");
         assert_eq!(config_state.quorum_pct, Decimal::percent(67));
-        assert_eq!(config_state.vote_duration, Uint128(100));
+        assert_eq!(config_state.vote_duration, Uint128::new(100));
     }
 
     #[test]
@@ -1064,7 +1049,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1077,7 +1062,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1093,9 +1078,9 @@ mod tests {
         let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
 
         assert_eq!(proposal.denom, "bank.coin");
-        assert_eq!(proposal.max_supply, Uint128(1_000_000));
-        assert_eq!(proposal.created, Uint128(12345));
-        assert_eq!(proposal.expires, Uint128(12345 + 10));
+        assert_eq!(proposal.max_supply, Uint128::new(1_000_000));
+        assert_eq!(proposal.created, Uint128::new(12345));
+        assert_eq!(proposal.expires, Uint128::new(12345 + 10));
         assert_eq!(proposal.yes, Uint128::zero());
         assert_eq!(proposal.no, Uint128::zero());
         assert!(proposal.voters.is_empty());
@@ -1114,7 +1099,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1148,7 +1133,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "".into(),
                 name: None,
             },
@@ -1170,7 +1155,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1199,7 +1184,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1212,7 +1197,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1225,7 +1210,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1254,7 +1239,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1267,7 +1252,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1291,7 +1276,7 @@ mod tests {
         let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote weight was added to the 'yes' total.
-        assert_eq!(proposal.yes, Uint128(1));
+        assert_eq!(proposal.yes, Uint128::new(1));
         assert_eq!(proposal.no, Uint128::zero());
         assert_eq!(proposal.voters, vec![Addr::unchecked("admin")]);
     }
@@ -1309,7 +1294,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1322,7 +1307,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1347,7 +1332,7 @@ mod tests {
 
         // Assert the admin vote weight was added to the 'no' total.
         assert_eq!(proposal.yes, Uint128::zero());
-        assert_eq!(proposal.no, Uint128(1));
+        assert_eq!(proposal.no, Uint128::new(1));
         assert_eq!(proposal.voters, vec![Addr::unchecked("admin")]);
     }
 
@@ -1364,7 +1349,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(1),
+                vote_duration: Uint128::new(1),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1377,7 +1362,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1457,7 +1442,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(1000),
+                vote_duration: Uint128::new(1000),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1472,7 +1457,7 @@ mod tests {
             env,
             mock_info("bank1", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank1.coin".into(),
                 name: None,
             },
@@ -1487,7 +1472,7 @@ mod tests {
             env,
             mock_info("bank2", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(2_000_000),
+                max_supply: Uint128::new(2_000_000),
                 denom: "bank2.coin".into(),
                 name: None,
             },
@@ -1553,7 +1538,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1566,7 +1551,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1611,7 +1596,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(1),
+                vote_duration: Uint128::new(1),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1624,7 +1609,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1677,7 +1662,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1690,7 +1675,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100000000),
+                max_supply: Uint128::new(100000000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1729,8 +1714,8 @@ mod tests {
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
         assert_eq!(member.supply, Uint128::zero());
-        assert_eq!(member.max_supply, Uint128(100000000));
-        assert_eq!(member.weight, Uint128(1000000));
+        assert_eq!(member.max_supply, Uint128::new(100000000));
+        assert_eq!(member.weight, Uint128::new(1000000));
     }
 
     #[test]
@@ -1746,7 +1731,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1759,7 +1744,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100000000),
+                max_supply: Uint128::new(100000000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1784,7 +1769,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Accept {
-                mint_amount: Some(Uint128(100000000)),
+                mint_amount: Some(Uint128::new(100000000)),
             },
         )
         .unwrap();
@@ -1799,9 +1784,9 @@ mod tests {
 
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
-        assert_eq!(member.supply, Uint128(100000000));
-        assert_eq!(member.max_supply, Uint128(100000000));
-        assert_eq!(member.weight, Uint128(1000000));
+        assert_eq!(member.supply, Uint128::new(100000000));
+        assert_eq!(member.max_supply, Uint128::new(100000000));
+        assert_eq!(member.weight, Uint128::new(1000000));
     }
 
     #[test]
@@ -1817,7 +1802,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1830,7 +1815,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1901,7 +1886,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1914,7 +1899,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -1960,7 +1945,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -1973,7 +1958,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2065,7 +2050,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
@@ -2078,7 +2063,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2120,7 +2105,7 @@ mod tests {
             mock_env(),
             mock_info("customer", &[]),
             ExecuteMsg::Transfer {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
                 recipient: "bank".into(),
             },
         )
@@ -2144,7 +2129,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
@@ -2157,7 +2142,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2212,7 +2197,7 @@ mod tests {
             mock_env(),
             mock_info("customer", &[funds]),
             ExecuteMsg::Transfer {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
                 recipient: "bank".into(),
             },
         )
@@ -2240,7 +2225,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
@@ -2253,7 +2238,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2291,7 +2276,7 @@ mod tests {
             mock_env(),
             mock_info("customer", &[]),
             ExecuteMsg::Transfer {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
                 recipient: "bank".into(),
             },
         )
@@ -2319,7 +2304,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
@@ -2332,7 +2317,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2372,7 +2357,7 @@ mod tests {
             mock_env(),
             mock_info("customer", &[]),
             ExecuteMsg::Transfer {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
                 recipient: "bank".into(),
             },
         )
@@ -2400,7 +2385,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -2413,7 +2398,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2454,7 +2439,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Mint {
-                amount: Uint128(100),
+                amount: Uint128::new(100),
                 address: None,
             },
         )
@@ -2466,7 +2451,7 @@ mod tests {
 
         // Ensure supply was updated
         let member = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(member.supply, Uint128(100));
+        assert_eq!(member.supply, Uint128::new(100));
     }
 
     #[test]
@@ -2482,7 +2467,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 admin_weight: None,
                 kyc_attrs: vec![],
             },
@@ -2495,7 +2480,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2549,7 +2534,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Mint {
-                amount: Uint128(1_000_001),
+                amount: Uint128::new(1_000_001),
                 address: None,
             },
         )
@@ -2570,7 +2555,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Mint {
-                amount: Uint128(1000),
+                amount: Uint128::new(1000),
                 address: None,
             },
         )
@@ -2590,7 +2575,7 @@ mod tests {
             mock_env(),
             mock_info("non.member", &[]),
             ExecuteMsg::Mint {
-                amount: Uint128(1000),
+                amount: Uint128::new(1000),
                 address: None,
             },
         )
@@ -2618,7 +2603,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -2631,7 +2616,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2672,7 +2657,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Mint {
-                amount: Uint128(100),
+                amount: Uint128::new(100),
                 address: Some("customer".into()),
             },
         )
@@ -2684,7 +2669,7 @@ mod tests {
 
         // Ensure supply was updated
         let member = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(member.supply, Uint128(100));
+        assert_eq!(member.supply, Uint128::new(100));
     }
 
     #[test]
@@ -2705,7 +2690,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -2718,7 +2703,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2752,7 +2737,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Mint {
-                amount: Uint128(100),
+                amount: Uint128::new(100),
                 address: None,
             },
         )
@@ -2769,7 +2754,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Burn {
-                amount: Uint128(25),
+                amount: Uint128::new(25),
             },
         )
         .unwrap();
@@ -2781,7 +2766,7 @@ mod tests {
         // Ensure supply was reduced as expected.
         let key: &[u8] = addr.as_bytes();
         let member = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(member.supply, Uint128(75));
+        assert_eq!(member.supply, Uint128::new(75));
     }
 
     #[test]
@@ -2797,7 +2782,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -2810,7 +2795,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(1_000_000),
+                max_supply: Uint128::new(1_000_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2845,7 +2830,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Burn {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
             },
         )
         .unwrap_err();
@@ -2883,7 +2868,7 @@ mod tests {
             mock_env(),
             mock_info("non.member", &[]),
             ExecuteMsg::Burn {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
             },
         )
         .unwrap_err();
@@ -2906,7 +2891,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Burn {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
             },
         )
         .unwrap_err();
@@ -2938,7 +2923,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -2951,7 +2936,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100_000),
+                max_supply: Uint128::new(100_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -2990,7 +2975,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Swap {
-                amount: Uint128(5000),
+                amount: Uint128::new(5000),
                 denom: "bank.coin".into(),
                 address: None,
             },
@@ -3020,7 +3005,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -3033,7 +3018,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100_000),
+                max_supply: Uint128::new(100_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -3068,7 +3053,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Swap {
-                amount: Uint128(5000),
+                amount: Uint128::new(5000),
                 denom: "bank.coin".into(),
                 address: None,
             },
@@ -3110,7 +3095,7 @@ mod tests {
             mock_env(),
             mock_info("non.member", &[]),
             ExecuteMsg::Swap {
-                amount: Uint128(5000),
+                amount: Uint128::new(5000),
                 denom: "bank.coin".into(),
                 address: None,
             },
@@ -3129,7 +3114,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Swap {
-                amount: Uint128(5000),
+                amount: Uint128::new(5000),
                 denom: "unsupported.coin".into(),
                 address: None,
             },
@@ -3155,7 +3140,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Swap {
-                amount: Uint128(5000),
+                amount: Uint128::new(5000),
                 denom: "bank.coin".into(),
                 address: None,
             },
@@ -3191,7 +3176,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -3204,7 +3189,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100_000),
+                max_supply: Uint128::new(100_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -3246,7 +3231,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Redeem {
-                amount: Uint128(2500),
+                amount: Uint128::new(2500),
                 reserve_denom: Some("bank.coin".into()),
             },
         )
@@ -3275,7 +3260,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(10),
+                vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -3288,7 +3273,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Join {
-                max_supply: Uint128(100_000),
+                max_supply: Uint128::new(100_000),
                 denom: "bank.coin".into(),
                 name: None,
             },
@@ -3323,7 +3308,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Redeem {
-                amount: Uint128(2500),
+                amount: Uint128::new(2500),
                 reserve_denom: Some("bank.coin".into()),
             },
         )
@@ -3363,7 +3348,7 @@ mod tests {
             mock_env(),
             mock_info("non.member", &[]),
             ExecuteMsg::Redeem {
-                amount: Uint128(2500),
+                amount: Uint128::new(2500),
                 reserve_denom: Some("bank.coin".into()),
             },
         )
@@ -3390,7 +3375,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Redeem {
-                amount: Uint128(2500),
+                amount: Uint128::new(2500),
                 reserve_denom: Some("bank.coin".into()),
             },
         )
@@ -3410,7 +3395,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[]),
             ExecuteMsg::Redeem {
-                amount: Uint128(500),
+                amount: Uint128::new(500),
                 reserve_denom: Some("unsupported.coin".into()),
             },
         )
@@ -3438,7 +3423,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(100),
+                vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -3478,7 +3463,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(100),
+                vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
                 admin_weight: None,
             },
@@ -3583,7 +3568,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(100),
+                vote_duration: Uint128::new(100),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
@@ -3623,7 +3608,7 @@ mod tests {
             InitMsg {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
-                vote_duration: Uint128(100),
+                vote_duration: Uint128::new(100),
                 kyc_attrs: vec!["bank.kyc".into()],
                 admin_weight: None,
             },
