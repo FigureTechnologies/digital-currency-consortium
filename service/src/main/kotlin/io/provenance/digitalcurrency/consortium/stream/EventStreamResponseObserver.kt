@@ -8,11 +8,7 @@ class EventStreamResponseObserver<T>(private val onNextHandler: (T) -> Unit) : S
     var error: Throwable? = null
 
     override fun onNext(value: T) {
-        try {
-            onNextHandler(value)
-        } catch (t: Throwable) {
-            this.onError(t)
-        }
+        onNextHandler(value)
     }
 
     override fun onCompleted() {
