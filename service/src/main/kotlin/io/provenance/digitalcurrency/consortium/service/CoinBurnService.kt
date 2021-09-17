@@ -50,15 +50,13 @@ class CoinBurnService(
             log.info("Completing burn contract by notifying bank to send fiat")
             if (coinBurnRecord.coinRedemption != null) {
                 try {
-                    val response = bankClient.depositFiat(
+                    bankClient.depositFiat(
                         DepositFiatRequest(
                             uuid = coinBurnRecord.id.value,
                             bankAccountUUID = coinBurnRecord.coinRedemption!!.addressRegistration.bankAccountUuid,
                             amount = coinBurnRecord.fiatAmount
                         )
                     )
-                    // TODO this isn't erroring if the bank middleware isn't running
-                    log.info("response $response")
                     CoinBurnRecord.updateStatus(coinBurnRecord.id.value, CoinBurnStatus.COMPLETE)
                 } catch (e: Exception) {
                     log.error("sending fiat deposit request to bank failed; it will retry.", e)
