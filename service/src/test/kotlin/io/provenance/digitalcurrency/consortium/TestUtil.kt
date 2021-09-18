@@ -4,6 +4,8 @@ import com.google.protobuf.Any
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.digitalcurrency.consortium.stream.Burn
+import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
+import io.provenance.digitalcurrency.consortium.stream.Mint
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
 import java.time.OffsetDateTime
@@ -77,21 +79,44 @@ fun getPendingTransactionResponse(txHash: String): ServiceOuterClass.GetTxRespon
                 .build()
         ).build()
 
-fun getTransferEvent(txHash: String, toAddress: String = TEST_MEMBER_ADDRESS, denom: String) = Transfer(
-    contractAddress = TEST_MEMBER_ADDRESS,
-    amount = DEFAULT_AMOUNT.toString(),
-    denom = denom,
-    sender = TEST_ADDRESS,
-    recipient = toAddress,
-    height = 50,
-    txHash = txHash
-)
+fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
+    Transfer(
+        contractAddress = TEST_MEMBER_ADDRESS,
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = denom,
+        sender = TEST_ADDRESS,
+        recipient = toAddress,
+        height = 50,
+        txHash = txHash
+    )
 
-fun getBurnEvent(txHash: String, denom: String) = Burn(
-    contractAddress = TEST_MEMBER_ADDRESS,
-    amount = DEFAULT_AMOUNT.toString(),
-    denom = denom,
-    memberId = TEST_MEMBER_ADDRESS,
-    height = 50,
-    txHash = txHash
-)
+fun getBurnEvent(txHash: String = randomTxHash(), denom: String) =
+    Burn(
+        contractAddress = TEST_MEMBER_ADDRESS,
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = denom,
+        memberId = TEST_MEMBER_ADDRESS,
+        height = 50,
+        txHash = txHash
+    )
+
+fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
+    MarkerTransfer(
+        fromAddress = TEST_ADDRESS,
+        toAddress = toAddress,
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = denom,
+        height = 50,
+        txHash = txHash
+    )
+
+fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String, bankDenom: String) =
+    Mint(
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = bankDenom,
+        withdrawDenom = dccDenom,
+        withdrawAddress = TEST_ADDRESS,
+        memberId = TEST_MEMBER_ADDRESS,
+        height = 50,
+        txHash = txHash
+    )

@@ -4,8 +4,11 @@ import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
+import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
+import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
@@ -25,6 +28,7 @@ abstract class DatabaseTest {
     fun afterEach() {
         transaction {
             CMT.deleteAll()
+            CoinMovementTable.deleteAll()
             CRT.deleteAll()
             TST.deleteAll()
             ART.deleteAll()
@@ -78,5 +82,19 @@ abstract class DatabaseTest {
                 this.created = OffsetDateTime.now()
                 this.updated = OffsetDateTime.now()
             }
+        }
+
+    fun insertCoinMovement(txHash: String, denom: String, type: String = MINT) =
+        transaction {
+            CoinMovementRecord.insert(
+                txHash = txHash,
+                fromAddress = "fromAddress",
+                toAddress = "toAddress",
+                blockHeight = 50,
+                amount = DEFAULT_AMOUNT.toString(),
+                blockTime = OffsetDateTime.now(),
+                denom = denom,
+                type = type
+            )
         }
 }

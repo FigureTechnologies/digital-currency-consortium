@@ -46,9 +46,9 @@ open class CoinMovementEntityClass : StringEntityClass<CoinMovementRecord>(CoinM
     fun insert(
         txHash: String,
         fromAddress: String,
-        fromAddressBankUuid: UUID?,
+        fromAddressBankUuid: UUID? = null,
         toAddress: String,
-        toAddressBankUuid: UUID?,
+        toAddressBankUuid: UUID? = null,
         blockHeight: Long,
         blockTime: OffsetDateTime,
         amount: String,

@@ -27,6 +27,8 @@ import io.provenance.digitalcurrency.consortium.frameworks.toOutput
 import io.provenance.digitalcurrency.consortium.getBurnEvent
 import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
 import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
+import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
+import io.provenance.digitalcurrency.consortium.getMintEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
@@ -41,6 +43,7 @@ import org.jetbrains.exposed.sql.update
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
@@ -84,10 +87,7 @@ class EventStreamConsumerTest : DatabaseTest() {
         reset(pbcServiceMock)
         reset(rpcClientMock)
 
-        transaction { CoinMovementRecord.all().map { it.delete() } }
-
-        whenever(pbcServiceMock.managerAddress)
-            .thenReturn("managerAddr")
+        whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
     }
 
     @BeforeAll
@@ -103,629 +103,491 @@ class EventStreamConsumerTest : DatabaseTest() {
         )
     }
 
-    @Test
-    fun `coinMovement - events without bank parties are ignored`() {
-        val blockTime = OffsetDateTime.now()
-        val blockResponse = BlockResponse(
-            block = Block(
-                header = BlockHeader(0, blockTime.toString()),
-                data = BlockData(emptyList()),
-            ),
-            blockId = BlockId("", PartSetHeader(0, ""))
-        )
-        val mint = Mint(
-            amount = "100",
-            denom = "bankcoin.1",
-            withdrawDenom = "dccbank.coin",
-            withdrawAddress = "toAddr",
-            memberId = "bank",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val burn = Transfer(
-            contractAddress = "",
-            amount = "100",
-            denom = "dccbank.coin",
-            recipient = pbcServiceMock.managerAddress,
-            sender = "adminAddr",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val transfer = MarkerTransfer(
-            toAddress = "toAddr",
-            fromAddress = "fromAddr",
-            amount = "100",
-            denom = "dccbank.coin",
-            height = 0,
-            txHash = randomTxHash(),
+    @Nested
+    inner class CoinMovementEvents {
+        private val mint = getMintEvent(
+            dccDenom = serviceProperties.dccDenom,
+            bankDenom = bankClientProperties.denom
         )
 
-        whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-            .thenReturn(null)
-
-        mockkStatic(RpcClient::fetchBlock)
-        every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
+        private val burn = getTransferEvent(
+            toAddress = TEST_MEMBER_ADDRESS,
+            denom = serviceProperties.dccDenom
         )
 
-        Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
-    }
-
-    @Test
-    fun `coinMovement - mints, burns, and transfers for bank parties are persisted`() {
-        val blockTime = OffsetDateTime.now()
-        val blockResponse = BlockResponse(
-            block = Block(
-                header = BlockHeader(0, blockTime.toString()),
-                data = BlockData(emptyList()),
-            ),
-            blockId = BlockId("", PartSetHeader(0, ""))
-        )
-        val mint = Mint(
-            amount = "100",
-            denom = "bankcoin.1",
-            withdrawDenom = "dccbank.coin",
-            withdrawAddress = "toAddr",
-            memberId = "bank",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val burn = Transfer(
-            contractAddress = "",
-            amount = "100",
-            denom = "dccbank.coin",
-            recipient = pbcServiceMock.managerAddress,
-            sender = "adminAddr",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val transfer = MarkerTransfer(
-            toAddress = "toAddr",
-            fromAddress = "fromAddr",
-            amount = "100",
-            denom = "dccbank.coin",
-            height = 0,
-            txHash = randomTxHash(),
+        private val transfer = getMarkerTransferEvent(
+            toAddress = TEST_MEMBER_ADDRESS,
+            denom = bankClientProperties.denom
         )
 
-        whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-            .thenReturn(
-                Attribute.newBuilder()
-                    .setName(bankClientProperties.kycTagName)
-                    .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                    .build()
+        @Test
+        fun `coinMovement - events without bank parties are ignored`() {
+            val blockTime = OffsetDateTime.now()
+            val blockResponse = BlockResponse(
+                block = Block(
+                    header = BlockHeader(0, blockTime.toString()),
+                    data = BlockData(emptyList()),
+                ),
+                blockId = BlockId("", PartSetHeader(0, ""))
             )
 
-        mockkStatic(RpcClient::fetchBlock)
-        every { rpcClientMock.fetchBlock(0) } returns blockResponse
+            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
+                .thenReturn(null)
 
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
+            mockkStatic(RpcClient::fetchBlock)
+            every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
-        Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
-    }
-
-    @Test
-    fun `coinMovement - block reentry is ignored`() {
-        val blockTime = OffsetDateTime.now()
-        val blockResponse = BlockResponse(
-            block = Block(
-                header = BlockHeader(0, blockTime.toString()),
-                data = BlockData(emptyList()),
-            ),
-            blockId = BlockId("", PartSetHeader(0, ""))
-        )
-        val mint = Mint(
-            amount = "100",
-            denom = "bankcoin.1",
-            withdrawDenom = "dccbank.coin",
-            withdrawAddress = "toAddr",
-            memberId = "bank",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val burn = Transfer(
-            contractAddress = "",
-            amount = "100",
-            denom = "dccbank.coin",
-            recipient = pbcServiceMock.managerAddress,
-            sender = "adminAddr",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-        val transfer = MarkerTransfer(
-            toAddress = "toAddr",
-            fromAddress = "fromAddr",
-            amount = "100",
-            denom = "dccbank.coin",
-            height = 0,
-            txHash = randomTxHash(),
-        )
-
-        whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-            .thenReturn(
-                Attribute.newBuilder()
-                    .setName(bankClientProperties.kycTagName)
-                    .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                    .build()
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
             )
 
-        mockkStatic(RpcClient::fetchBlock)
-        every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
-
-        Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
-
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
-
-        Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
-    }
-
-    @Test
-    fun `coinMovement - batched messages in one tx are persisted`() {
-        val blockTime = OffsetDateTime.now()
-        val blockResponse = BlockResponse(
-            block = Block(
-                header = BlockHeader(0, blockTime.toString()),
-                data = BlockData(emptyList()),
-            ),
-            blockId = BlockId("", PartSetHeader(0, ""))
-        )
-        val mint = Mint(
-            amount = "100",
-            denom = "bankcoin.1",
-            withdrawDenom = "dccbank.coin",
-            withdrawAddress = "toAddr",
-            memberId = "bank",
-            height = 0,
-            txHash = "tx1",
-        )
-        val burn = Transfer(
-            contractAddress = "",
-            amount = "100",
-            denom = "dccbank.coin",
-            recipient = pbcServiceMock.managerAddress,
-            sender = "adminAddr",
-            height = 0,
-            txHash = "tx1",
-        )
-        val transfer = MarkerTransfer(
-            toAddress = "toAddr",
-            fromAddress = "fromAddr",
-            amount = "100",
-            denom = "dccbank.coin",
-            height = 0,
-            txHash = "tx1",
-        )
-
-        whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-            .thenReturn(
-                Attribute.newBuilder()
-                    .setName(bankClientProperties.kycTagName)
-                    .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                    .build()
-            )
-
-        mockkStatic(RpcClient::fetchBlock)
-        every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
-        eventStreamConsumer.handleCoinMovementEvents(
-            blockHeight = blockResponse.block.header.height,
-            mints = listOf(mint),
-            burns = listOf(burn),
-            transfers = listOf(transfer),
-        )
-
-        Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
-        Assertions.assertEquals(
-            listOf("tx1-0", "tx1-1", "tx1-2"),
-            transaction { CoinMovementRecord.all().toList() }.map { it.txHash() }.sorted(),
-        )
-    }
-
-    @Test
-    fun `coinMovement - check v1 vs v2 output`() {
-        transaction {
-            CoinMovementRecord.insert(
-                txHash = "abc-0",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
+            Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
         }
 
-        transaction {
-            CoinMovementTable.update { it[legacyTxHash] = "abc" }
-        }
+        @Test
+        fun `coinMovement - mints, burns, and transfers for bank parties are persisted`() {
+            val blockTime = OffsetDateTime.now()
+            val blockResponse = BlockResponse(
+                block = Block(
+                    header = BlockHeader(0, blockTime.toString()),
+                    data = BlockData(emptyList()),
+                ),
+                blockId = BlockId("", PartSetHeader(0, ""))
+            )
 
-        transaction {
-            CoinMovementRecord.insert(
-                txHash = "abc-0",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-            CoinMovementRecord.insert(
-                txHash = "xyz-0",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-            CoinMovementRecord.insert(
-                txHash = "xyz-0",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-            CoinMovementRecord.insert(
-                txHash = "xyz-1",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-            CoinMovementRecord.insert(
-                txHash = "xyz-2",
-                fromAddress = "fromAddress",
-                fromAddressBankUuid = null,
-                toAddress = "toAddress",
-                toAddressBankUuid = null,
-                blockHeight = 0,
-                blockTime = OffsetDateTime.now(),
-                amount = "100",
-                denom = "coin",
-                type = "MINT",
-            )
-        }
-
-        Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
-        Assertions.assertArrayEquals(
-            listOf("abc-0", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
-            transaction { CoinMovementRecord.all().toList() }.map { it._txHashV2.value }.sorted().toTypedArray(),
-        )
-        Assertions.assertArrayEquals(
-            listOf("abc", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
-            transaction { CoinMovementRecord.all().toList() }.toOutput().transactions.map { it.txId }.sorted()
-                .toTypedArray(),
-        )
-    }
-
-    @Test
-    fun `event is not a transfer, tx hash, does not exist, does not persist, does not process`() {
-        val txHash = randomTxHash()
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            burns = listOf(
-                Burn(
-                    contractAddress = TEST_ADDRESS,
-                    denom = "dummyDenom",
-                    amount = DEFAULT_AMOUNT.toString(),
-                    memberId = TEST_ADDRESS,
-                    height = 1L,
-                    txHash = txHash
+            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
+                .thenReturn(
+                    Attribute.newBuilder()
+                        .setName(bankClientProperties.kycTagName)
+                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
+                        .build()
                 )
-            ),
-            mints = listOf(),
-            redemptions = listOf(),
-            transfers = listOf()
-        )
 
-        verify(pbcServiceMock, never()).getTransaction(any())
+            mockkStatic(RpcClient::fetchBlock)
+            every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
-            Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
+            )
+
+            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
         }
-    }
 
-    @Test
-    fun `transfer hash exists, does not persist, does not process`() {
-        val txHash = randomTxHash()
-        val transfer = insertMarkerTransfer(txHash, denom = serviceProperties.dccDenom)
-        insertTxStatus(transfer.id.value, txHash, TxType.TRANSFER_CONTRACT, TxStatus.COMPLETE)
-        val transferEvent = getTransferEvent(txHash, denom = serviceProperties.dccDenom)
-        val txResponseSuccess = getDefaultTransactionResponse(txHash)
+        @Test
+        fun `coinMovement - block reentry is ignored`() {
+            val blockTime = OffsetDateTime.now()
+            val blockResponse = BlockResponse(
+                block = Block(
+                    header = BlockHeader(0, blockTime.toString()),
+                    data = BlockData(emptyList()),
+                ),
+                blockId = BlockId("", PartSetHeader(0, ""))
+            )
 
-        whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
+            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
+                .thenReturn(
+                    Attribute.newBuilder()
+                        .setName(bankClientProperties.kycTagName)
+                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
+                        .build()
+                )
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(transferEvent),
-            mints = listOf(),
-            burns = listOf(),
-            redemptions = listOf()
-        )
+            mockkStatic(RpcClient::fetchBlock)
+            every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
-        verify(pbcServiceMock, never()).getTransaction(any())
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
+            )
 
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 1)
-            Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 1)
+            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
+            )
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
+            )
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(mint),
+                burns = listOf(burn),
+                transfers = listOf(transfer),
+            )
+
+            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
         }
-    }
 
-    @Test
-    fun `recipient is not the member bank instance, does not persist, does not process`() {
-        val txHash = randomTxHash()
-        val transfer = getTransferEvent(txHash, "invalidrecipient", denom = serviceProperties.dccDenom)
+        @Test
+        fun `coinMovement - batched messages in one tx are persisted`() {
+            val blockTime = OffsetDateTime.now()
+            val blockResponse = BlockResponse(
+                block = Block(
+                    header = BlockHeader(0, blockTime.toString()),
+                    data = BlockData(emptyList()),
+                ),
+                blockId = BlockId("", PartSetHeader(0, ""))
+            )
 
-        whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
+            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
+                .thenReturn(
+                    Attribute.newBuilder()
+                        .setName(bankClientProperties.kycTagName)
+                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
+                        .build()
+                )
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(transfer),
-            mints = listOf(),
-            burns = listOf(),
-            redemptions = listOf()
-        )
+            mockkStatic(RpcClient::fetchBlock)
+            every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
-        verify(pbcServiceMock, never()).getTransaction(any())
+            eventStreamConsumer.handleCoinMovementEvents(
+                blockHeight = blockResponse.block.header.height,
+                mints = listOf(
+                    getMintEvent(
+                        txHash = "tx1",
+                        dccDenom = serviceProperties.dccDenom,
+                        bankDenom = bankClientProperties.denom
+                    )
+                ),
+                burns = listOf(
+                    getTransferEvent(
+                        txHash = "tx1",
+                        toAddress = TEST_MEMBER_ADDRESS,
+                        denom = serviceProperties.dccDenom
+                    )
+                ),
+                transfers = listOf(
+                    getMarkerTransferEvent(
+                        txHash = "tx1",
+                        toAddress = TEST_MEMBER_ADDRESS,
+                        denom = bankClientProperties.denom
+                    )
+                ),
+            )
 
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
-            Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
-        }
-    }
-
-    @Test
-    fun `recipient is the member bank instance, denom is not valid, does not persist, does not process`() {
-        val txHash = randomTxHash()
-        val transfer = getTransferEvent(txHash, denom = "invaliddenom")
-
-        whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
-
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(transfer),
-            mints = listOf(),
-            burns = listOf(),
-            redemptions = listOf()
-        )
-
-        verify(pbcServiceMock, never()).getTransaction(any())
-
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
-            Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
-        }
-    }
-
-    @Test
-    fun `valid transfer persists, processes`() {
-        val txHash = randomTxHash()
-        val transfer = getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
-
-        whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
-        val txResponseSuccess = getDefaultTransactionResponse(txHash)
-        whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
-
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(transfer),
-            mints = listOf(),
-            burns = listOf(),
-            redemptions = listOf()
-        )
-
-        verify(pbcServiceMock).getTransaction(txHash)
-
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
             Assertions.assertEquals(
-                MarkerTransferRecord.find {
-                    (MTT.txHash eq txHash) and (MTT.status eq MarkerTransferStatus.INSERTED)
-                }.count(),
-                1
+                listOf("tx1-0", "tx1-1", "tx1-2"),
+                transaction { CoinMovementRecord.all().toList() }.map { it.txHash() }.sorted(),
+            )
+        }
+
+        @Test
+        fun `coinMovement - check v1 vs v2 output`() {
+            insertCoinMovement(txHash = "abc-0", denom = serviceProperties.dccDenom)
+
+            transaction {
+                CoinMovementTable.update { it[legacyTxHash] = "abc" }
+            }
+
+            insertCoinMovement(txHash = "abc-0", denom = serviceProperties.dccDenom)
+            insertCoinMovement(txHash = "xyz-0", denom = serviceProperties.dccDenom)
+            insertCoinMovement(txHash = "xyz-0", denom = serviceProperties.dccDenom)
+            insertCoinMovement(txHash = "xyz-1", denom = serviceProperties.dccDenom)
+            insertCoinMovement(txHash = "xyz-2", denom = serviceProperties.dccDenom)
+
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertArrayEquals(
+                listOf("abc-0", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
+                transaction { CoinMovementRecord.all().toList() }.map { it._txHashV2.value }.sorted().toTypedArray(),
+            )
+            Assertions.assertArrayEquals(
+                listOf("abc", "xyz-0", "xyz-1", "xyz-2").toTypedArray(),
+                transaction { CoinMovementRecord.all().toList() }.toOutput().transactions.map { it.txId }.sorted()
+                    .toTypedArray(),
             )
         }
     }
 
-    @Test
-    fun `tx failed, don't persist transfer`() {
-        val txHash = randomTxHash()
-        val transfer =
-            getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
-        val txResponseFail = getErrorTransactionResponse(txHash)
+    @Nested
+    inner class MarkerTransferEvents {
+        @Test
+        fun `event is not a transfer, tx hash, does not exist, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                burns = listOf(
+                    Burn(
+                        contractAddress = TEST_ADDRESS,
+                        denom = "dummyDenom",
+                        amount = DEFAULT_AMOUNT.toString(),
+                        memberId = TEST_ADDRESS,
+                        height = 1L,
+                        txHash = txHash
+                    )
+                ),
+                mints = listOf(),
+                redemptions = listOf(),
+                transfers = listOf()
+            )
 
-        whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
-        whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseFail)
+            verify(pbcServiceMock, never()).getTransaction(any())
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(transfer),
-            mints = listOf(),
-            burns = listOf(),
-            redemptions = listOf()
-        )
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+            }
+        }
 
-        verify(pbcServiceMock).getTransaction(txHash)
-        transaction {
-            Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
-            Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+        @Test
+        fun `transfer hash exists, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            val transfer = insertMarkerTransfer(txHash, denom = serviceProperties.dccDenom)
+            insertTxStatus(transfer.id.value, txHash, TxType.TRANSFER_CONTRACT, TxStatus.COMPLETE)
+            val transferEvent = getTransferEvent(txHash, denom = serviceProperties.dccDenom)
+            val txResponseSuccess = getDefaultTransactionResponse(txHash)
+
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(transferEvent),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf()
+            )
+
+            verify(pbcServiceMock, never()).getTransaction(any())
+
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 1)
+                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 1)
+            }
+        }
+
+        @Test
+        fun `recipient is not the member bank instance, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            val transfer = getTransferEvent(txHash, "invalidrecipient", denom = serviceProperties.dccDenom)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(transfer),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf()
+            )
+
+            verify(pbcServiceMock, never()).getTransaction(any())
+
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+            }
+        }
+
+        @Test
+        fun `recipient is the member bank instance, denom is not valid, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            val transfer = getTransferEvent(txHash, denom = "invaliddenom")
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(transfer),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf()
+            )
+
+            verify(pbcServiceMock, never()).getTransaction(any())
+
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+            }
+        }
+
+        @Test
+        fun `valid transfer persists, processes`() {
+            val txHash = randomTxHash()
+            val transfer = getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
+
+            val txResponseSuccess = getDefaultTransactionResponse(txHash)
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(transfer),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf()
+            )
+
+            verify(pbcServiceMock).getTransaction(txHash)
+
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+                Assertions.assertEquals(
+                    MarkerTransferRecord.find {
+                        (MTT.txHash eq txHash) and (MTT.status eq MarkerTransferStatus.INSERTED)
+                    }.count(),
+                    1
+                )
+            }
+        }
+
+        @Test
+        fun `tx failed, don't persist transfer`() {
+            val txHash = randomTxHash()
+            val transfer =
+                getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
+            val txResponseFail = getErrorTransactionResponse(txHash)
+
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseFail)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(transfer),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf()
+            )
+
+            verify(pbcServiceMock).getTransaction(txHash)
+            transaction {
+                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
+                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
+            }
         }
     }
 
-    @Test
-    fun `tx status exists and is complete already`() {
-        val txHash = randomTxHash()
-        insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.COMPLETE)
-        val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
+    @Nested
+    inner class AllOtherEvents {
+        @Test
+        fun `tx status exists and is complete already`() {
+            val txHash = randomTxHash()
+            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.COMPLETE)
+            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(),
-            mints = listOf(),
-            burns = listOf(burn),
-            redemptions = listOf()
-        )
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(burn),
+                redemptions = listOf()
+            )
 
-        verify(pbcServiceMock, never()).getTransaction(txHash)
+            verify(pbcServiceMock, never()).getTransaction(txHash)
 
-        transaction {
-            val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-            Assertions.assertNotNull(newStatus)
-            Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
+            transaction {
+                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
+                Assertions.assertNotNull(newStatus)
+                Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
+            }
         }
-    }
 
-    @Test
-    fun `tx status exists as error, should not update status`() {
-        val txHash = randomTxHash()
-        insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.ERROR)
-        val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
+        @Test
+        fun `tx status exists as error, should not update status`() {
+            val txHash = randomTxHash()
+            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.ERROR)
+            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(),
-            mints = listOf(),
-            burns = listOf(burn),
-            redemptions = listOf()
-        )
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(burn),
+                redemptions = listOf()
+            )
 
-        verify(pbcServiceMock, never()).getTransaction(txHash)
+            verify(pbcServiceMock, never()).getTransaction(txHash)
 
-        transaction {
-            val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-            Assertions.assertNotNull(newStatus)
-            Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            transaction {
+                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
+                Assertions.assertNotNull(newStatus)
+                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            }
         }
-    }
 
-    @Test
-    fun `tx status exists, blockchain response does not exist, should update to error`() {
-        val txHash = randomTxHash()
-        insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-        val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
+        @Test
+        fun `tx status exists, blockchain response does not exist, should update to error`() {
+            val txHash = randomTxHash()
+            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
+            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
 
-        whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(null)
+            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(null)
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(),
-            mints = listOf(),
-            burns = listOf(burn),
-            redemptions = listOf()
-        )
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(burn),
+                redemptions = listOf()
+            )
 
-        verify(pbcServiceMock).getTransaction(txHash)
+            verify(pbcServiceMock).getTransaction(txHash)
 
-        transaction {
-            val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-            Assertions.assertNotNull(newStatus)
-            Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            transaction {
+                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
+                Assertions.assertNotNull(newStatus)
+                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            }
         }
-    }
 
-    @Test
-    fun `tx status exists, blockchain response is error, should update to error`() {
-        val txHash = randomTxHash()
-        insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-        val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-        val txResponse = getErrorTransactionResponse(txHash)
+        @Test
+        fun `tx status exists, blockchain response is error, should update to error`() {
+            val txHash = randomTxHash()
+            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
+            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
+            val txResponse = getErrorTransactionResponse(txHash)
 
-        whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
+            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(),
-            mints = listOf(),
-            burns = listOf(burn),
-            redemptions = listOf()
-        )
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(burn),
+                redemptions = listOf()
+            )
 
-        verify(pbcServiceMock).getTransaction(txHash)
+            verify(pbcServiceMock).getTransaction(txHash)
 
-        transaction {
-            val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-            Assertions.assertNotNull(newStatus)
-            Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            transaction {
+                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
+                Assertions.assertNotNull(newStatus)
+                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
+            }
         }
-    }
 
-    @Test
-    fun `tx status exists, blockchain response is not error, should update to complete`() {
-        val txHash = randomTxHash()
-        insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-        val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-        val txResponse = getDefaultTransactionResponse(txHash)
+        @Test
+        fun `tx status exists, blockchain response is not error, should update to complete`() {
+            val txHash = randomTxHash()
+            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
+            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
+            val txResponse = getDefaultTransactionResponse(txHash)
 
-        whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
+            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
 
-        eventStreamConsumer.handleEvents(
-            blockHeight = 50,
-            transfers = listOf(),
-            mints = listOf(),
-            burns = listOf(burn),
-            redemptions = listOf()
-        )
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(burn),
+                redemptions = listOf()
+            )
 
-        verify(pbcServiceMock).getTransaction(txHash)
+            verify(pbcServiceMock).getTransaction(txHash)
 
-        transaction {
-            val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-            Assertions.assertNotNull(newStatus)
-            Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
+            transaction {
+                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
+                Assertions.assertNotNull(newStatus)
+                Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
+            }
         }
     }
 }
