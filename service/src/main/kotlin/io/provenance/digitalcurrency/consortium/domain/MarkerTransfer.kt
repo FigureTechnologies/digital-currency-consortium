@@ -18,18 +18,17 @@ object MarkerTransferTable : BaseRequestTable(name = "marker_transfer") {
 
 open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
     fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
-        MarkerTransferTable.upsertDoNothing("unique_tfr_txhash") {
-            it[id] = UUID.randomUUID()
-            it[this.fromAddress] = fromAddress
-            it[this.toAddress] = toAddress
-            it[this.coinAmount] = amount.toLong()
-            it[this.fiatAmount] = amount.toBigInteger().toUSDAmount()
-            it[this.denom] = denom
-            it[this.height] = height
-            it[this.txHash] = txHash
-            it[this.status] = MarkerTransferStatus.INSERTED
-            it[this.created] = OffsetDateTime.now()
-            it[this.updated] = OffsetDateTime.now()
+        new(UUID.randomUUID()) {
+            this.fromAddress = fromAddress
+            this.toAddress = toAddress
+            this.coinAmount = amount.toLong()
+            fiatAmount = amount.toBigInteger().toUSDAmount()
+            this.denom = denom
+            this.height = height
+            this.txHash = txHash
+            this.status = MarkerTransferStatus.INSERTED
+            this.created = OffsetDateTime.now()
+            this.updated = OffsetDateTime.now()
         }
 
     fun updateStatus(uuid: UUID, newStatus: MarkerTransferStatus) =
