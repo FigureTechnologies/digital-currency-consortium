@@ -1,13 +1,23 @@
 # Digital Currency Consortium (DCC) Smart Contact
 
-## Blockchain Setup
+This contract manages a consortium of banks that control the supply of a stablecoin marker on the
+provenance blockchain.
 
-Checkout provenance v1.7.0, clear all existing state, install the `provenanced` command,
-and start a 4-node localnet.
+## Assumptions
+
+This README assumes you are familiar with writing and deploying smart contract to the
+[provenance](https://docs.provenance.io/) blockchain.
+See the `provwasm` [tutorial](https://github.com/provenance-io/provwasm/blob/main/docs/tutorial/01-overview.md)
+for details.
+
+## Blockchain Quickstart
+
+Checkout provenance v1.7.2, clear all existing state, install the `provenanced` command, and start
+a 4-node localnet.
 
 ```bash
-git checkout v1.7.0
-make clean
+git clone https://github.com/provenance-io/provenance.git
+cd provenance && git checkout v1.7.2
 make install
 make localnet-start
 ```
@@ -288,7 +298,78 @@ provenanced tx wasm instantiate 1 '{"dcc_denom":"usdf.local","quorum_pct":"0.01"
     --testnet | jq
 ```
 
-At this point, we have an empty consortium. We can now start adding members.
+At this point, we have an empty consortium.
+
+## AuthZ Grants
+
+Before we proceed, we need to add grants so the DCC smart contract has permission move restricted
+marker tokens out of user/bank accounts.
+
+Grant for bank 1
+
+```bash
+provenanced tx authz grant \
+    tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+    authorization_type="send" \
+    --from bank1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Grant for bank 2
+
+```bash
+provenanced tx authz grant \
+    tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+    authorization_type="send" \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Grant for user 1
+
+```bash
+provenanced tx authz grant \
+    tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+    authorization_type="send" \
+    --from user1 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+Grant for user 2
+
+```bash
+provenanced tx authz grant \
+    tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x8kskz \
+    authorization_type="send" \
+    --from user2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet | jq
+```
+
+With grants in place, we can now start adding members to the consortium.
 
 ## Bootstrap the Consortium
 
