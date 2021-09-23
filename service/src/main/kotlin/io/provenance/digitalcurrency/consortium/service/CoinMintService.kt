@@ -51,10 +51,7 @@ class CoinMintService(
         if (completedEvent != null) {
             log.info("Completing mint/swap contract by notifying bank")
             try {
-                val response = bankClient.completeMint(coinMintRecord.id.value)
-
-                // TODO this isn't erroring if the bank middleware isn't running
-                log.info("response $response")
+                bankClient.completeMint(coinMintRecord.id.value)
                 CoinMintRecord.updateStatus(coinMintRecord.id.value, CoinMintStatus.COMPLETE)
             } catch (e: Exception) {
                 log.error("updating mint status at bank failed; it will retry.", e)

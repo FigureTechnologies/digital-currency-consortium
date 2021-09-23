@@ -4,12 +4,19 @@ import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
+import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
+import io.provenance.digitalcurrency.consortium.domain.MINT
+import io.provenance.digitalcurrency.consortium.domain.MTT
+import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
+import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
+import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
@@ -21,9 +28,11 @@ abstract class DatabaseTest {
     fun afterEach() {
         transaction {
             CMT.deleteAll()
+            CoinMovementTable.deleteAll()
             CRT.deleteAll()
             TST.deleteAll()
             ART.deleteAll()
+            MTT.deleteAll()
         }
     }
 
@@ -53,5 +62,39 @@ abstract class DatabaseTest {
                 it.status = txStatus
                 it.created = created!!
             }
+        }
+
+    fun insertMarkerTransfer(
+        txHash: String,
+        toAddress: String = TEST_ADDRESS,
+        denom: String
+    ): MarkerTransferRecord =
+        transaction {
+            MarkerTransferRecord.new(UUID.randomUUID()) {
+                this.fromAddress = TEST_ADDRESS
+                this.toAddress = toAddress
+                this.denom = denom
+                this.coinAmount = DEFAULT_AMOUNT.toLong()
+                this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
+                this.height = 50L
+                this.txHash = txHash
+                this.status = MarkerTransferStatus.INSERTED
+                this.created = OffsetDateTime.now()
+                this.updated = OffsetDateTime.now()
+            }
+        }
+
+    fun insertCoinMovement(txHash: String, denom: String, type: String = MINT) =
+        transaction {
+            CoinMovementRecord.insert(
+                txHash = txHash,
+                fromAddress = "fromAddress",
+                toAddress = "toAddress",
+                blockHeight = 50,
+                amount = DEFAULT_AMOUNT.toString(),
+                blockTime = OffsetDateTime.now(),
+                denom = denom,
+                type = type
+            )
         }
 }

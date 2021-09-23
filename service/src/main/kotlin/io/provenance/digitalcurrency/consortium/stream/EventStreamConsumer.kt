@@ -208,7 +208,7 @@ class EventStreamConsumer(
         }
     }
 
-    protected fun handleEvents(
+    fun handleEvents(
         blockHeight: Long,
         mints: Mints,
         burns: Burns,
