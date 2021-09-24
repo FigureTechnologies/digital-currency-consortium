@@ -3,7 +3,7 @@ package io.provenance.digitalcurrency.consortium.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.ByteString
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
-import cosmwasm.wasm.v1beta1.Tx
+import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
