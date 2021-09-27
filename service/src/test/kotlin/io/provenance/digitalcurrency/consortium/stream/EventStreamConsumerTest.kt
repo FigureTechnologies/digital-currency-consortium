@@ -4,11 +4,10 @@ import com.google.protobuf.ByteString
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.provenance.attribute.v1.Attribute
+import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
-import io.provenance.digitalcurrency.consortium.DatabaseTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
-import io.provenance.digitalcurrency.consortium.TestContainer
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
@@ -56,8 +55,7 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import java.time.OffsetDateTime
 import java.util.UUID
 
-@TestContainer
-class EventStreamConsumerTest : DatabaseTest() {
+class EventStreamConsumerTest : BaseIntegrationTest() {
     @Autowired
     private lateinit var eventStreamProperties: EventStreamProperties
 
@@ -73,7 +71,7 @@ class EventStreamConsumerTest : DatabaseTest() {
     @MockBean
     lateinit var eventStreamFactory: EventStreamFactory
 
-    @MockBean
+    @Autowired
     lateinit var pbcServiceMock: PbcService
 
     @MockBean

@@ -1,7 +1,6 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import io.provenance.digitalcurrency.consortium.DatabaseTest
-import io.provenance.digitalcurrency.consortium.TestContainer
+import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
 import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -20,14 +19,13 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.reset
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.beans.factory.annotation.Autowired
 import java.time.OffsetDateTime
 
-@TestContainer
-class ExpiredEventReaperTest : DatabaseTest() {
+class ExpiredEventReaperTest : BaseIntegrationTest() {
     private lateinit var expiredEventReaper: ExpiredEventReaper
 
-    @MockBean
+    @Autowired
     lateinit var pbcService: PbcService
 
     @BeforeAll

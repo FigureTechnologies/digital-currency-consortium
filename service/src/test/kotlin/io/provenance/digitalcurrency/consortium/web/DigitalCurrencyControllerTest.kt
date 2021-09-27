@@ -24,7 +24,6 @@ import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.boot.test.mock.mockito.SpyBean
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.http.HttpEntity
@@ -34,7 +33,7 @@ import java.math.BigDecimal
 import java.util.UUID
 
 class DigitalCurrencyControllerTest : BaseIntegrationTest() {
-    @MockBean
+    @Autowired
     lateinit var pbcService: PbcService
 
     @Autowired

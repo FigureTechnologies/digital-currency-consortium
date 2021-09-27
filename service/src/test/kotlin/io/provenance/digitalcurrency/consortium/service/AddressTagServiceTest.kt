@@ -2,9 +2,8 @@ package io.provenance.digitalcurrency.consortium.service
 
 import com.google.protobuf.ByteString
 import io.provenance.attribute.v1.Attribute
-import io.provenance.digitalcurrency.consortium.DatabaseTest
+import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
-import io.provenance.digitalcurrency.consortium.TestContainer
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
@@ -25,18 +24,16 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.mock.mockito.MockBean
 import java.util.UUID
 
-@TestContainer
-class AddressTagServiceTest : DatabaseTest() {
+class AddressTagServiceTest : BaseIntegrationTest() {
 
     private lateinit var addressTagService: AddressTagService
 
     @Autowired
     lateinit var bankClientProperties: BankClientProperties
 
-    @MockBean
+    @Autowired
     lateinit var pbcService: PbcService
 
     @BeforeAll

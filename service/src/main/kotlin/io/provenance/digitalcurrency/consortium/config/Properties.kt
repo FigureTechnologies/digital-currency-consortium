@@ -86,7 +86,10 @@ class CoinMovementProperties(
 class BalanceReportProperties(
     val pageSize: String,
     val pollingDelayMs: String,
-    val addressesWhitelist: String,
+    addressesWhitelist: String,
 ) {
-    val addresses: List<String> = addressesWhitelist.split(",")
+    val addresses: List<String> = when (addressesWhitelist.isBlank()) {
+        true -> listOf()
+        false -> addressesWhitelist.split(",")
+    }
 }

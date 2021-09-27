@@ -24,7 +24,7 @@ class BalanceReportOutcome(
 @Component
 class BalanceReportQueue(
     balanceReportProperties: BalanceReportProperties,
-    serviceProperties: ServiceProperties,
+    private val serviceProperties: ServiceProperties,
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
 ) : ActorModel<BalanceReportDirective, BalanceReportOutcome> {
@@ -62,7 +62,7 @@ class BalanceReportQueue(
                     address = address,
                     denom = denom,
                     // TODO - retryable?
-                    amount = pbcService.getCoinBalance(address)
+                    amount = pbcService.getCoinBalance(address, serviceProperties.dccDenom)
                 )
             }
 
