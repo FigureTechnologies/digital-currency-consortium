@@ -2,6 +2,8 @@ package io.provenance.digitalcurrency.consortium
 
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
+import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
 import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
@@ -33,6 +35,8 @@ abstract class DatabaseTest {
             TST.deleteAll()
             ART.deleteAll()
             MTT.deleteAll()
+            BalanceEntryTable.deleteAll()
+            BalanceReportTable.deleteAll()
         }
     }
 
