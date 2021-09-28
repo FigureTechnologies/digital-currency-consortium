@@ -41,14 +41,13 @@ class MigrationQueue(
         }
 
     override fun processMessage(message: MigrationDirective): MigrationOutcome {
-        transaction {
-            val migration = MigrationRecord.findForUpdate(message.id).first()
-            if (migration.sent != null)
-                return@transaction // already processed
+        val migration = transaction { MigrationRecord.findForUpdate(message.id).first() }
 
+        if (migration.sent == null) {
             bankClient.persistAlert(migration.toAlertRequest())
-
-            migration.markSent()
+            transaction {
+                migration.markSent()
+            }
         }
 
         return MigrationOutcome(message.id)
