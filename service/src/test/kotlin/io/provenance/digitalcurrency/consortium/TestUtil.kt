@@ -5,6 +5,7 @@ import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
 import io.provenance.digitalcurrency.consortium.stream.Burn
 import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
+import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
@@ -78,6 +79,14 @@ fun getPendingTransactionResponse(txHash: String): ServiceOuterClass.GetTxRespon
                 .setCode(0)
                 .build()
         ).build()
+
+fun getMigrationEvent(txHash: String = randomTxHash()) =
+    Migration(
+        contractAddress = TEST_MEMBER_ADDRESS,
+        codeId = "2",
+        height = 50,
+        txHash = txHash
+    )
 
 fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
     Transfer(

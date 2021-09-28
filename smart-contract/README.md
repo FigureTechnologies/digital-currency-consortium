@@ -2,11 +2,11 @@
 
 ## Blockchain Setup
 
-Checkout provenance v1.7.0, clear all existing state, install the `provenanced` command,
+Checkout provenance v1.7.2, clear all existing state, install the `provenanced` command,
 and start a 4-node localnet.
 
 ```bash
-git checkout v1.7.0
+git checkout v1.7.2
 make clean
 make install
 make localnet-start
@@ -102,7 +102,7 @@ provenanced tx bank send \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 ```bash
@@ -117,7 +117,7 @@ provenanced tx bank send \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 ```bash
@@ -132,7 +132,7 @@ provenanced tx bank send \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 ```bash
@@ -147,7 +147,7 @@ provenanced tx bank send \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 ## KYC Attributes
@@ -167,7 +167,7 @@ provenanced tx name bind \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Add the restricted name: `bank1.kyc.pb`.
@@ -184,7 +184,7 @@ provenanced tx name bind \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Add the restricted name: `bank2.kyc.pb`.
@@ -201,7 +201,7 @@ provenanced tx name bind \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Add a `bank1.kyc.pb` attribute to the `user1` account. This simulates `user1` going through the
@@ -220,7 +220,7 @@ provenanced tx attribute add \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Add a `bank2.kyc.pb`attribute to the `user2` account. This simulates `user2` going through the
@@ -239,7 +239,7 @@ provenanced tx attribute add \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 NOTE: The attribute value/type doesn't matter to the smart contract. It only checks for the
@@ -252,8 +252,6 @@ to the provenance root dir (ie where the localnet was started from).
 
 ```bash
 provenanced tx wasm store dcc.wasm \
-    --source "https://github.com/provenance-io/digital-currency-consortium/tree/main/smart-contract" \
-    --builder "cosmwasm/rust-optimizer:0.12.1" \
     --instantiate-only-address $(provenanced keys show -a node0 --keyring-backend test --home build/node0 --testnet) \
     --from node0 \
     --keyring-backend test \
@@ -262,7 +260,7 @@ provenanced tx wasm store dcc.wasm \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 ## Instantiate the Consortium
@@ -285,7 +283,7 @@ provenanced tx wasm instantiate 1 '{"dcc_denom":"usdf.local","quorum_pct":"0.01"
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 At this point, we have an empty consortium. We can now start adding members.
@@ -308,7 +306,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Query the join proposals to get the proposal id to vote on
@@ -318,7 +316,7 @@ provenanced query wasm contract-state smart tp18vd8fpwxzck93qlwghaj6arh4p7c5n89x
    '{"get_join_proposals": {}}' \
    --ascii \
    -o json \
-   --chain-id chain-local -t | jq
+   --chain-id chain-local -t
 ```
 
 Vote 'yes' as the admin user.
@@ -334,7 +332,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Accept membership as `bank1` (without minting any bank tokens).
@@ -350,7 +348,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 There is now a single voting member in the consortium.
@@ -370,7 +368,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Vote 'yes' as the existing member, `bank1`.
@@ -386,7 +384,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Accept membership as `bank2`
@@ -402,7 +400,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 Query to get the members' state.
@@ -431,7 +429,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 NOTE: you can get the address for `user1` with the following command:
@@ -492,7 +490,7 @@ provenanced tx wasm execute \
     --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
-    --testnet | jq
+    --testnet
 ```
 
 NOTE: you can get the address for `user2` with the following command:
