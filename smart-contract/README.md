@@ -262,8 +262,6 @@ to the provenance root dir (ie where the localnet was started from).
 
 ```bash
 provenanced tx wasm store dcc.wasm \
-    --source "https://github.com/provenance-io/digital-currency-consortium/tree/main/smart-contract" \
-    --builder "cosmwasm/rust-optimizer:0.12.1" \
     --instantiate-only-address $(provenanced keys show -a node0 --keyring-backend test --home build/node0 --testnet) \
     --from node0 \
     --keyring-backend test \
