@@ -295,8 +295,7 @@ fn try_accept(
         return Err(contract_err("no membership quorum"));
     }
 
-    // In the current form, it *might* be possible for a member to vote multiple times in the smame
-    // block. For now, block membership if duplicate votes are detected in the join proposal.
+    // Block membership if duplicate votes are detected in the join proposal.
     let mut votes = proposal.voters.clone();
     votes.sort();
     votes.dedup();
