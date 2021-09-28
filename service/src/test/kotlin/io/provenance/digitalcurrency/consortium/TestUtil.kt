@@ -82,7 +82,6 @@ fun getPendingTransactionResponse(txHash: String): ServiceOuterClass.GetTxRespon
 
 fun getMigrationEvent(txHash: String = randomTxHash()) =
     Migration(
-        contractAddress = TEST_MEMBER_ADDRESS,
         codeId = "2",
         height = 50,
         txHash = txHash
@@ -90,7 +89,6 @@ fun getMigrationEvent(txHash: String = randomTxHash()) =
 
 fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
     Transfer(
-        contractAddress = TEST_MEMBER_ADDRESS,
         amount = DEFAULT_AMOUNT.toString(),
         denom = denom,
         sender = TEST_ADDRESS,
@@ -101,7 +99,6 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
 
 fun getBurnEvent(txHash: String = randomTxHash(), denom: String) =
     Burn(
-        contractAddress = TEST_MEMBER_ADDRESS,
         amount = DEFAULT_AMOUNT.toString(),
         denom = denom,
         memberId = TEST_MEMBER_ADDRESS,

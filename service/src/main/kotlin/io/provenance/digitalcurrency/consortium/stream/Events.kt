@@ -101,7 +101,6 @@ fun EventBatch.burns(contractAddress: String): Burns =
 typealias Burns = List<Burn>
 
 data class Burn(
-    val contractAddress: String,
     val amount: String,
     val denom: String,
     val memberId: String,
@@ -111,7 +110,6 @@ data class Burn(
 
 private fun StreamEvent.toBurn(): Burn =
     Burn(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
@@ -132,7 +130,6 @@ fun EventBatch.redemptions(contractAddress: String): Redemptions =
 typealias Redemptions = List<Redemption>
 
 data class Redemption(
-    val contractAddress: String,
     val amount: String,
     val reserveDenom: String,
     val memberId: String,
@@ -142,7 +139,6 @@ data class Redemption(
 
 private fun StreamEvent.toRedemption(): Redemption =
     Redemption(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         reserveDenom = getAttribute(ATTRIBUTE_RESERVE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
@@ -163,7 +159,6 @@ fun EventBatch.transfers(contractAddress: String): Transfers =
 typealias Transfers = List<Transfer>
 
 data class Transfer(
-    val contractAddress: String,
     val amount: String,
     val denom: String,
     val sender: String,
@@ -174,7 +169,6 @@ data class Transfer(
 
 private fun StreamEvent.toTransfer(): Transfer =
     Transfer(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         sender = getAttribute(ATTRIBUTE_SENDER),
@@ -194,7 +188,6 @@ fun EventBatch.migrations(contractAddress: String): Migrations =
 typealias Migrations = List<Migration>
 
 data class Migration(
-    val contractAddress: String,
     val codeId: String,
     val height: Long,
     val txHash: String
@@ -202,7 +195,6 @@ data class Migration(
 
 private fun StreamEvent.toMigration(): Migration =
     Migration(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         codeId = getAttribute(ATTRIBUTE_CODE_ID),
         height = height,
         txHash = txHash
