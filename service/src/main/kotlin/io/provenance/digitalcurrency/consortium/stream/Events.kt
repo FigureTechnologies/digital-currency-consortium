@@ -2,8 +2,7 @@ package io.provenance.digitalcurrency.consortium.stream
 
 private const val ATTRIBUTE_ACTION = "action"
 private const val ATTRIBUTE_CODE_ID = "code_id"
-private const val ATTRIBUTE_CONTRACT_ADDRESS = "contract_address"
-private const val ATTRIBUTE_CONTRACT_ADDRESS_CURRENT = "_contract_address"
+private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
 private const val ATTRIBUTE_FROM = "from_address"
