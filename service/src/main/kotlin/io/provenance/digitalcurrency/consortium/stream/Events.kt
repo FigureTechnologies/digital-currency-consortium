@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.stream
 
 private const val ATTRIBUTE_ACTION = "action"
-private const val ATTRIBUTE_CONTRACT_ADDRESS = "contract_address"
+private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
 private const val ATTRIBUTE_FROM = "from_address"
@@ -98,7 +98,6 @@ fun EventBatch.burns(contractAddress: String): Burns =
 typealias Burns = List<Burn>
 
 data class Burn(
-    val contractAddress: String,
     val amount: String,
     val denom: String,
     val memberId: String,
@@ -108,7 +107,6 @@ data class Burn(
 
 private fun StreamEvent.toBurn(): Burn =
     Burn(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
@@ -129,7 +127,6 @@ fun EventBatch.redemptions(contractAddress: String): Redemptions =
 typealias Redemptions = List<Redemption>
 
 data class Redemption(
-    val contractAddress: String,
     val amount: String,
     val reserveDenom: String,
     val memberId: String,
@@ -139,7 +136,6 @@ data class Redemption(
 
 private fun StreamEvent.toRedemption(): Redemption =
     Redemption(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         reserveDenom = getAttribute(ATTRIBUTE_RESERVE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
@@ -160,7 +156,6 @@ fun EventBatch.transfers(contractAddress: String): Transfers =
 typealias Transfers = List<Transfer>
 
 data class Transfer(
-    val contractAddress: String,
     val amount: String,
     val denom: String,
     val sender: String,
@@ -171,7 +166,6 @@ data class Transfer(
 
 private fun StreamEvent.toTransfer(): Transfer =
     Transfer(
-        contractAddress = getAttribute(ATTRIBUTE_CONTRACT_ADDRESS),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         sender = getAttribute(ATTRIBUTE_SENDER),

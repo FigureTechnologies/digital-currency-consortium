@@ -320,7 +320,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockHeight = 50,
                 burns = listOf(
                     Burn(
-                        contractAddress = TEST_ADDRESS,
                         denom = "dummyDenom",
                         amount = DEFAULT_AMOUNT.toString(),
                         memberId = TEST_ADDRESS,
