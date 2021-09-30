@@ -179,7 +179,7 @@ private fun StreamEvent.toTransfer(): Transfer =
 fun EventBatch.migrations(contractAddress: String): Migrations =
     events
         .filter { event ->
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS_CURRENT)
+            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == MIGRATE_EVENT &&
                 contractAddress == contractAddressAttr
         }.map { event -> event.toMigration() }
