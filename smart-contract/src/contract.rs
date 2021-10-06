@@ -295,6 +295,14 @@ fn try_accept(
         return Err(contract_err("no membership quorum"));
     }
 
+    // Block membership if duplicate votes are detected in the join proposal.
+    let mut votes = proposal.voters.clone();
+    votes.sort();
+    votes.dedup();
+    if votes.len() < proposal.voters.len() {
+        return Err(contract_err("membership blocked: duplicate vote(s) found"));
+    }
+
     // Calculate member vote weight.
     let weight = calculate_weight(proposal.max_supply.u128());
 
