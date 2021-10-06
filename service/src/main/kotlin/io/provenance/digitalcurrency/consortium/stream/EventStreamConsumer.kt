@@ -11,6 +11,7 @@ import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
+import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
@@ -39,7 +40,7 @@ class EventStreamConsumer(
     private val log = logger()
 
     // We're only interested in specific wasm events from pbc
-    private val eventTypes = listOf(WASM_EVENT, MARKER_TRANSFER_EVENT)
+    private val eventTypes = listOf(WASM_EVENT, MARKER_TRANSFER_EVENT, MIGRATE_EVENT)
 
     // The current event stream ID
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
@@ -64,7 +65,8 @@ class EventStreamConsumer(
                     batch.mints(provenanceProperties.contractAddress),
                     batch.burns(provenanceProperties.contractAddress),
                     batch.redemptions(provenanceProperties.contractAddress),
-                    batch.transfers(provenanceProperties.contractAddress)
+                    batch.transfers(provenanceProperties.contractAddress),
+                    batch.migrations(provenanceProperties.contractAddress)
                 )
 
                 handleCoinMovementEvents(
@@ -114,7 +116,8 @@ class EventStreamConsumer(
                 log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
 
                 // TODO (steve) implement caching
-                val toAddressBankUuid = pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val toAddressBankUuid =
+                    pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
@@ -130,7 +133,8 @@ class EventStreamConsumer(
                 log.debug("SC Transfer - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
-                val fromAddressBankUuid = pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
+                val fromAddressBankUuid =
+                    pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
@@ -147,8 +151,10 @@ class EventStreamConsumer(
                 log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
 
                 // TODO (steve) implement caching
-                val fromAddressBankUuid = pbcService.getAttributeByTagName(event.fromAddress, bankClientProperties.kycTagName)?.bankUuid()
-                val toAddressBankUuid = pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val fromAddressBankUuid =
+                    pbcService.getAttributeByTagName(event.fromAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val toAddressBankUuid =
+                    pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (toAddressBankUuid != null || fromAddressBankUuid != null) {
@@ -163,7 +169,7 @@ class EventStreamConsumer(
 
             filteredMints.forEach { wrapper ->
                 CoinMovementRecord.insert(
-                    txHash = wrapper.mint.txHash.uniqueHash(index ++),
+                    txHash = wrapper.mint.txHash.uniqueHash(index++),
                     fromAddress = wrapper.mint.memberId,
                     fromAddressBankUuid = null,
                     toAddress = wrapper.mint.withdrawAddress,
@@ -178,7 +184,7 @@ class EventStreamConsumer(
 
             filteredBurns.forEach { wrapper ->
                 CoinMovementRecord.insert(
-                    txHash = wrapper.burn.txHash.uniqueHash(index ++),
+                    txHash = wrapper.burn.txHash.uniqueHash(index++),
                     fromAddress = wrapper.burn.sender,
                     fromAddressBankUuid = wrapper.fromAddressBankUuid,
                     toAddress = wrapper.burn.recipient,
@@ -193,7 +199,7 @@ class EventStreamConsumer(
 
             filteredTransfers.forEach { wrapper ->
                 CoinMovementRecord.insert(
-                    txHash = wrapper.transfer.txHash.uniqueHash(index ++),
+                    txHash = wrapper.transfer.txHash.uniqueHash(index++),
                     fromAddress = wrapper.transfer.fromAddress,
                     fromAddressBankUuid = wrapper.fromAddressBankUuid,
                     toAddress = wrapper.transfer.toAddress,
@@ -213,67 +219,92 @@ class EventStreamConsumer(
         mints: Mints,
         burns: Burns,
         redemptions: Redemptions,
-        transfers: Transfers
+        transfers: Transfers,
+        migrations: Migrations
     ) {
         val events =
             mints.map { Triple(it.txHash, TxType.MINT_CONTRACT, it) } +
                 burns.map { Triple(it.txHash, TxType.BURN_CONTRACT, it) } +
                 redemptions.map { Triple(it.txHash, TxType.REDEEM_CONTRACT, it) } +
-                transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) }
+                transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
+                migrations.map { Triple(it.txHash, TxType.MIGRATION, it) }
 
         events.forEach { (txHash, type, event) ->
             log.info("event stream found txhash $txHash and type $type [event = {$event}]")
             val txStatusRecord = transaction { TxStatusRecord.findByTxHash(txHash) }
             if (transaction { txStatusRecord.empty() }) {
-                if (event is Transfer &&
+                if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
+                    handleMigrationEvent(txHash, event)
+                } else if (event is Transfer &&
                     event.recipient == pbcService.managerAddress &&
                     event.denom == serviceProperties.dccDenom &&
                     transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
                 ) {
-                    pbcService.getTransaction(txHash)
-                        ?.takeIf {
-                            !it.txResponse!!.isFailed()
-                        }?.let {
-                            log.info("persist received transfer for txhash $txHash")
-                            transaction {
-                                MarkerTransferRecord.insert(
-                                    fromAddress = event.sender,
-                                    toAddress = event.recipient,
-                                    denom = event.denom,
-                                    amount = event.amount,
-                                    height = event.height,
-                                    txHash = txHash
-                                )
-                            }
-                        }
+                    handleTransferEvent(txHash, event)
                 }
             } else {
                 transaction {
-                    val lockedStatusRecord = txStatusRecord.forUpdate().first()
-                    when (lockedStatusRecord.status) {
-                        TxStatus.COMPLETE -> log.warn("Tx status already complete uuid:${lockedStatusRecord.id.value}")
-                        TxStatus.ERROR -> log.error("Tx status was already error but received a complete uuid:${lockedStatusRecord.id.value}")
-                        else -> {
-                            val txResponse = pbcService.getTransaction(txHash)?.txResponse
-                            when {
-                                txResponse == null -> {
-                                    log.error("Invalid (NULL) transaction response")
-                                    lockedStatusRecord.setStatus(
-                                        TxStatus.ERROR,
-                                        "Invalid (NULL) transaction response"
-                                    )
-                                }
-                                txResponse.isFailed() -> {
-                                    log.error("Transaction failed: $txResponse")
-                                    lockedStatusRecord.setStatus(
-                                        TxStatus.ERROR,
-                                        txResponse.rawLog
-                                    )
-                                }
-                                else -> lockedStatusRecord.setStatus(TxStatus.COMPLETE)
-                            }
-                        }
+                    handleAllOtherEvents(txHash, txStatusRecord.forUpdate().first())
+                }
+            }
+        }
+    }
+
+    private fun handleMigrationEvent(txHash: String, migration: Migration) {
+        pbcService.getTransaction(txHash)
+            ?.takeIf {
+                !it.txResponse!!.isFailed()
+            }?.let {
+                transaction {
+                    MigrationRecord.insert(
+                        codeId = migration.codeId,
+                        txHash = migration.txHash
+                    )
+                }
+            }
+    }
+
+    private fun handleTransferEvent(txHash: String, transfer: Transfer) {
+        pbcService.getTransaction(txHash)
+            ?.takeIf {
+                !it.txResponse!!.isFailed()
+            }?.let {
+                log.info("persist received transfer for txhash $txHash")
+                transaction {
+                    MarkerTransferRecord.insert(
+                        fromAddress = transfer.sender,
+                        toAddress = transfer.recipient,
+                        denom = transfer.denom,
+                        amount = transfer.amount,
+                        height = transfer.height,
+                        txHash = txHash
+                    )
+                }
+            }
+    }
+
+    private fun handleAllOtherEvents(txHash: String, txStatusRecord: TxStatusRecord) {
+        when (txStatusRecord.status) {
+            TxStatus.COMPLETE -> log.warn("Tx status already complete uuid:${txStatusRecord.id.value}")
+            TxStatus.ERROR -> log.error("Tx status was already error but received a complete uuid:${txStatusRecord.id.value}")
+            else -> {
+                val txResponse = pbcService.getTransaction(txHash)?.txResponse
+                when {
+                    txResponse == null -> {
+                        log.error("Invalid (NULL) transaction response")
+                        txStatusRecord.setStatus(
+                            TxStatus.ERROR,
+                            "Invalid (NULL) transaction response"
+                        )
                     }
+                    txResponse.isFailed() -> {
+                        log.error("Transaction failed: $txResponse")
+                        txStatusRecord.setStatus(
+                            TxStatus.ERROR,
+                            txResponse.rawLog
+                        )
+                    }
+                    else -> txStatusRecord.setStatus(TxStatus.COMPLETE)
                 }
             }
         }

@@ -14,6 +14,7 @@ import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
+import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
@@ -66,6 +67,16 @@ abstract class DatabaseTest {
                 it.status = txStatus
                 it.created = created!!
             }
+        }
+
+    fun insertMigration(
+        txHash: String
+    ): MigrationRecord =
+        transaction {
+            MigrationRecord.insert(
+                codeId = "2",
+                txHash = txHash
+            )
         }
 
     fun insertMarkerTransfer(

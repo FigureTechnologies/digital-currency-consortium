@@ -1,6 +1,7 @@
 package io.provenance.digitalcurrency.consortium.stream
 
 private const val ATTRIBUTE_ACTION = "action"
+private const val ATTRIBUTE_CODE_ID = "code_id"
 private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
@@ -20,6 +21,7 @@ private const val BURN_ACTION = "burn"
 
 const val WASM_EVENT = "wasm"
 const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
+const val MIGRATE_EVENT = "migrate"
 
 private fun StreamEvent.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
@@ -170,6 +172,29 @@ private fun StreamEvent.toTransfer(): Transfer =
         denom = getAttribute(ATTRIBUTE_DENOM),
         sender = getAttribute(ATTRIBUTE_SENDER),
         recipient = getAttribute(ATTRIBUTE_RECIPIENT),
+        height = height,
+        txHash = txHash
+    )
+
+fun EventBatch.migrations(contractAddress: String): Migrations =
+    events
+        .filter { event ->
+            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+            event.eventType == MIGRATE_EVENT &&
+                contractAddress == contractAddressAttr
+        }.map { event -> event.toMigration() }
+
+typealias Migrations = List<Migration>
+
+data class Migration(
+    val codeId: String,
+    val height: Long,
+    val txHash: String
+)
+
+private fun StreamEvent.toMigration(): Migration =
+    Migration(
+        codeId = getAttribute(ATTRIBUTE_CODE_ID),
         height = height,
         txHash = txHash
     )

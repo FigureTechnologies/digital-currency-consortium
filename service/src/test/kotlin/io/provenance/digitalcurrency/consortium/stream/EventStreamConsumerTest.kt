@@ -14,9 +14,11 @@ import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
+import io.provenance.digitalcurrency.consortium.domain.MT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
+import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
@@ -27,6 +29,7 @@ import io.provenance.digitalcurrency.consortium.getBurnEvent
 import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
 import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
 import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
+import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
@@ -312,6 +315,108 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     }
 
     @Nested
+    inner class MigrationEvents {
+        @Test
+        fun `event is not a migrate, tx hash does not exist, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                burns = listOf(
+                    Burn(
+                        denom = "dummyDenom",
+                        amount = DEFAULT_AMOUNT.toString(),
+                        memberId = TEST_ADDRESS,
+                        height = 1L,
+                        txHash = txHash
+                    )
+                ),
+                mints = listOf(),
+                redemptions = listOf(),
+                transfers = listOf(),
+                migrations = listOf()
+            )
+
+            verify(pbcServiceMock, never()).getTransaction(any())
+
+            transaction {
+                Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 0)
+            }
+        }
+
+        @Test
+        fun `migration hash exists, does not persist, does not process`() {
+            val txHash = randomTxHash()
+            insertMigration(txHash)
+            val migrationEvent = getMigrationEvent(txHash)
+            val txResponseSuccess = getDefaultTransactionResponse(txHash)
+
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf(),
+                migrations = listOf(migrationEvent)
+            )
+
+            verify(pbcServiceMock, never()).getTransaction(any())
+
+            transaction {
+                Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 1)
+            }
+        }
+
+        @Test
+        fun `valid migration persists, processes`() {
+            val txHash = randomTxHash()
+            val migrationEvent = getMigrationEvent(txHash)
+
+            val txResponseSuccess = getDefaultTransactionResponse(txHash)
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf(),
+                migrations = listOf(migrationEvent)
+            )
+
+            verify(pbcServiceMock).getTransaction(txHash)
+
+            transaction {
+                Assertions.assertEquals(MigrationRecord.find { (MT.txHash eq txHash) and MT.sent.isNull() }.count(), 1)
+            }
+        }
+
+        @Test
+        fun `tx failed, don't persist migration`() {
+            val txHash = randomTxHash()
+            val migration = getMigrationEvent(txHash)
+            val txResponseFail = getErrorTransactionResponse(txHash)
+
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseFail)
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                transfers = listOf(),
+                mints = listOf(),
+                burns = listOf(),
+                redemptions = listOf(),
+                migrations = listOf(migration)
+            )
+
+            verify(pbcServiceMock).getTransaction(txHash)
+            transaction {
+                Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 0)
+            }
+        }
+    }
+
+    @Nested
     inner class MarkerTransferEvents {
         @Test
         fun `event is not a transfer, tx hash, does not exist, does not persist, does not process`() {
@@ -329,7 +434,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 ),
                 mints = listOf(),
                 redemptions = listOf(),
-                transfers = listOf()
+                transfers = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(any())
@@ -355,7 +461,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(transferEvent),
                 mints = listOf(),
                 burns = listOf(),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(any())
@@ -376,7 +483,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(transfer),
                 mints = listOf(),
                 burns = listOf(),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(any())
@@ -397,7 +505,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(transfer),
                 mints = listOf(),
                 burns = listOf(),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(any())
@@ -421,7 +530,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(transfer),
                 mints = listOf(),
                 burns = listOf(),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock).getTransaction(txHash)
@@ -451,7 +561,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(transfer),
                 mints = listOf(),
                 burns = listOf(),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock).getTransaction(txHash)
@@ -475,7 +586,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(),
                 mints = listOf(),
                 burns = listOf(burn),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(txHash)
@@ -498,7 +610,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(),
                 mints = listOf(),
                 burns = listOf(burn),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock, never()).getTransaction(txHash)
@@ -523,7 +636,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(),
                 mints = listOf(),
                 burns = listOf(burn),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock).getTransaction(txHash)
@@ -549,7 +663,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(),
                 mints = listOf(),
                 burns = listOf(burn),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock).getTransaction(txHash)
@@ -575,7 +690,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 transfers = listOf(),
                 mints = listOf(),
                 burns = listOf(burn),
-                redemptions = listOf()
+                redemptions = listOf(),
+                migrations = listOf()
             )
 
             verify(pbcServiceMock).getTransaction(txHash)
