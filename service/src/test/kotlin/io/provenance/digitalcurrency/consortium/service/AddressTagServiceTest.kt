@@ -6,7 +6,7 @@ import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import io.provenance.digitalcurrency.consortium.getDefaultResponse
 import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
@@ -76,7 +76,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.PENDING_TAG,
+                    AddressStatus.PENDING_TAG,
                     "Should be pending tag status"
                 )
                 assertEquals(
@@ -114,7 +114,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.COMPLETE,
+                    AddressStatus.COMPLETE,
                     "Should be completed tag status"
                 )
             }
@@ -149,7 +149,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.INSERTED,
+                    AddressStatus.INSERTED,
                     "Should not update tag status"
                 )
                 assertNull(updatedRegistration.txHash, "hash should be null")
@@ -162,10 +162,9 @@ class AddressTagServiceTest : BaseIntegrationTest() {
         @Test
         fun `tagged registration should complete`() {
             val uuid = UUID.randomUUID()
-            val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressRegistrationStatus.PENDING_TAG
+                    it.status = AddressStatus.PENDING_TAG
                 }
             }
 
@@ -192,8 +191,8 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.COMPLETE,
-                    "Should be pending tag status"
+                    AddressStatus.COMPLETE,
+                    "Should be complete status"
                 )
             }
         }
@@ -204,7 +203,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressRegistrationStatus.PENDING_TAG
+                    it.status = AddressStatus.PENDING_TAG
                     it.txHash = txHash
                 }
             }
@@ -223,7 +222,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.PENDING_TAG,
+                    AddressStatus.PENDING_TAG,
                     "Should not update tag status"
                 )
             }
@@ -235,7 +234,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressRegistrationStatus.PENDING_TAG
+                    it.status = AddressStatus.PENDING_TAG
                     it.txHash = txHash
                 }
             }
@@ -254,7 +253,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.INSERTED,
+                    AddressStatus.INSERTED,
                     "Should reset tag status"
                 )
 
@@ -268,7 +267,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressRegistrationStatus.PENDING_TAG
+                    it.status = AddressStatus.PENDING_TAG
                     it.txHash = txHash
                 }
             }
@@ -287,7 +286,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressRegistrationStatus.INSERTED,
+                    AddressStatus.INSERTED,
                     "Should reset tag status"
                 )
 

@@ -4,7 +4,8 @@ import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import io.provenance.digitalcurrency.consortium.service.AddressTagService
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -24,8 +25,7 @@ class AddressTagOutcome(
 class AddressTagQueue(
     coroutineProperties: CoroutineProperties,
     private val addressTagService: AddressTagService
-) :
-    ActorModel<AddressTagDirective, AddressTagOutcome> {
+) : ActorModel<AddressTagDirective, AddressTagOutcome> {
     private val log = logger()
 
     @EventListener(DataSourceConnectedEvent::class)
@@ -47,8 +47,8 @@ class AddressTagQueue(
             AddressRegistrationRecord.findForUpdate(message.id).first().let { addressRegistration ->
                 withMdc(*addressRegistration.mdc()) {
                     when (addressRegistration.status) {
-                        AddressRegistrationStatus.INSERTED -> addressTagService.createEvent(addressRegistration)
-                        AddressRegistrationStatus.PENDING_TAG -> addressTagService.eventComplete(addressRegistration)
+                        INSERTED -> addressTagService.createEvent(addressRegistration)
+                        PENDING_TAG -> addressTagService.eventComplete(addressRegistration)
                         else -> log.error("Invalid status - should never get here")
                     }
                 }
