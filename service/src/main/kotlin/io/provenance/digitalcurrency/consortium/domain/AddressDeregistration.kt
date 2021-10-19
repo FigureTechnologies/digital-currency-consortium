@@ -12,6 +12,9 @@ object AddressDeregistrationTable : BaseAddressTable(name = "address_dereg") {
 
 open class AddressDeregistrationEntityClass : BaseAddressEntityClass<ADT, AddressDeregistrationRecord>(ADT) {
 
+    fun findByAddressRegistration(addressRegistrationRecord: AddressRegistrationRecord) =
+        find { ADT.addressRegistration eq addressRegistrationRecord.id }
+
     fun insert(addressRegistrationRecord: AddressRegistrationRecord) =
         super.insert(UUID.randomUUID(), INSERTED).apply {
             addressRegistration = addressRegistrationRecord
