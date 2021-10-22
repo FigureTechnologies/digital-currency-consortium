@@ -31,7 +31,7 @@ open class InMemoryKeyRing(root: Account) : BaseKeyRing(root) {
         private val lock = Object()
     }
 
-    override fun key(index: Int): KeyI = InMemoryKey(childAccount(index, !root.isMainnet()))
+    override fun key(index: Int): KeyI = InMemoryKey(childAccount(index, false))
 
     override fun serialize(): String = synchronized(lock) {
         return root.serialize()

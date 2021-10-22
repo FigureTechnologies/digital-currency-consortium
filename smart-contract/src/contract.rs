@@ -473,7 +473,7 @@ fn try_redeem(
                 } else {
                     balance.amount.u128()
                 };
-                // Withdraw avialable amount from the requested marker.
+                // Withdraw available amount from the requested marker.
                 res = res
                     .add_message(withdraw_coins(
                         &balance.denom,
