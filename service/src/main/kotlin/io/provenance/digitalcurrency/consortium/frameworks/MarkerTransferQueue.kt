@@ -55,7 +55,8 @@ class MarkerTransferQueue(
                     pbcService.getTransaction(transfer.txHash)?.txResponse?.takeIf {
                         !it.isFailed()
                     }?.let { txResponse ->
-                        val registration = AddressRegistrationRecord.findByAddress(transfer.fromAddress)
+                        // TODO - handle if active address no longer exists due to deregistration
+                        val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
                         check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
                         check(
                             TxStatusRecord.findByTxHash(transfer.txHash).empty()
