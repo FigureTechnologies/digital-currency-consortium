@@ -3,6 +3,10 @@ package io.provenance.digitalcurrency.consortium.service
 import com.google.protobuf.util.JsonFormat
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1.Tx.MsgExecuteContract
+import feign.FeignException
+import feign.Request
+import feign.Request.HttpMethod.GET
+import feign.RequestTemplate
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
@@ -28,6 +32,7 @@ import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
+
 
 class CoinRedemptionServiceTest : BaseIntegrationTest() {
 
@@ -160,6 +165,46 @@ class CoinRedemptionServiceTest : BaseIntegrationTest() {
             transaction {
                 assertEquals(true, CoinBurnRecord.all().empty(), "No burn records")
                 assertEquals(COMPLETE, CoinRedemptionRecord.findById(redemption.id)!!.status, "Redemption status is now complete")
+            }
+        }
+
+        @Test
+        fun `revert if deposit request fails`() {
+            val redemption = transaction { insertCoinRedemption(PENDING_REDEEM) }
+            insertTxStatus(
+                redemption.id.value,
+                txHash = randomTxHash(),
+                txType = TxType.REDEEM_CONTRACT,
+                txStatus = TxStatus.COMPLETE
+            )
+
+            val txBuilder = GetTxResponse.newBuilder()
+            jsonParser.merge(javaClass.getResource("/proto-examples/redeem-tx.json").readText(), txBuilder)
+
+            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txBuilder.build())
+            whenever(bankClientMock.depositFiat(any())).thenThrow(
+                FeignException.BadRequest(
+                    "",
+                    Request.create(
+                        GET,
+                        "url",
+                        emptyMap(),
+                        null,
+                        RequestTemplate()
+                    ),
+                    null,
+                    emptyMap()
+                )
+            )
+
+            transaction { coinRedemptionService.eventComplete(redemption) }
+
+            verify(pbcServiceMock, times(1)).getTransaction(any())
+            verify(bankClientMock, times(1)).depositFiat(any())
+
+            transaction {
+                assertEquals(true, CoinBurnRecord.all().empty(), "No burn records")
+                assertEquals(PENDING_REDEEM, CoinRedemptionRecord.findById(redemption.id)!!.status, "Redemption status is unchanged")
             }
         }
     }
