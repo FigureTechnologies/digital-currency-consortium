@@ -73,7 +73,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             )
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.PENDING_TAG,
@@ -111,7 +111,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             )
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.COMPLETE,
@@ -146,7 +146,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             )
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.INSERTED,
@@ -188,7 +188,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             verify(pbcService, never()).addAttribute(any(), any(), any())
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.COMPLETE,
@@ -219,7 +219,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             verify(pbcService, never()).addAttribute(any(), any(), any())
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.PENDING_TAG,
@@ -250,7 +250,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             verify(pbcService, never()).addAttribute(any(), any(), any())
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.INSERTED,
@@ -283,7 +283,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             verify(pbcService, never()).addAttribute(any(), any(), any())
 
             transaction {
-                val updatedRegistration = AddressRegistrationRecord.findByAddress(TEST_ADDRESS)!!
+                val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
                     AddressStatus.INSERTED,
