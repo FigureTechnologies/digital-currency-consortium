@@ -1,9 +1,7 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import com.google.protobuf.ByteString
 import io.mockk.every
 import io.mockk.mockkStatic
-import io.provenance.attribute.v1.Attribute
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
@@ -23,7 +21,6 @@ import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
-import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import io.provenance.digitalcurrency.consortium.frameworks.toOutput
 import io.provenance.digitalcurrency.consortium.getBurnEvent
 import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
@@ -48,7 +45,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.eq
 import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
@@ -132,9 +128,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockId = BlockId("", PartSetHeader(0, ""))
             )
 
-            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-                .thenReturn(null)
-
             mockkStatic(RpcClient::fetchBlock)
             every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
@@ -159,13 +152,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockId = BlockId("", PartSetHeader(0, ""))
             )
 
-            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-                .thenReturn(
-                    Attribute.newBuilder()
-                        .setName(bankClientProperties.kycTagName)
-                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                        .build()
-                )
+            transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
             mockkStatic(RpcClient::fetchBlock)
             every { rpcClientMock.fetchBlock(0) } returns blockResponse
@@ -191,13 +178,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockId = BlockId("", PartSetHeader(0, ""))
             )
 
-            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-                .thenReturn(
-                    Attribute.newBuilder()
-                        .setName(bankClientProperties.kycTagName)
-                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                        .build()
-                )
+            transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
             mockkStatic(RpcClient::fetchBlock)
             every { rpcClientMock.fetchBlock(0) } returns blockResponse
@@ -244,13 +225,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockId = BlockId("", PartSetHeader(0, ""))
             )
 
-            whenever(pbcServiceMock.getAttributeByTagName(any(), eq(bankClientProperties.kycTagName)))
-                .thenReturn(
-                    Attribute.newBuilder()
-                        .setName(bankClientProperties.kycTagName)
-                        .setValue(ByteString.copyFrom(UUID.randomUUID().toByteArray()))
-                        .build()
-                )
+            transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
             mockkStatic(RpcClient::fetchBlock)
             every { rpcClientMock.fetchBlock(0) } returns blockResponse

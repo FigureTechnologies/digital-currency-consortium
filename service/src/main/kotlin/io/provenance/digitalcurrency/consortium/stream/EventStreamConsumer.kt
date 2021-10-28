@@ -1,11 +1,11 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import io.provenance.attribute.v1.Attribute
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
+import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
@@ -17,7 +17,6 @@ import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.extension.isFailed
-import io.provenance.digitalcurrency.consortium.extension.toUuid
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -86,8 +85,6 @@ class EventStreamConsumer(
         handleStream(responseObserver, log)
     }
 
-    private fun Attribute.bankUuid(): UUID = this.value.toByteArray().toUuid()
-
     data class MintWrapper(
         val mint: Mint,
         val toAddressBankUuid: UUID,
@@ -106,6 +103,10 @@ class EventStreamConsumer(
 
     fun String.uniqueHash(index: Int): String = "$this-$index"
 
+    fun String.addressToBankUuid(): UUID? = let {
+        transaction { AddressRegistrationRecord.findLatestByAddress(it)?.bankAccountUuid }
+    }
+
     fun handleCoinMovementEvents(blockHeight: Long, mints: Mints, burns: Transfers, transfers: MarkerTransfers) {
         // TODO (steve) is there a grpc endpoint for this?
         val block = rpcClient.fetchBlock(blockHeight).block
@@ -115,9 +116,7 @@ class EventStreamConsumer(
             .mapNotNull { event ->
                 log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
 
-                // TODO (steve) implement caching
-                val toAddressBankUuid =
-                    pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val toAddressBankUuid = event.withdrawAddress.addressToBankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
@@ -132,9 +131,7 @@ class EventStreamConsumer(
             .mapNotNull { event ->
                 log.debug("SC Transfer - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
-                // TODO (steve) implement caching
-                val fromAddressBankUuid =
-                    pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
+                val fromAddressBankUuid = event.sender.addressToBankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
@@ -150,11 +147,8 @@ class EventStreamConsumer(
             .mapNotNull { event ->
                 log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
 
-                // TODO (steve) implement caching
-                val fromAddressBankUuid =
-                    pbcService.getAttributeByTagName(event.fromAddress, bankClientProperties.kycTagName)?.bankUuid()
-                val toAddressBankUuid =
-                    pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
+                val fromAddressBankUuid = event.fromAddress.addressToBankUuid()
+                val toAddressBankUuid = event.toAddress.addressToBankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (toAddressBankUuid != null || fromAddressBankUuid != null) {
