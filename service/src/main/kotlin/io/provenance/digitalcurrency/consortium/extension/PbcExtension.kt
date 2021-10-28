@@ -9,6 +9,9 @@ import io.provenance.digitalcurrency.consortium.config.PbcException
 import io.provenance.digitalcurrency.consortium.config.logger
 
 private val log = logger("PbcException")
+private const val EVENT_MARKER_WITHDRAW_ATTRIBUTE = "EventMarkerWithdraw"
+private const val DENOM_KEY = "denom"
+private const val COINS_KEY = "coins"
 
 fun TxResponse.isFailed() = code > 0 && !codespace.isNullOrBlank() && rawLog.isNotBlank() && logsCount == 0
 fun TxResponse.isSingleTx() = logsCount == 1
@@ -30,16 +33,22 @@ fun ServiceOuterClass.BroadcastTxResponse.throwIfFailed(msg: String): ServiceOut
 
 fun Attribute.toStringValue() = value.removeSurrounding("\"")
 
+// TODO - wasm event parsing may be a little simpler
 fun ABCIMessageLog.findWithdrawEvent(denom: String) =
     eventsList.firstOrNull { event ->
-        event.type.contains("EventMarkerWithdraw") &&
-            event.attributesList.any { it.key == "denom" && it.toStringValue() == denom } &&
-            event.attributesList.any { it.key == "coins" }
+        event.type.contains(EVENT_MARKER_WITHDRAW_ATTRIBUTE) &&
+            event.attributesList.any { it.key == DENOM_KEY && it.toStringValue() == denom } &&
+            event.attributesList.any { it.key == COINS_KEY }
     }
 
-fun StringEvent.coinsAmount(): Long {
-    val attribute = attributesList.first { it.key == "coins" }.toStringValue()
-    val indexOfDenom = attribute.indexOfFirst { it.isLetter() }
+fun StringEvent.coinsAmount(denom: String): Long =
+    attributesList.filter { it.key == COINS_KEY }
+        .mapNotNull { attribute ->
+            val stringValue = attribute.toStringValue()
+            val indexOfDenom = stringValue.indexOfFirst { char -> char.isLetter() }
 
-    return attribute.substring(0, indexOfDenom).toLong()
-}
+            if (stringValue.substring(indexOfDenom) == denom) {
+                stringValue.substring(0, indexOfDenom).toLong()
+            } else null
+        }
+        .single()

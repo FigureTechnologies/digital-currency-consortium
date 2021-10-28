@@ -1,0 +1,296 @@
+{
+  "tx": {
+    "body": {
+      "messages": [{
+        "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+        "sender": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt",
+        "contract": "tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4",
+        "msg": "eyJyZWRlZW0iOnsiYW1vdW50IjoiMjAwMDAwIiwicmVzZXJ2ZV9kZW5vbSI6ImJhbmszLmNvaW4ifX0="
+      }]
+    },
+    "authInfo": {
+      "signerInfos": [{
+        "modeInfo": {
+          "single": {
+            "mode": "SIGN_MODE_DIRECT"
+          }
+        },
+        "sequence": "24"
+      }],
+      "fee": {
+        "amount": [{
+          "denom": "nhash",
+          "amount": "392885295"
+        }],
+        "gasLimit": "206239"
+      }
+    },
+    "signatures": ["f9G0AIyQl/Ols+WyZ5L43JPCy2ylbNvMhTJJ6PG6PXN9VnvE03t7DQS4eatAc+oGAlYZQVI6WQMZPJvp2qG4vw=="]
+  },
+  "txResponse": {
+    "height": "206013",
+    "txhash": "061C677C6AE4A658ADB936E4CE6E1BB8F952694971BF29E6705A5A81BB8E9871",
+    "data": "0A260A242F636F736D7761736D2E7761736D2E76312E4D736745786563757465436F6E7472616374",
+    "rawLog": "[{\"events\":[{\"type\":\"burn\",\"attributes\":[{\"key\":\"burner\",\"value\":\"tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"}]},{\"type\":\"coin_received\",\"attributes\":[{\"key\":\"receiver\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"199870bank3.coin\"},{\"key\":\"receiver\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"130bank1.coin\"},{\"key\":\"receiver\",\"value\":\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"},{\"key\":\"receiver\",\"value\":\"tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"}]},{\"type\":\"coin_spent\",\"attributes\":[{\"key\":\"spender\",\"value\":\"tp1fug3qjnl0v26kyewemmcy29lk2020jl6f4pcc8\"},{\"key\":\"amount\",\"value\":\"199870bank3.coin\"},{\"key\":\"spender\",\"value\":\"tp1p0datkknnsfkmzz34wqkenw7dmyw7ged2neeqp\"},{\"key\":\"amount\",\"value\":\"130bank1.coin\"},{\"key\":\"spender\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"},{\"key\":\"spender\",\"value\":\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"},{\"key\":\"spender\",\"value\":\"tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"}]},{\"type\":\"cosmos.authz.v1beta1.EventGrant\",\"attributes\":[{\"key\":\"msg_type_url\",\"value\":\"\\\"/provenance.marker.v1.MsgTransferRequest\\\"\"},{\"key\":\"granter\",\"value\":\"\\\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\\\"\"},{\"key\":\"grantee\",\"value\":\"\\\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\\\"\"}]},{\"type\":\"execute\",\"attributes\":[{\"key\":\"_contract_address\",\"value\":\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\"}]},{\"type\":\"message\",\"attributes\":[{\"key\":\"action\",\"value\":\"/cosmwasm.wasm.v1.MsgExecuteContract\"},{\"key\":\"module\",\"value\":\"wasm\"},{\"key\":\"sender\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"}]},{\"type\":\"provenance.marker.v1.EventMarkerBurn\",\"attributes\":[{\"key\":\"amount\",\"value\":\"\\\"200000\\\"\"},{\"key\":\"denom\",\"value\":\"\\\"usdf.local\\\"\"},{\"key\":\"administrator\",\"value\":\"\\\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\\\"\"}]},{\"type\":\"provenance.marker.v1.EventMarkerTransfer\",\"attributes\":[{\"key\":\"administrator\",\"value\":\"\\\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\\\"\"},{\"key\":\"to_address\",\"value\":\"\\\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\\\"\"},{\"key\":\"from_address\",\"value\":\"\\\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\\\"\"},{\"key\":\"amount\",\"value\":\"\\\"200000\\\"\"},{\"key\":\"denom\",\"value\":\"\\\"usdf.local\\\"\"}]},{\"type\":\"provenance.marker.v1.EventMarkerWithdraw\",\"attributes\":[{\"key\":\"administrator\",\"value\":\"\\\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\\\"\"},{\"key\":\"to_address\",\"value\":\"\\\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\\\"\"},{\"key\":\"coins\",\"value\":\"\\\"199870bank3.coin\\\"\"},{\"key\":\"denom\",\"value\":\"\\\"bank3.coin\\\"\"},{\"key\":\"coins\",\"value\":\"\\\"130bank1.coin\\\"\"},{\"key\":\"denom\",\"value\":\"\\\"bank1.coin\\\"\"},{\"key\":\"administrator\",\"value\":\"\\\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\\\"\"},{\"key\":\"to_address\",\"value\":\"\\\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\\\"\"}]},{\"type\":\"transfer\",\"attributes\":[{\"key\":\"recipient\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"199870bank3.coin\"},{\"key\":\"recipient\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"130bank1.coin\"},{\"key\":\"recipient\",\"value\":\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\"},{\"key\":\"sender\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"},{\"key\":\"recipient\",\"value\":\"tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa\"},{\"key\":\"sender\",\"value\":\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\"},{\"key\":\"amount\",\"value\":\"200000usdf.local\"}]},{\"type\":\"wasm\",\"attributes\":[{\"key\":\"_contract_address\",\"value\":\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\"},{\"key\":\"withdraw_amount\",\"value\":\"199870\"},{\"key\":\"withdraw_denom\",\"value\":\"bank3.coin\"},{\"key\":\"withdraw_amount\",\"value\":\"130\"},{\"key\":\"withdraw_denom\",\"value\":\"bank1.coin\"},{\"key\":\"action\",\"value\":\"redeem\"},{\"key\":\"member_id\",\"value\":\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\"},{\"key\":\"redeem_amount\",\"value\":\"200000\"},{\"key\":\"redeem_denom\",\"value\":\"usdf.local\"},{\"key\":\"amount\",\"value\":\"200000\"},{\"key\":\"reserve_denom\",\"value\":\"bank3.coin\"}]}]}]",
+    "logs": [{
+      "events": [{
+        "type": "burn",
+        "attributes": [{
+          "key": "burner",
+          "value": "tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }]
+      }, {
+        "type": "coin_received",
+        "attributes": [{
+          "key": "receiver",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "199870bank3.coin"
+        }, {
+          "key": "receiver",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "130bank1.coin"
+        }, {
+          "key": "receiver",
+          "value": "tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }, {
+          "key": "receiver",
+          "value": "tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }]
+      }, {
+        "type": "coin_spent",
+        "attributes": [{
+          "key": "spender",
+          "value": "tp1fug3qjnl0v26kyewemmcy29lk2020jl6f4pcc8"
+        }, {
+          "key": "amount",
+          "value": "199870bank3.coin"
+        }, {
+          "key": "spender",
+          "value": "tp1p0datkknnsfkmzz34wqkenw7dmyw7ged2neeqp"
+        }, {
+          "key": "amount",
+          "value": "130bank1.coin"
+        }, {
+          "key": "spender",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }, {
+          "key": "spender",
+          "value": "tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }, {
+          "key": "spender",
+          "value": "tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }]
+      }, {
+        "type": "cosmos.authz.v1beta1.EventGrant",
+        "attributes": [{
+          "key": "msg_type_url",
+          "value": "\"/provenance.marker.v1.MsgTransferRequest\""
+        }, {
+          "key": "granter",
+          "value": "\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\""
+        }, {
+          "key": "grantee",
+          "value": "\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\""
+        }]
+      }, {
+        "type": "execute",
+        "attributes": [{
+          "key": "_contract_address",
+          "value": "tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4"
+        }]
+      }, {
+        "type": "message",
+        "attributes": [{
+          "key": "action",
+          "value": "/cosmwasm.wasm.v1.MsgExecuteContract"
+        }, {
+          "key": "module",
+          "value": "wasm"
+        }, {
+          "key": "sender",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }]
+      }, {
+        "type": "provenance.marker.v1.EventMarkerBurn",
+        "attributes": [{
+          "key": "amount",
+          "value": "\"200000\""
+        }, {
+          "key": "denom",
+          "value": "\"usdf.local\""
+        }, {
+          "key": "administrator",
+          "value": "\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\""
+        }]
+      }, {
+        "type": "provenance.marker.v1.EventMarkerTransfer",
+        "attributes": [{
+          "key": "administrator",
+          "value": "\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\""
+        }, {
+          "key": "to_address",
+          "value": "\"tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v\""
+        }, {
+          "key": "from_address",
+          "value": "\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\""
+        }, {
+          "key": "amount",
+          "value": "\"200000\""
+        }, {
+          "key": "denom",
+          "value": "\"usdf.local\""
+        }]
+      }, {
+        "type": "provenance.marker.v1.EventMarkerWithdraw",
+        "attributes": [{
+          "key": "administrator",
+          "value": "\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\""
+        }, {
+          "key": "to_address",
+          "value": "\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\""
+        }, {
+          "key": "coins",
+          "value": "\"199870bank3.coin\""
+        }, {
+          "key": "denom",
+          "value": "\"bank3.coin\""
+        }, {
+          "key": "coins",
+          "value": "\"130bank1.coin\""
+        }, {
+          "key": "denom",
+          "value": "\"bank1.coin\""
+        }, {
+          "key": "administrator",
+          "value": "\"tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4\""
+        }, {
+          "key": "to_address",
+          "value": "\"tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt\""
+        }]
+      }, {
+        "type": "transfer",
+        "attributes": [{
+          "key": "recipient",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "199870bank3.coin"
+        }, {
+          "key": "recipient",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "130bank1.coin"
+        }, {
+          "key": "recipient",
+          "value": "tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v"
+        }, {
+          "key": "sender",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }, {
+          "key": "recipient",
+          "value": "tp1a4dczgrqzequ29ks9mvacep6t9jg2fpy8z2qxa"
+        }, {
+          "key": "sender",
+          "value": "tp1xlrgpkgmmxnnfvw8a75eetxa0pgl9nvh0vhe4v"
+        }, {
+          "key": "amount",
+          "value": "200000usdf.local"
+        }]
+      }, {
+        "type": "wasm",
+        "attributes": [{
+          "key": "_contract_address",
+          "value": "tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4"
+        }, {
+          "key": "withdraw_amount",
+          "value": "199870"
+        }, {
+          "key": "withdraw_denom",
+          "value": "bank3.coin"
+        }, {
+          "key": "withdraw_amount",
+          "value": "130"
+        }, {
+          "key": "withdraw_denom",
+          "value": "bank1.coin"
+        }, {
+          "key": "action",
+          "value": "redeem"
+        }, {
+          "key": "member_id",
+          "value": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt"
+        }, {
+          "key": "redeem_amount",
+          "value": "200000"
+        }, {
+          "key": "redeem_denom",
+          "value": "usdf.local"
+        }, {
+          "key": "amount",
+          "value": "200000"
+        }, {
+          "key": "reserve_denom",
+          "value": "bank3.coin"
+        }]
+      }]
+    }],
+    "gasWanted": "206239",
+    "gasUsed": "174911",
+    "tx": {
+      "@type": "/cosmos.tx.v1beta1.Tx",
+      "body": {
+        "messages": [{
+          "@type": "/cosmwasm.wasm.v1.MsgExecuteContract",
+          "sender": "tp14vvw0ma8cg45gc25x0amednwkwx8fsmhxgavqt",
+          "contract": "tp1xr3rq8yvd7qplsw5yx90ftsr2zdhg4e9ku8cf4",
+          "msg": "eyJyZWRlZW0iOnsiYW1vdW50IjoiMjAwMDAwIiwicmVzZXJ2ZV9kZW5vbSI6ImJhbmszLmNvaW4ifX0="
+        }]
+      },
+      "authInfo": {
+        "signerInfos": [{
+          "modeInfo": {
+            "single": {
+              "mode": "SIGN_MODE_DIRECT"
+            }
+          },
+          "sequence": "24"
+        }],
+        "fee": {
+          "amount": [{
+            "denom": "nhash",
+            "amount": "392885295"
+          }],
+          "gasLimit": "206239"
+        }
+      },
+      "signatures": ["f9G0AIyQl/Ols+WyZ5L43JPCy2ylbNvMhTJJ6PG6PXN9VnvE03t7DQS4eatAc+oGAlYZQVI6WQMZPJvp2qG4vw=="]
+    },
+    "timestamp": "2021-10-28T13:47:15Z"
+  }
+}

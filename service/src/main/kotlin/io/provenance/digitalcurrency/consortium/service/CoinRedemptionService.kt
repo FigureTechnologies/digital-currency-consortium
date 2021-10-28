@@ -49,7 +49,7 @@ class CoinRedemptionService(
 
     fun eventComplete(coinRedemptionRecord: CoinRedemptionRecord) {
         val completedEvent: TxStatusRecord? =
-            TxStatusRecord.findByTxRequestUuid(coinRedemptionRecord.id.value).toList().firstOrNull {
+            TxStatusRecord.findByTxRequestUuid(coinRedemptionRecord.id.value).firstOrNull {
                 (it.status == TxStatus.COMPLETE) && (it.type == TxType.REDEEM_CONTRACT)
             }
 
@@ -60,13 +60,6 @@ class CoinRedemptionService(
             // TODO - once we batch, we'll need to work backwards to map log with redemption
             check(txResponse.isSingleTx()) { "Multi tx redemption not supported id:${completedEvent.id.value}, tx:${completedEvent.txHash}" }
 
-            // If we redeemed bank-specific coin, initialize burn for bank-specific portion
-            txResponse.logsList.first().findWithdrawEvent(bankDenom)?.run {
-                CoinBurnRecord.insert(coinRedemption = coinRedemptionRecord, coinAmount = coinsAmount()).also {
-                    log.info("Setting up burn of ${it.coinAmount}")
-                }
-            }
-
             try {
                 bankClient.depositFiat(
                     DepositFiatRequest(
@@ -75,6 +68,13 @@ class CoinRedemptionService(
                         amount = coinRedemptionRecord.fiatAmount
                     )
                 )
+
+                // If we redeemed bank-specific coin, initialize burn for bank-specific portion
+                txResponse.logsList.first().findWithdrawEvent(bankDenom)?.run {
+                    CoinBurnRecord.insert(coinRedemption = coinRedemptionRecord, coinAmount = coinsAmount(bankDenom)).also {
+                        log.info("Setting up burn of ${it.coinAmount}")
+                    }
+                }
                 CoinRedemptionRecord.updateStatus(coinRedemptionRecord.id.value, CoinRedemptionStatus.COMPLETE)
             } catch (e: Exception) {
                 log.error("sending fiat deposit request to bank failed; it will retry.", e)
