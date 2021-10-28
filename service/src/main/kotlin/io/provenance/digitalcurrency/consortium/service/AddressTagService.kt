@@ -4,7 +4,7 @@ import com.google.protobuf.ByteString
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationStatus
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus
 import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.toByteArray
 import org.springframework.stereotype.Service
@@ -28,7 +28,7 @@ class AddressTagService(
                         payload = ByteString.copyFrom(addressRegistrationRecord.bankAccountUuid.toByteArray())
                     ).also {
                         addressRegistrationRecord.txHash = it.txResponse.txhash
-                        addressRegistrationRecord.status = AddressRegistrationStatus.PENDING_TAG
+                        addressRegistrationRecord.status = AddressStatus.PENDING_TAG
                     }
                 } catch (e: Exception) {
                     log.error("Tag failed; it will retry.", e)
@@ -37,7 +37,7 @@ class AddressTagService(
             false -> {
                 // technically should not happen
                 log.warn("Address already tagged - completing")
-                addressRegistrationRecord.status = AddressRegistrationStatus.COMPLETE
+                addressRegistrationRecord.status = AddressStatus.COMPLETE
             }
         }
     }
@@ -51,7 +51,7 @@ class AddressTagService(
                 if (response == null || response.txResponse.isFailed()) {
                     // need to retry
                     log.info("Tag failed - resetting record to retry")
-                    addressRegistrationRecord.status = AddressRegistrationStatus.INSERTED
+                    addressRegistrationRecord.status = AddressStatus.INSERTED
                     addressRegistrationRecord.txHash = null
                 } else {
                     log.info("blockchain tag not done yet - will check next iteration.")
@@ -59,7 +59,7 @@ class AddressTagService(
             }
             false -> {
                 log.info("tag completed")
-                addressRegistrationRecord.status = AddressRegistrationStatus.COMPLETE
+                addressRegistrationRecord.status = AddressStatus.COMPLETE
             }
         }
     }

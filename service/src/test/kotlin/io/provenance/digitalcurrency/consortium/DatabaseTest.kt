@@ -1,7 +1,11 @@
 package io.provenance.digitalcurrency.consortium
 
+import io.provenance.digitalcurrency.consortium.domain.ADT
 import io.provenance.digitalcurrency.consortium.domain.ART
+import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
 import io.provenance.digitalcurrency.consortium.domain.CBT
@@ -31,6 +35,7 @@ abstract class DatabaseTest {
     @AfterEach
     fun afterEach() {
         transaction {
+            ADT.deleteAll()
             CBT.deleteAll()
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
@@ -43,12 +48,25 @@ abstract class DatabaseTest {
         }
     }
 
-    fun insertRegisteredAddress(bankAccountUuid: UUID, address: String) =
+    fun insertRegisteredAddress(bankAccountUuid: UUID, address: String, status: AddressStatus = INSERTED, txHash: String? = null) =
         AddressRegistrationRecord.insert(
             uuid = UUID.randomUUID(),
             bankAccountUuid = bankAccountUuid,
             address = address
-        )
+        ).apply {
+            this.status = status
+            this.txHash = txHash
+        }
+
+    fun insertDeregisteredAddress(
+        addressRegistrationRecord: AddressRegistrationRecord,
+        status: AddressStatus = INSERTED,
+        txHash: String? = null
+    ) =
+        AddressDeregistrationRecord.insert(addressRegistrationRecord).apply {
+            this.status = status
+            this.txHash = txHash
+        }
 
     fun insertCoinRedemption(status: CoinRedemptionStatus) = transaction {
         CoinRedemptionRecord.insert(

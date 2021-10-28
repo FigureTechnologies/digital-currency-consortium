@@ -33,7 +33,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 
-
 class CoinRedemptionServiceTest : BaseIntegrationTest() {
 
     private val jsonParser = JsonFormat.parser()

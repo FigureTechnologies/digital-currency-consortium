@@ -15,7 +15,9 @@ import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -56,6 +58,18 @@ class DigitalCurrencyController(
     ): ResponseEntity<UUID> {
         val (bankAccountUuid, address) = request
         digitalCurrencyService.registerAddress(bankAccountUuid, address)
+        return ResponseEntity.ok(bankAccountUuid)
+    }
+
+    @DeleteMapping("$REGISTRATION_V1/{bankAccountUuid}")
+    @ApiOperation(
+        value = "Remove an address association",
+        notes = """
+            Send the bank account uuid as a path variable. This will remove the attribute from the address.
+        """
+    )
+    fun removeAddress(@PathVariable bankAccountUuid: UUID): ResponseEntity<UUID> {
+        digitalCurrencyService.removeAddress(bankAccountUuid)
         return ResponseEntity.ok(bankAccountUuid)
     }
 
