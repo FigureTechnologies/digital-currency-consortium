@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -22,6 +23,7 @@ class AddressTagOutcome(
 ) : Outcome()
 
 @Component
+@NotTest
 class AddressTagQueue(
     coroutineProperties: CoroutineProperties,
     private val addressTagService: AddressTagService
