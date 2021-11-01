@@ -2,6 +2,10 @@ package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.ByteString
+import cosmos.authz.v1beta1.Authz.Grant
+import cosmos.authz.v1beta1.Tx.MsgGrant
+import cosmos.base.v1beta1.CoinOuterClass.Coin
+import cosmos.tx.v1beta1.ServiceOuterClass.BroadcastMode.BROADCAST_MODE_BLOCK
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
@@ -17,6 +21,7 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.throwIfFailed
 import io.provenance.digitalcurrency.consortium.extension.toAny
 import io.provenance.digitalcurrency.consortium.extension.toByteString
+import io.provenance.digitalcurrency.consortium.extension.toProtoTimestamp
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
 import io.provenance.digitalcurrency.consortium.messages.BurnRequest
@@ -32,8 +37,11 @@ import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
 import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
 import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
 import io.provenance.digitalcurrency.consortium.wallet.account.KeyRing
+import io.provenance.marker.v1.MarkerTransferAuthorization
 import org.springframework.stereotype.Service
 import java.math.BigInteger
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class PbcService(
@@ -203,4 +211,28 @@ class PbcService(
                 .toAny()
                 .toTxBody()
         ).throwIfFailed("Accept failed")
+
+    private val maxExpiration = OffsetDateTime.of(2031, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
+
+    fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = MsgGrant.newBuilder()
+                .setGranter(managerAddress)
+                .setGrantee(provenanceProperties.contractAddress)
+                .setGrant(
+                    Grant.newBuilder()
+                        .setExpiration((expiration ?: maxExpiration).toProtoTimestamp())
+                        .setAuthorization(
+                            MarkerTransferAuthorization.newBuilder()
+                                .also { builder -> coins.forEach { builder.addTransferLimit(it) } }
+                                .build()
+                                .toAny()
+                        )
+                )
+                .build()
+                .toAny()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
+        ).throwIfFailed("Marker transfer grant failed")
 }

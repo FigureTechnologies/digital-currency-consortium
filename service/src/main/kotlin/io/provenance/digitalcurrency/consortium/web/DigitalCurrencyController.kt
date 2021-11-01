@@ -1,5 +1,7 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import cosmos.base.v1beta1.CoinOuterClass.Coin
+import io.provenance.digitalcurrency.consortium.api.GrantRequest
 import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
@@ -91,6 +93,7 @@ class DigitalCurrencyController(
     }
 
     @PostMapping(MEMBER_V1)
+    @ApiOperation(value = "Proposal to join the consortium as a member bank")
     fun joinConsortium(
         @Valid
         @RequestBody request: JoinConsortiumRequest
@@ -105,10 +108,24 @@ class DigitalCurrencyController(
     // TODO should validate the proposal exists but this is a hand jam to get this first bank through
     // for now on start up we are accepting ourselves so the id is the bank address
     @PostMapping(ACCEPTS_V1)
+    @ApiOperation(value = "Accept joining the consortium as a member bank")
     fun acceptProposal(): ResponseEntity<String> {
         log.info("Try accepting consortium proposal")
         pbcService.accept()
         return ResponseEntity.ok("Proposal Accepted")
+    }
+
+    @PostMapping(GRANTS_V1)
+    @ApiOperation(value = "Grant authz allowance so smart contract has permission to move restricted coins out of member bank address")
+    fun grantAuth(
+        @Valid
+        @RequestBody request: GrantRequest
+    ): ResponseEntity<String> {
+        log.info("Trying to grant authz: $request")
+        val (coinRequests, expiration) = request
+        val coins = coinRequests.map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
+        pbcService.grantAuthz(coins, expiration)
+        return ResponseEntity.ok("Allowance Granted")
     }
 
     @PostMapping(BALANCES_V1)
