@@ -2,6 +2,12 @@ package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.ByteString
+import cosmos.base.v1beta1.CoinOuterClass.Coin
+import cosmos.feegrant.v1beta1.Feegrant.BasicAllowance
+import cosmos.feegrant.v1beta1.Feegrant.Grant
+import cosmos.feegrant.v1beta1.Tx.MsgGrantAllowance
+import cosmos.feegrant.v1beta1.Tx.MsgRevokeAllowance
+import cosmos.tx.v1beta1.ServiceOuterClass.BroadcastMode.BROADCAST_MODE_BLOCK
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
@@ -203,4 +209,48 @@ class PbcService(
                 .toAny()
                 .toTxBody()
         ).throwIfFailed("Accept failed")
+
+    fun getGrant(): Grant? =
+        try {
+            grpcClientService.new().feeGrants.getFeeGrant(managerAddress, provenanceProperties.contractAddress)
+        } catch (e: StatusRuntimeException) {
+            when (e.status.code) {
+                Code.INVALID_ARGUMENT, Code.INTERNAL, Code.UNKNOWN -> null
+                else -> throw e
+            }
+        }
+
+    fun revokeGrant() =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = MsgRevokeAllowance.newBuilder()
+                .setGranter(managerAddress)
+                .setGrantee(provenanceProperties.contractAddress)
+                .build()
+                .toAny()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK,
+            gasAdjustment = 1.35
+        ).throwIfFailed("Revoke basic allowance grant failed")
+
+    fun grantBasicAllowance(coins: List<Coin>) =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = MsgGrantAllowance.newBuilder()
+                .setGranter(managerAddress)
+                .setGrantee(provenanceProperties.contractAddress)
+                .setAllowance(
+                    BasicAllowance.newBuilder()
+                        .also { builder ->
+                            for (coin in coins) {
+                                builder.addSpendLimit(coin)
+                            }
+                        }
+                        .build().toAny()
+                )
+                .build()
+                .toAny()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
+        ).throwIfFailed("Basic allowance grant failed")
 }

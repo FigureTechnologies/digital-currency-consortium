@@ -4,6 +4,7 @@ import cosmos.tx.v1beta1.ServiceGrpc
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Accounts
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Attributes
+import io.provenance.digitalcurrency.consortium.pbclient.grpc.FeeGrants
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Transactions
 import java.io.Closeable
 import java.net.URI
@@ -54,6 +55,7 @@ open class ContextClient(
     val accounts = Accounts(channel)
     val attributes = Attributes(channel)
     val transactions = Transactions(channel)
+    val feeGrants = FeeGrants(channel)
 
     internal val cosmosService = ServiceGrpc.newBlockingStub(channel)
 
