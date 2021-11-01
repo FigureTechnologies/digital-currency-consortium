@@ -225,7 +225,7 @@ class PbcService(
                         .setExpiration((expiration ?: maxExpiration).toProtoTimestamp())
                         .setAuthorization(
                             MarkerTransferAuthorization.newBuilder()
-                                .also { builder -> coins.forEach { builder.addTransferLimit(it) } }
+                                .addAllTransferLimit(coins)
                                 .build()
                                 .toAny()
                         )
