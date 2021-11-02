@@ -41,7 +41,6 @@ import io.provenance.marker.v1.MarkerTransferAuthorization
 import org.springframework.stereotype.Service
 import java.math.BigInteger
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 
 @Service
 class PbcService(
@@ -212,8 +211,6 @@ class PbcService(
                 .toTxBody()
         ).throwIfFailed("Accept failed")
 
-    private val maxExpiration = OffsetDateTime.of(2031, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC)
-
     fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(BaseReqSigner(managerKey)),
@@ -222,7 +219,7 @@ class PbcService(
                 .setGrantee(provenanceProperties.contractAddress)
                 .setGrant(
                     Grant.newBuilder()
-                        .setExpiration((expiration ?: maxExpiration).toProtoTimestamp())
+                        .setExpiration((expiration ?: OffsetDateTime.now().plusYears(10)).toProtoTimestamp())
                         .setAuthorization(
                             MarkerTransferAuthorization.newBuilder()
                                 .addAllTransferLimit(coins)
