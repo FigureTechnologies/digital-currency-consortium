@@ -125,7 +125,7 @@ class DigitalCurrencyController(
         val (coinRequests, expiration) = request
         val coins = coinRequests.map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
         pbcService.grantAuthz(coins, expiration)
-        return ResponseEntity.ok("Allowance Granted")
+        return ResponseEntity.ok("Granted Authz Set")
     }
 
     @PostMapping(BALANCES_V1)

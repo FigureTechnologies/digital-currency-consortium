@@ -231,5 +231,5 @@ class PbcService(
                 .toAny()
                 .toTxBody(),
             mode = BROADCAST_MODE_BLOCK
-        ).throwIfFailed("Marker transfer grant failed")
+        ).throwIfFailed("Marker transfer authorization grant authz failed")
 }
