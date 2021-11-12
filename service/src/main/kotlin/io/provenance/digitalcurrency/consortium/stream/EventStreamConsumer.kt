@@ -141,7 +141,7 @@ class EventStreamConsumer(
         // SC Mint events denote the "on ramp" for a bank user to get coin
         val filteredMints = mints.filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
             .mapNotNull { event ->
-                log.info("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
+                log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
 
                 val toAddressBankUuid = event.withdrawAddress.addressToBankUuid()
                 // val toAddressBankUuid =
@@ -158,7 +158,7 @@ class EventStreamConsumer(
         // SC Transfer events denote the "off ramp" for a bank user to redeem coin when the recipient is the bank address
         val filteredBurns = burns.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
             .mapNotNull { event ->
-                log.info("Burn - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
+                log.debug("Burn - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 val fromAddressBankUuid = event.sender.addressToBankUuid()
                 // val fromAddressBankUuid =
@@ -176,7 +176,7 @@ class EventStreamConsumer(
         val filteredTransfers = transfers.filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
             .filter { it.denom == bankClientProperties.denom }
             .mapNotNull { event ->
-                log.info("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
+                log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
 
                 val fromAddressBankUuid = event.fromAddress.addressToBankUuid()
                 val toAddressBankUuid = event.toAddress.addressToBankUuid()
