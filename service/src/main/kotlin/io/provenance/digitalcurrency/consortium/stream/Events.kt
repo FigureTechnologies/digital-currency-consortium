@@ -23,9 +23,23 @@ const val WASM_EVENT = "wasm"
 const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
 const val MIGRATE_EVENT = "migrate"
 
-private fun StreamEvent.getAttribute(key: String): String =
+fun List<Attribute>.splitAttributes(): List<List<Attribute>> =
+    this.fold(listOf(mutableListOf())) { accum: List<MutableList<Attribute>>, attribute: Attribute ->
+        val last = accum.last()
+
+        if (last.any { it.key == attribute.key }) {
+            accum.plus(listOf(mutableListOf(attribute)))
+        } else {
+            last.add(attribute)
+            accum
+        }
+    }
+
+private fun StreamEvent.getAttribute(key: String): String = this.attributes.getAttribute(key)
+
+private fun List<Attribute>.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
-    this.attributes.firstOrNull { it.key == key }?.value?.removeSurrounding("\"") ?: ""
+    this.firstOrNull { it.key == key }?.value?.removeSurrounding("\"") ?: ""
 
 data class MarkerTransfer(
     val fromAddress: String,
@@ -40,11 +54,13 @@ typealias MarkerTransfers = List<MarkerTransfer>
 
 fun EventBatch.markerTransfers(): MarkerTransfers = events
     .filter { it.eventType == MARKER_TRANSFER_EVENT }
-    .map { event ->
-        event.toMarkerTransfer(this.height)
+    .flatMap { event ->
+        val nestedAttributes = event.attributes.splitAttributes()
+
+        nestedAttributes.map { it.toMarkerTransfer(this.height, event.txHash) }
     }
 
-private fun StreamEvent.toMarkerTransfer(height: Long): MarkerTransfer =
+private fun List<Attribute>.toMarkerTransfer(height: Long, txHash: String): MarkerTransfer =
     MarkerTransfer(
         fromAddress = getAttribute(ATTRIBUTE_FROM),
         toAddress = getAttribute(ATTRIBUTE_TO),
