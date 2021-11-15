@@ -51,9 +51,11 @@ class ProvenanceProperties(
 @Validated
 class EventStreamProperties(
     val id: String,
+    val coinMovementId: String,
     val websocketUri: String,
     val rpcUri: String,
-    val epoch: String
+    val epoch: String,
+    val coinMovementEpoch: String,
 )
 
 @ConstructorBinding

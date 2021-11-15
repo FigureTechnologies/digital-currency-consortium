@@ -156,3 +156,5 @@ database/bin
 ######################
 .ideaDataSources
 dataSources
+
+docker/temp.env

@@ -41,10 +41,12 @@ class EventStreamConsumer(
     // We're only interested in specific wasm events from pbc
     private val eventTypes = listOf(WASM_EVENT, MARKER_TRANSFER_EVENT, MIGRATE_EVENT)
 
-    // The current event stream ID
+    // The current event stream IDs
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
+    private val coinMovementEventStreamId = UUID.fromString(eventStreamProperties.coinMovementId)
 
     private val epochHeight = eventStreamProperties.epoch.toLong()
+    private val coinMovementEpochHeight = eventStreamProperties.coinMovementEpoch.toLong()
 
     // This is scheduled so if the event streaming server or its proxied blockchain daemon node go down,
     // we'll attempt to re-connect after a fixed delay.
@@ -68,6 +70,29 @@ class EventStreamConsumer(
                     batch.migrations(provenanceProperties.contractAddress)
                 )
 
+                transaction { EventStreamRecord.update(eventStreamId, batch.height) }
+            }
+
+        log.info("Starting event stream at height $lastHeight")
+
+        eventStreamFactory.getStream(eventTypes, lastHeight + 1, responseObserver).streamEvents()
+
+        handleStream(responseObserver, log)
+    }
+
+    // This is scheduled so if the event streaming server or its proxied blockchain daemon node go down,
+    // we'll attempt to re-connect after a fixed delay.
+    @Scheduled(
+        initialDelayString = "\${event_stream.connect.initial_delay.ms}",
+        fixedDelayString = "\${event_stream.connect.delay.ms}"
+    )
+    fun consumeCoinMovementEventStream() {
+        // Initialize event stream state and determine start height
+        val record = transaction { EventStreamRecord.findById(coinMovementEventStreamId) }
+        val lastHeight = record?.lastBlockHeight
+            ?: transaction { EventStreamRecord.insert(coinMovementEventStreamId, coinMovementEpochHeight) }.lastBlockHeight
+        val responseObserver =
+            EventStreamResponseObserver<EventBatch> { batch ->
                 handleCoinMovementEvents(
                     batch.height,
                     mints = batch.mints(provenanceProperties.contractAddress),
@@ -75,10 +100,10 @@ class EventStreamConsumer(
                     transfers = batch.markerTransfers(),
                 )
 
-                transaction { EventStreamRecord.update(eventStreamId, batch.height) }
+                transaction { EventStreamRecord.update(coinMovementEventStreamId, batch.height) }
             }
 
-        log.info("Starting event stream at height $lastHeight")
+        log.info("Starting coin movement event stream at height $lastHeight")
 
         eventStreamFactory.getStream(eventTypes, lastHeight + 1, responseObserver).streamEvents()
 
@@ -103,6 +128,8 @@ class EventStreamConsumer(
 
     fun String.uniqueHash(index: Int): String = "$this-$index"
 
+    // private fun io.provenance.attribute.v1.Attribute.bankUuid(): UUID = this.value.toByteArray().toUuid()
+
     fun String.addressToBankUuid(): UUID? = let {
         transaction { AddressRegistrationRecord.findLatestByAddress(it)?.bankAccountUuid }
     }
@@ -117,6 +144,8 @@ class EventStreamConsumer(
                 log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
 
                 val toAddressBankUuid = event.withdrawAddress.addressToBankUuid()
+                // val toAddressBankUuid =
+                //     pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
@@ -129,9 +158,11 @@ class EventStreamConsumer(
         // SC Transfer events denote the "off ramp" for a bank user to redeem coin when the recipient is the bank address
         val filteredBurns = burns.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
             .mapNotNull { event ->
-                log.debug("SC Transfer - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
+                log.debug("Burn - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 val fromAddressBankUuid = event.sender.addressToBankUuid()
+                // val fromAddressBankUuid =
+                //     pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
@@ -149,6 +180,10 @@ class EventStreamConsumer(
 
                 val fromAddressBankUuid = event.fromAddress.addressToBankUuid()
                 val toAddressBankUuid = event.toAddress.addressToBankUuid()
+                // val fromAddressBankUuid =
+                //     pbcService.getAttributeByTagName(event.fromAddress, bankClientProperties.kycTagName)?.bankUuid()
+                // val toAddressBankUuid =
+                //     pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (toAddressBankUuid != null || fromAddressBankUuid != null) {
