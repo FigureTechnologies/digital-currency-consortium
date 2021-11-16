@@ -174,7 +174,7 @@ class EventStreamConsumer(
 
         // general coin transfers outside of the SC are tracked require the EventMarkerTransfer event
         val filteredTransfers = transfers.filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
-            .filter { it.denom == bankClientProperties.denom }
+            .filter { it.denom == serviceProperties.dccDenom }
             .mapNotNull { event ->
                 log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
 

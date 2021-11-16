@@ -114,7 +114,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
         private val transfer = getMarkerTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
-            denom = bankClientProperties.denom
+            denom = serviceProperties.dccDenom
         )
 
         @Test
@@ -250,7 +250,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                     getMarkerTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
-                        denom = bankClientProperties.denom
+                        denom = serviceProperties.dccDenom
                     )
                 ),
             )
