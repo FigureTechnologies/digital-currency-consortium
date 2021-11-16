@@ -31,7 +31,8 @@ class AddressTagService(
                         addressRegistrationRecord.status = AddressStatus.PENDING_TAG
                     }
                 } catch (e: Exception) {
-                    log.error("Tag failed; it will retry.", e)
+                    log.error("Tag failed; setting registration record status to ERRORED", e)
+                    addressRegistrationRecord.status = AddressStatus.ERRORED
                 }
             }
             false -> {

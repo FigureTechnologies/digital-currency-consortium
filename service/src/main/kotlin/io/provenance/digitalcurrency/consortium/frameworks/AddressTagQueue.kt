@@ -4,8 +4,7 @@ import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus.*
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import io.provenance.digitalcurrency.consortium.service.AddressTagService
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -62,6 +61,13 @@ class AddressTagQueue(
     }
 
     override fun onMessageFailure(message: AddressTagDirective, e: Exception) {
-        log.error("address tag queue got error for uuid ${message.id}", e)
+        transaction {
+            AddressRegistrationRecord.findForUpdate(message.id).first().let { addressRegistration ->
+                withMdc(*addressRegistration.mdc()) {
+                    log.error("address tag queue got error for uuid ${message.id}. Marking ERRORED", e)
+                    addressRegistration.status = ERRORED
+                }
+            }
+        }
     }
 }

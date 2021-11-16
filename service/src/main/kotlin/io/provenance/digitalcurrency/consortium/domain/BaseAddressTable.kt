@@ -11,6 +11,7 @@ enum class AddressStatus {
     INSERTED,
     PENDING_TAG,
     COMPLETE,
+    ERRORED,
 }
 
 open class BaseAddressTable(name: String) : UUIDTable(name = name, columnName = "uuid") {
