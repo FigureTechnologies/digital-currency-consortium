@@ -24,8 +24,7 @@ class CoinMintOutcome(
 class CoinMintQueue(
     coroutineProperties: CoroutineProperties,
     private val coinMintService: CoinMintService
-) :
-    ActorModel<CoinMintDirective, CoinMintOutcome> {
+) : ActorModel<CoinMintDirective, CoinMintOutcome> {
     private val log = logger()
 
     @EventListener(DataSourceConnectedEvent::class)
@@ -34,8 +33,8 @@ class CoinMintQueue(
         start()
     }
 
-    override val numWorkers: Int = coroutineProperties.numWorkers.toInt()
-    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs.toLong()
+    override val numWorkers: Int = coroutineProperties.numWorkers
+    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs
 
     override suspend fun loadMessages(): List<CoinMintDirective> =
         transaction {
@@ -46,16 +45,8 @@ class CoinMintQueue(
         transaction {
             CoinMintRecord.findForUpdate(message.id).first().let { coinMint ->
                 withMdc(*coinMint.mdc()) {
-                    check(
-                        coinMint.status == CoinMintStatus.INSERTED ||
-                            coinMint.status == CoinMintStatus.PENDING_MINT
-                    ) { "Invalid coin mint status for queue processing" }
-
-                    when (coinMint.status) {
-                        CoinMintStatus.INSERTED -> coinMintService.createEvent(coinMint)
-                        CoinMintStatus.PENDING_MINT -> coinMintService.eventComplete(coinMint)
-                        else -> log.error("Invalid status - should never get here")
-                    }
+                    check(coinMint.status == CoinMintStatus.PENDING_MINT) { "Invalid coin mint status for queue processing" }
+                    coinMintService.eventComplete(coinMint)
                 }
             }
         }

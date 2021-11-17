@@ -24,7 +24,7 @@ class CoinBurnService(
         check(
             existingEvents.isEmpty() ||
                 existingEvents.filter { it.status == TxStatus.ERROR }.size == existingEvents.size
-        ) { "Burn/swap contract already called" }
+        ) { "Burn contract already called" }
 
         try {
             val txResponse = pbcService.burn(amount = coinBurnRecord.coinAmount.toBigInteger()).txResponse

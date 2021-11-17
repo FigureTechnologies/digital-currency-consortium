@@ -89,6 +89,7 @@ dependencies {
         it(Libraries.TestContainersPostgres)
         it(Libraries.TestContainers)
         it(Libraries.TestContainersJunitJupiter)
+        it(Libraries.TestCoroutines)
     }
 
     testRuntimeOnly(Libraries.JunitJupiterEngine)

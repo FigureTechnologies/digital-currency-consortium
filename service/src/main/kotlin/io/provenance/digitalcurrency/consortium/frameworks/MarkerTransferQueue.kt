@@ -40,8 +40,8 @@ class MarkerTransferQueue(
         start()
     }
 
-    override val numWorkers: Int = coroutineProperties.numWorkers.toInt()
-    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs.toLong()
+    override val numWorkers: Int = coroutineProperties.numWorkers
+    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs
 
     override suspend fun loadMessages(): List<MarkerTransferDirective> =
         transaction {
@@ -58,6 +58,7 @@ class MarkerTransferQueue(
                         // TODO - handle if active address no longer exists due to deregistration
                         val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
                         check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
+                        // TODO handle batches
                         check(
                             TxStatusRecord.findByTxHash(transfer.txHash).empty()
                         ) { "Marker transfer for ${transfer.txHash} already handled" }

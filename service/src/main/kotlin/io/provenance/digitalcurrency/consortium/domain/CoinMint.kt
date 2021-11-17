@@ -2,6 +2,9 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -33,9 +36,24 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
             it.updated = OffsetDateTime.now()
         }
 
-    fun findPending() = find { CMT.status inList listOf(CoinMintStatus.INSERTED, CoinMintStatus.PENDING_MINT) }
+    fun updateBatchStatus(uuids: List<UUID>, newStatus: CoinMintStatus) =
+        BatchUpdateStatement(CMT).apply {
+            uuids.forEach { uuid ->
+                addBatch(id = EntityID(uuid, CMT))
+                this[CMT.status] = newStatus
+                this[CMT.updated] = OffsetDateTime.now()
+            }
+            execute(TransactionManager.current())
+        }
+
+    fun findNew(batchSize: Int) =
+        find { CMT.status eq CoinMintStatus.INSERTED }.orderBy(CMT.created to SortOrder.ASC).limit(batchSize)
+
+    fun findPending() = find { CMT.status eq CoinMintStatus.PENDING_MINT }
 
     fun findForUpdate(uuid: UUID) = find { CMT.id eq uuid }.forUpdate()
+
+    fun findAllForUpdate(uuids: List<UUID>) = find { CMT.id inList uuids }.forUpdate().toList()
 }
 
 class CoinMintRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CMT, uuid) {

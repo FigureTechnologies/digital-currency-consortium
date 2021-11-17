@@ -5,6 +5,7 @@ import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.and
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -40,9 +41,14 @@ open class TxStatusEntityClass(txEventTable: TxStatusTable) : UUIDEntityClass<Tx
 
     fun findForUpdate(uuid: UUID) = find { TST.id eq uuid }.forUpdate()
 
+    // TODO this should go awway after marker transfers are handled in batch
     fun findByTxHash(txHash: String) = find { TST.txHash eq txHash }
 
-    fun findByTxRequestUuid(txRequestUuid: UUID): List<TxStatusRecord> = find { TST.txRequestUuid eq txRequestUuid }.toList()
+    fun findAllByTxHash(txHash: String): SizedIterable<TxStatusRecord> =
+        find { TST.txHash eq txHash }
+
+    fun findByTxRequestUuid(txRequestUuid: UUID): List<TxStatusRecord> =
+        find { TST.txRequestUuid eq txRequestUuid }.toList()
 
     fun findByExpired() = find {
         (TST.created lessEq OffsetDateTime.now().minusSeconds(30)).and(TST.status eq TxStatus.PENDING)

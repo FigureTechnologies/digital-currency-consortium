@@ -10,6 +10,7 @@ import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
 import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
+import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
@@ -27,6 +28,7 @@ import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -46,7 +48,12 @@ abstract class DatabaseTest {
         }
     }
 
-    fun insertRegisteredAddress(bankAccountUuid: UUID, address: String, status: AddressStatus = INSERTED, txHash: String? = null) =
+    fun insertRegisteredAddress(
+        bankAccountUuid: UUID,
+        address: String,
+        status: AddressStatus = INSERTED,
+        txHash: String? = null
+    ) =
         AddressRegistrationRecord.insert(
             uuid = UUID.randomUUID(),
             bankAccountUuid = bankAccountUuid,
@@ -129,5 +136,13 @@ abstract class DatabaseTest {
                 denom = denom,
                 type = type
             )
+        }
+
+    fun insertCoinMint(uuid: UUID = UUID.randomUUID(), address: String = "testaddress"): CoinMintRecord =
+        insertRegisteredAddress(
+            bankAccountUuid = uuid,
+            address = address
+        ).let {
+            CoinMintRecord.insert(UUID.randomUUID(), addressRegistration = it, fiatAmount = BigDecimal("1000"))
         }
 }

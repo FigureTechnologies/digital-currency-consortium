@@ -16,7 +16,7 @@ class DatabaseProperties(
     val username: String,
     val password: String,
     val hostname: String,
-    val port: String,
+    val port: Int,
     val schema: String,
     @NotNull @Pattern(regexp = "\\d{1,2}") val connectionPoolSize: String
 )
@@ -39,11 +39,10 @@ class ServiceProperties(
 class ProvenanceProperties(
     val grpcChannelUrl: String,
     val chainId: String,
-    val mainNet: String,
+    val mainNet: Boolean,
     val contractAddress: String
 ) {
     fun uri() = URI(grpcChannelUrl)
-    fun mainNet() = mainNet == "true"
 }
 
 @ConstructorBinding
@@ -54,8 +53,8 @@ class EventStreamProperties(
     val coinMovementId: String,
     val websocketUri: String,
     val rpcUri: String,
-    val epoch: String,
-    val coinMovementEpoch: String,
+    val epoch: Long,
+    val coinMovementEpoch: Long,
 )
 
 @ConstructorBinding
@@ -71,23 +70,25 @@ class BankClientProperties(
 @ConfigurationProperties(prefix = "coroutine")
 @Validated
 class CoroutineProperties(
-    val numWorkers: String,
-    val pollingDelayMs: String
+    val numWorkers: Int,
+    val pollingDelayMs: Long,
+    val batchSize: Int,
+    val batchPollingDelayMs: Long
 )
 
 @ConstructorBinding
 @ConfigurationProperties(prefix = "coin.movement")
 @Validated
 class CoinMovementProperties(
-    val pollingDelayMs: String,
+    val pollingDelayMs: Long,
 )
 
 @ConstructorBinding
 @ConfigurationProperties(prefix = "balance.report")
 @Validated
 class BalanceReportProperties(
-    val pageSize: String,
-    val pollingDelayMs: String,
+    val pageSize: Int,
+    val pollingDelayMs: Long,
     addressesWhitelist: String,
 ) {
     val addresses: List<String> = when (addressesWhitelist.isBlank()) {

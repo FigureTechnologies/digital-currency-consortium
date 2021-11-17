@@ -20,6 +20,7 @@ import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
+import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -260,8 +261,8 @@ class EventStreamConsumer(
 
         events.forEach { (txHash, type, event) ->
             log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-            val txStatusRecord = transaction { TxStatusRecord.findByTxHash(txHash) }
-            if (transaction { txStatusRecord.empty() }) {
+            val txStatusRecords: SizedIterable<TxStatusRecord> = transaction { TxStatusRecord.findAllByTxHash(txHash) }
+            if (transaction { txStatusRecords.toList().isEmpty() }) {
                 if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
                     handleMigrationEvent(txHash, event)
                 } else if (event is Transfer &&
@@ -273,7 +274,7 @@ class EventStreamConsumer(
                 }
             } else {
                 transaction {
-                    handleAllOtherEvents(txHash, txStatusRecord.forUpdate().first())
+                    handleAllOtherEvents(txHash, TxStatusRecord.findAllByTxHash(txHash).forUpdate().toList())
                 }
             }
         }
@@ -312,28 +313,30 @@ class EventStreamConsumer(
             }
     }
 
-    private fun handleAllOtherEvents(txHash: String, txStatusRecord: TxStatusRecord) {
-        when (txStatusRecord.status) {
-            TxStatus.COMPLETE -> log.warn("Tx status already complete uuid:${txStatusRecord.id.value}")
-            TxStatus.ERROR -> log.error("Tx status was already error but received a complete uuid:${txStatusRecord.id.value}")
-            else -> {
-                val txResponse = pbcService.getTransaction(txHash)?.txResponse
-                when {
-                    txResponse == null -> {
-                        log.error("Invalid (NULL) transaction response")
-                        txStatusRecord.setStatus(
-                            TxStatus.ERROR,
-                            "Invalid (NULL) transaction response"
-                        )
+    private fun handleAllOtherEvents(txHash: String, txStatusRecords: List<TxStatusRecord>) {
+        val txResponse = pbcService.getTransaction(txHash)?.txResponse
+        txStatusRecords.forEach { txStatusRecord ->
+            when (txStatusRecord.status) {
+                TxStatus.COMPLETE -> log.warn("Tx status already complete uuid:${txStatusRecord.id.value}")
+                TxStatus.ERROR -> log.error("Tx status was already error but received a complete uuid:${txStatusRecord.id.value}")
+                else -> {
+                    when {
+                        txResponse == null -> {
+                            log.error("Invalid (NULL) transaction response")
+                            txStatusRecord.setStatus(
+                                TxStatus.ERROR,
+                                "Invalid (NULL) transaction response"
+                            )
+                        }
+                        txResponse.isFailed() -> {
+                            log.error("Transaction failed: $txResponse")
+                            txStatusRecord.setStatus(
+                                TxStatus.ERROR,
+                                txResponse.rawLog
+                            )
+                        }
+                        else -> txStatusRecord.setStatus(TxStatus.COMPLETE)
                     }
-                    txResponse.isFailed() -> {
-                        log.error("Transaction failed: $txResponse")
-                        txStatusRecord.setStatus(
-                            TxStatus.ERROR,
-                            txResponse.rawLog
-                        )
-                    }
-                    else -> txStatusRecord.setStatus(TxStatus.COMPLETE)
                 }
             }
         }

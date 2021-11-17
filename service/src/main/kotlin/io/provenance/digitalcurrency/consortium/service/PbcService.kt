@@ -26,7 +26,6 @@ import io.provenance.digitalcurrency.consortium.messages.ExecuteJoinRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
-import io.provenance.digitalcurrency.consortium.messages.MintRequest
 import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
 import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
@@ -38,14 +37,15 @@ import java.math.BigInteger
 @Service
 class PbcService(
     private val grpcClientService: GrpcClientService,
-    private val serviceProperties: ServiceProperties,
+    serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
-    private val bankClientProperties: BankClientProperties
+    private val bankClientProperties: BankClientProperties,
+    private val pbcTimeoutService: PbcTimeoutService
 ) {
     private val log = logger()
     private val keyRing: KeyRing =
-        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet()).keyRing(0)
+        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet).keyRing(0)
     private val managerKey: KeyI = keyRing.key(0)
     final val managerAddress: String by lazy { managerKey.address() }
 
@@ -83,7 +83,7 @@ class PbcService(
                 .setValue(payload)
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Add attribute failed")
 
     fun deleteAttribute(address: String, tag: String) =
@@ -95,33 +95,25 @@ class PbcService(
                 .setName(tag)
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Delete attribute failed")
 
-    fun mintAndSwap(amount: BigInteger, address: String) =
+    fun mintBatch(mintData: List<ExecuteMintRequest>) =
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(
                 BaseReqSigner(
                     key = managerKey
                 )
             ),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteMintRequest(
-                            mint = MintRequest(
-                                amount = amount.toString(),
-                                address = address
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Mint/swap failed")
+            txBody = mintData.map { mintRequest ->
+                Tx.MsgExecuteContract.newBuilder()
+                    .setSender(managerAddress)
+                    .setContract(provenanceProperties.contractAddress)
+                    .setMsg(mapper.writeValueAsString(mintRequest).toByteString())
+                    .build()
+                    .toAny()
+            }.toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
+        ).throwIfFailed("Mint failed")
 
     fun redeem(amount: BigInteger) =
         grpcClientService.new().estimateAndBroadcastTx(
@@ -141,7 +133,7 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Redeem failed")
 
     fun burn(amount: BigInteger) =
@@ -161,7 +153,7 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Burn failed")
 
     fun join(name: String, maxSupply: BigInteger) =
@@ -183,7 +175,7 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Join failed")
 
     fun accept() =
@@ -201,6 +193,6 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
         ).throwIfFailed("Accept failed")
 }

@@ -440,7 +440,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(any())
+            verify(pbcServiceMock).getTransaction(txHash)
 
             transaction {
                 Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 1)
@@ -565,7 +565,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(txHash)
+            verify(pbcServiceMock).getTransaction(txHash)
 
             transaction {
                 val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
@@ -589,7 +589,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(txHash)
+            verify(pbcServiceMock).getTransaction(txHash)
 
             transaction {
                 val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()

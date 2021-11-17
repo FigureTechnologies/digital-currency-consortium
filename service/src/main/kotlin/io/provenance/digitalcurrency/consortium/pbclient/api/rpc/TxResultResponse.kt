@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.pbclient.api.rpc
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.provenance.digitalcurrency.consortium.stream.Event
 
 data class TxResultResponse(
@@ -7,7 +8,7 @@ data class TxResultResponse(
     val data: String?,
     val log: String,
     val info: String,
-    val gasWanted: Long,
-    val gasUsed: Long,
+    @JsonProperty("gas_wanted") val gasWanted: Long,
+    @JsonProperty("gas_used") val gasUsed: Long,
     val events: List<Event>
 )
