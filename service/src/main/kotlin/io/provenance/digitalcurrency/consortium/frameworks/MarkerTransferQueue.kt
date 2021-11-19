@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -27,6 +28,7 @@ class MarkerTransferOutcome(
 ) : Outcome()
 
 @Component
+@NotTest
 class MarkerTransferQueue(
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService
