@@ -43,7 +43,7 @@ class CoinRedemptionServiceTest : BaseIntegrationTest() {
                 .build()
         )
 
-    private val bankClientProperties = BankClientProperties("", "", "bank3.coin")
+    private val bankClientProperties = BankClientProperties("", "", "", "bank3.coin")
 
     @Autowired
     private lateinit var bankClientMock: BankClient
