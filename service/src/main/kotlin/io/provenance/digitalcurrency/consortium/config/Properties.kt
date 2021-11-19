@@ -63,6 +63,7 @@ class EventStreamProperties(
 @Validated
 class BankClientProperties(
     val uri: String,
+    val context: String,
     val kycTagName: String,
     val denom: String
 )

@@ -19,28 +19,29 @@ interface BankClient {
 
     class EmptyRequest
 
-    @RequestLine("POST /nycb/api/v1/mints/complete/{uuid}")
+    @RequestLine("POST /api/v1/mints/complete/{uuid}")
     fun completeMint(@Param("uuid") uuid: UUID, request: EmptyRequest = EmptyRequest()): ResponseEntity<String>
 
-    @RequestLine("POST /nycb/api/v1/fiat/deposits")
+    @RequestLine("POST /api/v1/fiat/deposits")
     fun depositFiat(request: DepositFiatRequest): ResponseEntity<String>
 
-    @RequestLine("POST /nycb/api/v1/transactions/logship")
+    @RequestLine("POST /api/v1/transactions/logship")
     fun persistCoinMovement(request: CoinMovementRequest): ResponseEntity<String>
 
-    @RequestLine("POST /nycb/api/v1/transactions/balreport")
+    @RequestLine("POST /api/v1/transactions/balreport")
     fun persistBalanceReport(request: BalanceRequest): ResponseEntity<String>
 
-    @RequestLine("POST /nycb/api/v1/alerts")
+    @RequestLine("POST /api/v1/alerts")
     fun persistAlert(request: AlertRequest): ResponseEntity<String>
 
     class Builder(
         private val url: String,
+        private val context: String,
         private val objectMapper: ObjectMapper
     ) {
         fun build(): BankClient = Feign.builder()
             .encoder(JacksonEncoder(objectMapper))
             .decoder(JacksonDecoder(objectMapper))
-            .target(BankClient::class.java, url)
+            .target(BankClient::class.java, "$url$context")
     }
 }
