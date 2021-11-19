@@ -28,6 +28,7 @@ class ServiceProperties(
     val name: String,
     val environment: String,
     val managerKey: String,
+    val managerKeyHarden: Boolean,
     val dccDenom: String
 ) {
     fun isProd() = environment == "production"

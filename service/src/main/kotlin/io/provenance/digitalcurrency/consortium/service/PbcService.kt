@@ -45,15 +45,15 @@ import java.time.OffsetDateTime
 @Service
 class PbcService(
     private val grpcClientService: GrpcClientService,
-    private val serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
-    private val bankClientProperties: BankClientProperties
+    private val bankClientProperties: BankClientProperties,
+    serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
     private val keyRing: KeyRing =
         InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet()).keyRing(0)
-    private val managerKey: KeyI = keyRing.key(0)
+    private val managerKey: KeyI = keyRing.key(0, serviceProperties.managerKeyHarden)
     final val managerAddress: String by lazy { managerKey.address() }
 
     init {

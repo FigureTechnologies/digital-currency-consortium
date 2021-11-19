@@ -7,8 +7,8 @@ interface KeyRing : Bip32Serializable {
      * A unique id that can be used to identify this key ring for caching.
      */
     fun id(): String
-    fun key(index: Int): KeyI
-    fun defaultKey(): KeyI = key(0)
+    fun key(index: Int, hardenAddress: Boolean): KeyI
+    fun defaultKey(hardenAddress: Boolean): KeyI = key(0, hardenAddress)
 }
 
 abstract class BaseKeyRing(protected val root: Account) : KeyRing {
@@ -31,7 +31,7 @@ open class InMemoryKeyRing(root: Account) : BaseKeyRing(root) {
         private val lock = Object()
     }
 
-    override fun key(index: Int): KeyI = InMemoryKey(childAccount(index, !root.isMainnet()))
+    override fun key(index: Int, hardenAddress: Boolean): KeyI = InMemoryKey(childAccount(index, hardenAddress))
 
     override fun serialize(): String = synchronized(lock) {
         return root.serialize()
