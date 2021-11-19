@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -21,6 +22,7 @@ class CoinMintOutcome(
 ) : Outcome()
 
 @Component
+@NotTest
 class CoinMintQueue(
     coroutineProperties: CoroutineProperties,
     private val coinMintService: CoinMintService
