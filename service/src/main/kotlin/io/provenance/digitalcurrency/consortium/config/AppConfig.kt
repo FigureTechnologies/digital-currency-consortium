@@ -88,5 +88,5 @@ class AppConfig : WebMvcConfigurer {
 
     @Bean
     fun bankClient(mapper: ObjectMapper, bankClientProperties: BankClientProperties): BankClient =
-        BankClient.Builder(bankClientProperties.uri, mapper).build()
+        BankClient.Builder(bankClientProperties.uri, bankClientProperties.context, mapper).build()
 }
