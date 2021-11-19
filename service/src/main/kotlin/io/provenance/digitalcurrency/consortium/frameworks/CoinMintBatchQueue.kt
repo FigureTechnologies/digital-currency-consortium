@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.consortium.frameworks
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinMintStatus
 import io.provenance.digitalcurrency.consortium.service.CoinMintService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
@@ -41,19 +40,11 @@ class CoinMintBatchQueue(
             CoinMintBatchDirective(CoinMintRecord.findNew(batchSize).map { it.id.value })
         }
 
-    override fun processMessages(messages: CoinMintBatchDirective): CoinMintBatchOutcome {
-        val processedIds = transaction {
-            val actualCoinsToMint = CoinMintRecord.findAllForUpdate(messages.ids).let { coinsToMint ->
-                coinsToMint.dropWhile { coinMintRecord ->
-                    log.error("Received coin mint with invalid status ${coinMintRecord.status} - not handling in batch queue")
-                    coinMintRecord.status != CoinMintStatus.INSERTED
-                }
-            }
-            coinMintService.createEvent(actualCoinsToMint)
-            actualCoinsToMint.map { it.id.value }
+    override fun processMessages(messages: CoinMintBatchDirective): CoinMintBatchOutcome =
+        transaction {
+            coinMintService.createEvent(CoinMintRecord.findInsertedInListForUpdate(messages.ids))
+            CoinMintBatchOutcome(messages.ids)
         }
-        return CoinMintBatchOutcome(processedIds)
-    }
 
     override fun onMessagesSuccess(result: CoinMintBatchOutcome) {
         log.info("mint batch queue successfully processed uuids $result.")

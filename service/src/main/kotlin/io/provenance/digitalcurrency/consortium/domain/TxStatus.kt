@@ -5,7 +5,6 @@ import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.and
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -44,8 +43,8 @@ open class TxStatusEntityClass(txEventTable: TxStatusTable) : UUIDEntityClass<Tx
     // TODO this should go awway after marker transfers are handled in batch
     fun findByTxHash(txHash: String) = find { TST.txHash eq txHash }
 
-    fun findAllByTxHash(txHash: String): SizedIterable<TxStatusRecord> =
-        find { TST.txHash eq txHash }
+    fun findAllByTxHashForUpdate(txHash: String): List<TxStatusRecord> =
+        find { TST.txHash eq txHash }.forUpdate().toList()
 
     fun findByTxRequestUuid(txRequestUuid: UUID): List<TxStatusRecord> =
         find { TST.txRequestUuid eq txRequestUuid }.toList()

@@ -103,37 +103,4 @@ class CoinMintBatchQueueTest : BaseIntegrationTest() {
             }
         }
     }
-
-    @Test
-    fun `coin mint records with invalid status should not process`() {
-        transaction {
-            val coinMint1 = insertCoinMint(address = "1").also {
-                CoinMintRecord.updateStatus(it.id.value, CoinMintStatus.COMPLETE)
-            }
-            val coinMint2 = insertCoinMint(address = "2").also {
-                CoinMintRecord.updateStatus(it.id.value, CoinMintStatus.PENDING_MINT)
-            }
-            val coinMint3 = insertCoinMint(address = "3")
-            val coinMint4 = insertCoinMint(address = "4")
-
-            val outcome = coinMintBatchQueue.processMessages(
-                CoinMintBatchDirective(
-                    listOf(
-                        coinMint1.id.value,
-                        coinMint2.id.value,
-                        coinMint3.id.value,
-                        coinMint4.id.value
-                    )
-                )
-            )
-
-            verify(pbcServiceMock, never()).mintBatch(any())
-            verify(coinMintServiceMock).createEvent(any())
-
-            assertEquals(outcome.ids.size, 2)
-            assert(outcome.ids.containsAll(listOf(coinMint3.id.value, coinMint4.id.value)))
-            assert(!outcome.ids.contains(coinMint1.id.value))
-            assert(!outcome.ids.contains(coinMint2.id.value))
-        }
-    }
 }

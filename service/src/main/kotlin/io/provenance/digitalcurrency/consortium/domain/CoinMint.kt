@@ -3,6 +3,7 @@ package io.provenance.digitalcurrency.consortium.domain
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import java.math.BigDecimal
@@ -53,7 +54,8 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
 
     fun findForUpdate(uuid: UUID) = find { CMT.id eq uuid }.forUpdate()
 
-    fun findAllForUpdate(uuids: List<UUID>) = find { CMT.id inList uuids }.forUpdate().toList()
+    fun findInsertedInListForUpdate(uuids: List<UUID>) =
+        find { (CMT.id inList uuids) and (CMT.status eq CoinMintStatus.INSERTED) }.forUpdate().toList()
 }
 
 class CoinMintRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CMT, uuid) {

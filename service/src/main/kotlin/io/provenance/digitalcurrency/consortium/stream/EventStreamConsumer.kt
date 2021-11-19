@@ -20,7 +20,6 @@ import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
-import org.jetbrains.exposed.sql.SizedIterable
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -261,8 +260,7 @@ class EventStreamConsumer(
 
         events.forEach { (txHash, type, event) ->
             log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-            val txStatusRecords: SizedIterable<TxStatusRecord> = transaction { TxStatusRecord.findAllByTxHash(txHash) }
-            if (transaction { txStatusRecords.toList().isEmpty() }) {
+            if (transaction { TxStatusRecord.findAllByTxHashForUpdate(txHash) }.isEmpty()) {
                 if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
                     handleMigrationEvent(txHash, event)
                 } else if (event is Transfer &&
@@ -274,7 +272,7 @@ class EventStreamConsumer(
                 }
             } else {
                 transaction {
-                    handleAllOtherEvents(txHash, TxStatusRecord.findAllByTxHash(txHash).forUpdate().toList())
+                    handleAllOtherEvents(txHash, TxStatusRecord.findAllByTxHashForUpdate(txHash))
                 }
             }
         }
