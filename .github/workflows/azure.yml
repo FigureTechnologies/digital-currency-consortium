@@ -107,17 +107,32 @@ jobs:
           login-server: contoso.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
-          docker build . -f docker/Dockerfile-service -t contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
-          docker push contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
 
-      - name: Login to DockerHub
-        uses: azure/docker-login@v1
+      - name: Build and push service docker
+        uses: docker/build-push-action@v2
         with:
-          login-server: contoso.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
-          docker build . -f docker/Dockerfile-database -t contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
-          docker push contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
-    
+          file: docker/Dockerfile-service
+          context: .
+          push: true
+          tags: ${{ steps.prep.outputs.tags }}
+
+#      - name: Login to DockerHub
+#        uses: azure/docker-login@v1
+#        with:
+#          login-server: contoso.azurecr.io
+#          username: ${{ secrets.REGISTRY_USERNAME }}
+#          password: ${{ secrets.REGISTRY_PASSWORD }}
+#      - run: |
+#          docker build . -f docker/Dockerfile-service -t contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+#          docker push contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+#
+#      - name: Login to DockerHub
+#        uses: azure/docker-login@v1
+#        with:
+#          login-server: contoso.azurecr.io
+#          username: ${{ secrets.REGISTRY_USERNAME }}
+#          password: ${{ secrets.REGISTRY_PASSWORD }}
+#      - run: |
+#          docker build . -f docker/Dockerfile-database -t contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+#          docker push contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+#
