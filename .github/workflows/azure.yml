@@ -41,7 +41,7 @@ jobs:
         with:
           name: service
           path: service/build/libs/*.jar
-        if: github.event_name == 'release'
+#        if: github.event_name == 'release'
 
   docker_build:
     name: Build and Push to Docker Registry
