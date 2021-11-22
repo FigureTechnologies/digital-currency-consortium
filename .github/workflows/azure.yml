@@ -1,0 +1,123 @@
+name: Build and Publish
+
+on:
+  release:
+    types:
+      - created
+  push:
+  pull_request:
+
+jobs:
+
+  java_build:
+    name: Build Jar
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Get Version
+        run: |
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+          server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
+
+      - name: Build with Gradle
+        run: ./gradlew clean build :service:jacocoTestReport --refresh-dependencies -PartifactVersion=$VERSION
+
+      - name: Upload Service Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: service
+          path: service/build/libs/*.jar
+        if: github.event_name == 'release'
+
+  docker_build:
+    name: Build and Push to Docker Registry
+    needs: java_build
+
+    runs-on: ubuntu-latest
+
+#    if: github.event_name == 'release'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Prepare
+        id: prep
+        run: |
+          # Strip git ref prefix from version
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+
+          # Strip "v" prefix from tag name
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+          # Use Docker `latest` tag convention
+          [ "$VERSION" == "main" ] && VERSION=latest
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+          IMAGE_ID=provenanceio/digital-currency-consortium-service
+
+          TAGS=$IMAGE_ID:$VERSION
+
+          PRERELEASE=${{ github.event.release.prerelease }}
+          echo PRERELEASE=$PRERELEASE
+
+          if [ "$PRERELEASE" == "false" ]; then
+              TAGS=$TAGS,$IMAGE_ID:latest
+          fi
+
+          echo ::set-output name=version::${VERSION}
+          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+
+#      - name: Set up Docker Buildx
+#        id: buildx
+#        uses: docker/setup-buildx-action@v1
+#        with:
+#          install: true
+
+      - name: Download Service Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: service
+          path: service/build/libs
+
+      - name: Login to DockerHub
+        uses: azure/docker-login@v1
+        with:
+          login-server: contoso.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build . -f docker/Dockerfile-service -t contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+          docker push contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+
+      - name: Login to DockerHub
+        uses: azure/docker-login@v1
+        with:
+          login-server: contoso.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build . -f docker/Dockerfile-database -t contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+          docker push contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+    
