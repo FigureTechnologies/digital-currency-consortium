@@ -104,30 +104,30 @@ jobs:
       - name: Login to DockerHub
         uses: azure/docker-login@v1
         with:
-          login-server: contoso.azurecr.io
+          login-server: digitalCurrencyConsortiumRegistry.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build . -f docker/Dockerfile-service -t contoso.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
-          docker push contoso.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          docker build . -f docker/Dockerfile-service -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
 
 #      - name: Login to DockerHub
 #        uses: azure/docker-login@v1
 #        with:
-#          login-server: contoso.azurecr.io
+#          login-server: digitalCurrencyConsortiumRegistry.azurecr.io
 #          username: ${{ secrets.REGISTRY_USERNAME }}
 #          password: ${{ secrets.REGISTRY_PASSWORD }}
 #      - run: |
-#          docker build . -f docker/Dockerfile-service -t contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
-#          docker push contoso.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+#          docker build . -f docker/Dockerfile-service -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
+#          docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium:${{ steps.prep.outputs.tags }}
 #
 #      - name: Login to DockerHub
 #        uses: azure/docker-login@v1
 #        with:
-#          login-server: contoso.azurecr.io
+#          login-server: digitalCurrencyConsortiumRegistry.azurecr.io
 #          username: ${{ secrets.REGISTRY_USERNAME }}
 #          password: ${{ secrets.REGISTRY_PASSWORD }}
 #      - run: |
-#          docker build . -f docker/Dockerfile-database -t contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
-#          docker push contoso.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+#          docker build . -f docker/Dockerfile-database -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
+#          docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium-database:${{ steps.prep.outputs.tags }}
 #
