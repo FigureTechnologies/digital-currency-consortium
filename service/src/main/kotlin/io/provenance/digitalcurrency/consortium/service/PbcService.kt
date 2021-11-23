@@ -2,7 +2,6 @@ package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.GeneratedMessageV3
-import com.google.protobuf.ByteString
 import cosmos.authz.v1beta1.Authz.Grant
 import cosmos.authz.v1beta1.Tx.MsgGrant
 import cosmos.base.v1beta1.CoinOuterClass.Coin
@@ -44,7 +43,7 @@ class PbcService(
 ) {
     private val log = logger()
     private val keyRing: KeyRing =
-        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet()).keyRing(0)
+        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet).keyRing(0)
     private val managerKey: KeyI = keyRing.key(0, serviceProperties.managerKeyHarden)
     final val managerAddress: String by lazy { managerKey.address() }
 
