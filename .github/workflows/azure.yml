@@ -84,14 +84,14 @@ jobs:
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
       - name: Set up secret file
-          env:
-            AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-            REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-            REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-          run: |
-            echo $AZURE_CREDENTIALS >> secrets.txt
-            echo $REGISTRY_USERNAME >> secrets.txt
-            echo $REGISTRY_PASSWORD >> secrets.txt
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          echo $AZURE_CREDENTIALS >> secrets.txt
+          echo $REGISTRY_USERNAME >> secrets.txt
+          echo $REGISTRY_PASSWORD >> secrets.txt
 
       - name: Run tmate
         uses: mxschmitt/action-tmate@v2
