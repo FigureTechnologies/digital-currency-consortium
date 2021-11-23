@@ -104,16 +104,16 @@ jobs:
           docker build . -f docker/Dockerfile-service -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
           docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
 
-      - name: Login to DockerHub
-        uses: azure/docker-login@v1
-        if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
-        with:
-          login-server: digitalCurrencyConsortiumRegistry.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
-          docker build . -f docker/Dockerfile-database -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
-          docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+#      - name: Login to DockerHub
+#        uses: azure/docker-login@v1
+#        if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
+#        with:
+#          login-server: digitalCurrencyConsortiumRegistry.azurecr.io
+#          username: ${{ secrets.REGISTRY_USERNAME }}
+#          password: ${{ secrets.REGISTRY_PASSWORD }}
+#      - run: |
+#          docker build . -f docker/Dockerfile-database -t digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+#          docker push digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
@@ -121,6 +121,7 @@ jobs:
           resource-group: digitalCurrencyConsortium
           dns-name-label: digital-currency-consortium-service
           image: digitalCurrencyConsortiumRegistry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          environment-variables: SPRING_PROFILES_ACTIVE=container DB_USER=postgres DB_PASS=password1 DB_HOST=digital-currency-consortium-postgres DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_consortium DB_PORT=5432 DB_NAME=digital_currency_consortium DB_SCHEMA=digital_currency_consortium DB_CONNECTION_POOL_SIZE=5 PROVENANCE_MAINNET=false PROVENANCE_CHAIN_ID=chain-local GRPC_CHANNEL_URL=http://host.docker.internal:9090 EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1 EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657 EVENT_STREAM_RPC_URI=http://host.docker.internal:26657 EVENT_STREAM_EPOCH=0 MANAGER_KEY=TODO BANK_URI=TODO KYC_TAG_NAME=TODO CONTRACT_ADDRESS=TODO DCC_DENOM=TODO BANK_DENOM=TODO
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: digital-currency-consortium-service-container
