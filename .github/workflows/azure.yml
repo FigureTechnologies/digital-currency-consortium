@@ -88,7 +88,7 @@ jobs:
           AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
           REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
+        run: |
           echo $AZURE_CREDENTIALS >> secrets.txt
           echo $REGISTRY_USERNAME >> secrets.txt
           echo $REGISTRY_PASSWORD >> secrets.txt
