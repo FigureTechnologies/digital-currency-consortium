@@ -9,27 +9,6 @@ on:
 
 jobs:
 
-  debug:
-    name: Debug
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-
-      - name: Set up secret file
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
-          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-        run: |
-          echo $AZURE_CREDENTIALS >> secrets.txt
-          echo $REGISTRY_USERNAME >> secrets.txt
-          echo $REGISTRY_PASSWORD >> secrets.txt
-
-      - name: Run tmate
-        uses: mxschmitt/action-tmate@v2
-
   java_build:
     name: Build Jar
 
