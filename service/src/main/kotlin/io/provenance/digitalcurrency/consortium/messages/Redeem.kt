@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ExecuteRedeemRequest(
     val redeem: RedeemRequest? = null
-)
+) : ContractMessageI
 
 data class RedeemRequest(
     val amount: String,

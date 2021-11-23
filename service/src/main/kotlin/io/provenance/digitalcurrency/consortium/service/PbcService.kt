@@ -1,15 +1,12 @@
 package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.protobuf.ByteString
+import com.google.protobuf.GeneratedMessageV3
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
-import io.provenance.attribute.v1.AttributeType
-import io.provenance.attribute.v1.MsgAddAttributeRequest
-import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -19,14 +16,9 @@ import io.provenance.digitalcurrency.consortium.extension.toAny
 import io.provenance.digitalcurrency.consortium.extension.toByteString
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
-import io.provenance.digitalcurrency.consortium.messages.BurnRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteAcceptRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteBurnRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteJoinRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
-import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
 import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
 import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
@@ -41,7 +33,6 @@ class PbcService(
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
     private val bankClientProperties: BankClientProperties,
-    private val pbcTimeoutService: PbcTimeoutService
 ) {
     private val log = logger()
     private val keyRing: KeyRing =
@@ -72,89 +63,17 @@ class PbcService(
     fun getAttributeByTagName(address: String, tag: String): Attribute? =
         getAttributes(address).find { it.name == tag }
 
-    fun addAttribute(address: String, tag: String, payload: ByteString) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = MsgAddAttributeRequest.newBuilder()
-                .setOwner(managerAddress)
-                .setAccount(address)
-                .setAttributeType(AttributeType.ATTRIBUTE_TYPE_BYTES)
-                .setName(tag)
-                .setValue(payload)
-                .build()
-                .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
-        ).throwIfFailed("Add attribute failed")
-
-    fun deleteAttribute(address: String, tag: String) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = MsgDeleteAttributeRequest.newBuilder()
-                .setOwner(managerAddress)
-                .setAccount(address)
-                .setName(tag)
-                .build()
-                .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
-        ).throwIfFailed("Delete attribute failed")
-
-    fun mintBatch(mintData: List<ExecuteMintRequest>) =
+    fun broadcastBatch(messages: List<GeneratedMessageV3>, timeoutHeight: Long) =
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(
                 BaseReqSigner(
                     key = managerKey
                 )
             ),
-            txBody = mintData.map { mintRequest ->
-                Tx.MsgExecuteContract.newBuilder()
-                    .setSender(managerAddress)
-                    .setContract(provenanceProperties.contractAddress)
-                    .setMsg(mapper.writeValueAsString(mintRequest).toByteString())
-                    .build()
-                    .toAny()
-            }.toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
-        ).throwIfFailed("Mint failed")
-
-    fun redeem(amount: BigInteger) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteRedeemRequest(
-                            redeem = RedeemRequest(
-                                amount = amount.toString(),
-                                reserveDenom = bankClientProperties.denom
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
-        ).throwIfFailed("Redeem failed")
-
-    fun burn(amount: BigInteger) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteBurnRequest(
-                            burn = BurnRequest(
-                                amount = amount.toString()
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
-        ).throwIfFailed("Burn failed")
+            txBody = messages
+                .map { it.toAny() }
+                .toTxBody(timeoutHeight)
+        ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
         grpcClientService.new().estimateAndBroadcastTx(
@@ -175,7 +94,7 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
+                .toTxBody()
         ).throwIfFailed("Join failed")
 
     fun accept() =
@@ -193,6 +112,6 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody(timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight())
+                .toTxBody()
         ).throwIfFailed("Accept failed")
 }

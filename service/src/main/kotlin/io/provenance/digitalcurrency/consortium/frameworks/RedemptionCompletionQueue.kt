@@ -3,10 +3,12 @@ package io.provenance.digitalcurrency.consortium.frameworks
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.CoinRedemptionService
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -23,7 +25,7 @@ class CoinRedemptionOutcome(
 @Component
 class CoinRedemptionQueue(
     coroutineProperties: CoroutineProperties,
-    private val coinRedemptionService: CoinRedemptionService
+    private val pbcService: PbcService
 ) :
     ActorModel<CoinRedemptionDirective, CoinRedemptionOutcome> {
     private val log = logger()
@@ -44,17 +46,27 @@ class CoinRedemptionQueue(
 
     override fun processMessage(message: CoinRedemptionDirective): CoinRedemptionOutcome {
         transaction {
-            CoinRedemptionRecord.findForUpdate(message.id).first().let { coinRedemption ->
+            CoinRedemptionRecord.findPendingForUpdate(message.id).first().let { coinRedemption ->
                 withMdc(*coinRedemption.mdc()) {
-                    check(
-                        coinRedemption.status == CoinRedemptionStatus.INSERTED ||
-                            coinRedemption.status == CoinRedemptionStatus.PENDING_REDEEM
-                    ) { "Invalid coin redemption status for queue processing" }
+                    val response = pbcService.getTransaction(coinRedemption.txHash!!)!!.txResponse
 
-                    when (coinRedemption.status) {
-                        CoinRedemptionStatus.INSERTED -> coinRedemptionService.createEvent(coinRedemption)
-                        CoinRedemptionStatus.PENDING_REDEEM -> coinRedemptionService.eventComplete(coinRedemption)
-                        else -> log.error("Invalid status - should never get here")
+                    when (response == null || response.isFailed()) {
+                        true -> {
+                            log.info("redeem failed, need to retry")
+                            coinRedemption.resetForRetry()
+                        }
+                        false -> {
+                            log.info("Completing redemption, setting up the burn")
+                            try {
+                                CoinBurnRecord.insert(
+                                    coinRedemption = coinRedemption,
+                                    coinAmount = coinRedemption.coinAmount
+                                )
+                                CoinRedemptionRecord.updateStatus(coinRedemption.id.value, TxStatus.COMPLETE)
+                            } catch (e: Exception) {
+                                log.error("prepping for burn failed; it will retry.", e)
+                            }
+                        }
                     }
                 }
             }
@@ -68,8 +80,5 @@ class CoinRedemptionQueue(
 
     override fun onMessageFailure(message: CoinRedemptionDirective, e: Exception) {
         log.error("redemption queue got error for uuid ${message.id}", e)
-        transaction {
-            CoinRedemptionRecord.updateStatus(message.id, CoinRedemptionStatus.EXCEPTION)
-        }
     }
 }

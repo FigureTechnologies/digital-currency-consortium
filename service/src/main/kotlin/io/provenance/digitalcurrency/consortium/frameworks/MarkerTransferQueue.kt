@@ -6,10 +6,7 @@ import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
-import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
-import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -52,24 +49,17 @@ class MarkerTransferQueue(
         transaction {
             MarkerTransferRecord.findForUpdate(message.id).first().let { transfer ->
                 withMdc(*transfer.mdc()) {
-                    pbcService.getTransaction(transfer.txHash)?.txResponse?.takeIf {
+                    pbcService.getTransaction(transfer.txHash!!)?.txResponse?.takeIf {
                         !it.isFailed()
-                    }?.let { txResponse ->
+                    }?.let {
                         // TODO - handle if active address no longer exists due to deregistration
                         val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
                         check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
                         // TODO handle batches
-                        check(
-                            TxStatusRecord.findByTxHash(transfer.txHash).empty()
-                        ) { "Marker transfer for ${transfer.txHash} already handled" }
-
-                        TxStatusRecord.insert(
-                            txResponse = txResponse,
-                            txRequestUuid = message.id,
-                            type = TxType.TRANSFER_CONTRACT
-                        ).also {
-                            it.status = TxStatus.COMPLETE
-                        }
+                        // check(
+                        // TODO is this situation handled
+                        //     TxStatusRecord.findByTxHash(transfer.txHash!!).empty()
+                        // ) { "Marker transfer for ${transfer.txHash} already handled" }
 
                         // set up the redeem
                         CoinRedemptionRecord.insert(
@@ -77,7 +67,7 @@ class MarkerTransferQueue(
                             coinAmount = transfer.coinAmount
                         )
 
-                        MarkerTransferRecord.updateStatus(transfer.id.value, MarkerTransferStatus.COMPLETE)
+                        MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.COMPLETE)
                     }
                 }
             }
@@ -91,6 +81,6 @@ class MarkerTransferQueue(
 
     override fun onMessageFailure(message: MarkerTransferDirective, e: Exception) {
         log.error("marker transfer queue got error for tx request uuid ${message.id}", e)
-        transaction { MarkerTransferRecord.updateStatus(message.id, MarkerTransferStatus.EXCEPTION) }
+        transaction { MarkerTransferRecord.updateStatus(message.id, TxStatus.ERROR) }
     }
 }

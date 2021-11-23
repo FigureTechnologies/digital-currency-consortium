@@ -1,19 +1,21 @@
 package io.provenance.digitalcurrency.consortium.domain
 
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import java.util.UUID
 
 typealias ART = AddressRegistrationTable
 
-object AddressRegistrationTable : BaseAddressTable(name = "address_registration") {
+object AddressRegistrationTable : BaseRequestTable(name = "address_registration") {
     val bankAccountUuid = uuid("bank_account_uuid")
     val address = text("address")
     val deleted = offsetDatetime("deleted").nullable()
 }
 
-open class AddressRegistrationEntityClass : BaseAddressEntityClass<ART, AddressRegistrationRecord>(ART) {
+open class AddressRegistrationEntityClass : BaseRequestEntityClass<ART, AddressRegistrationRecord>(ART) {
+    fun findPending() = find { ART.status eq TxStatus.PENDING }
+
+    fun findForUpdate(id: UUID) = find { ART.id eq id }.forUpdate()
 
     fun findLatestByAddress(address: String) =
         find { ART.address eq address }
@@ -33,13 +35,13 @@ open class AddressRegistrationEntityClass : BaseAddressEntityClass<ART, AddressR
         uuid: UUID = UUID.randomUUID(),
         bankAccountUuid: UUID,
         address: String
-    ) = super.insert(uuid, INSERTED).apply {
+    ) = super.insert(uuid).apply {
         this.bankAccountUuid = bankAccountUuid
         this.address = address
     }
 }
 
-class AddressRegistrationRecord(uuid: EntityID<UUID>) : BaseAddressRecord(ART, uuid) {
+class AddressRegistrationRecord(uuid: EntityID<UUID>) : BaseRequestRecord(ART, uuid) {
     companion object : AddressRegistrationEntityClass()
 
     var bankAccountUuid by ART.bankAccountUuid

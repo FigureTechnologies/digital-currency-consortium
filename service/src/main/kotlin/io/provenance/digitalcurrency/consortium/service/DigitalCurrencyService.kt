@@ -4,8 +4,8 @@ import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.COMPLETE
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
@@ -41,7 +41,7 @@ class DigitalCurrencyService(
         transaction {
             val existing = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
             checkNotNull(existing) { "Bank account $bankAccountUuid does not exist" }
-            check(existing.status == COMPLETE) { "Bank account $bankAccountUuid is not in a removable status ${existing.status}" }
+            check(existing.status == TxStatus.COMPLETE) { "Bank account $bankAccountUuid is not in a removable status ${existing.status}" }
             check(existing.deleted == null) { "Bank account $bankAccountUuid is already removed" }
 
             AddressDeregistrationRecord.insert(existing).apply { existing.deleted = created }

@@ -1,12 +1,14 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinMintStatus
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.CoinMintService
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -23,7 +25,8 @@ class CoinMintOutcome(
 @Component
 class CoinMintQueue(
     coroutineProperties: CoroutineProperties,
-    private val coinMintService: CoinMintService
+    private val pbcService: PbcService,
+    private val bankClient: BankClient
 ) : ActorModel<CoinMintDirective, CoinMintOutcome> {
     private val log = logger()
 
@@ -38,15 +41,30 @@ class CoinMintQueue(
 
     override suspend fun loadMessages(): List<CoinMintDirective> =
         transaction {
-            CoinMintRecord.findPending().map { CoinMintDirective(it.id.value) }
+            CoinMintRecord.findPendingWithTxHash().map { CoinMintDirective(it.id.value) }
         }
 
     override fun processMessage(message: CoinMintDirective): CoinMintOutcome {
         transaction {
-            CoinMintRecord.findForUpdate(message.id).first().let { coinMint ->
+            CoinMintRecord.findPendingForUpdate(message.id).first().let { coinMint ->
                 withMdc(*coinMint.mdc()) {
-                    check(coinMint.status == CoinMintStatus.PENDING_MINT) { "Invalid coin mint status for queue processing" }
-                    coinMintService.eventComplete(coinMint)
+                    val response = pbcService.getTransaction(coinMint.txHash!!)!!.txResponse
+
+                    when (response == null || response.isFailed()) {
+                        true -> {
+                            log.info("mint failed, need to retry")
+                            coinMint.resetForRetry()
+                        }
+                        false -> {
+                            log.info("Completing mint contract by notifying bank")
+                            try {
+                                bankClient.completeMint(coinMint.id.value)
+                                CoinMintRecord.updateStatus(coinMint.id.value, TxStatus.COMPLETE)
+                            } catch (e: Exception) {
+                                log.error("updating mint status at bank failed; it will retry.", e)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -59,6 +77,5 @@ class CoinMintQueue(
 
     override fun onMessageFailure(message: CoinMintDirective, e: Exception) {
         log.error("mint queue got error for uuid ${message.id}", e)
-        transaction { CoinMintRecord.updateStatus(message.id, CoinMintStatus.EXCEPTION) }
     }
 }

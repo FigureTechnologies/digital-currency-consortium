@@ -72,8 +72,6 @@ class BankClientProperties(
 class CoroutineProperties(
     val numWorkers: Int,
     val pollingDelayMs: Long,
-    val batchSize: Int,
-    val batchPollingDelayMs: Long
 )
 
 @ConstructorBinding

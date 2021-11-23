@@ -1,11 +1,21 @@
 package io.provenance.digitalcurrency.consortium.extension
 
+import com.google.protobuf.ByteString
+import io.provenance.attribute.v1.AttributeType
+import io.provenance.attribute.v1.MsgAddAttributeRequest
+import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
+import io.provenance.digitalcurrency.consortium.messages.BurnRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteBurnRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
+import io.provenance.digitalcurrency.consortium.messages.MintRequest
+import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -62,3 +72,46 @@ fun AddressDeregistrationRecord.mdc() = listOf(
     "status" to status,
     "txhash" to txHash
 ).toTypedArray()
+
+fun CoinMintRecord.getExecuteContractMessage() =
+    ExecuteMintRequest(
+        mint = MintRequest(
+            amount = coinAmount.toString(),
+            address = addressRegistration.address
+        )
+    )
+
+fun CoinRedemptionRecord.getExecuteContractMessage(bankDenom: String) =
+    ExecuteRedeemRequest(
+        redeem = RedeemRequest(
+            amount = coinAmount.toString(),
+            reserveDenom = bankDenom
+        )
+    )
+
+fun CoinBurnRecord.getExecuteContractMessage() =
+    ExecuteBurnRequest(
+        burn = BurnRequest(
+            amount = coinAmount.toString(),
+        )
+    )
+
+fun AddressRegistrationRecord.getAddAttributeMessage(
+    managerAddress: String,
+    tag: String
+) = MsgAddAttributeRequest.newBuilder()
+    .setOwner(managerAddress)
+    .setAccount(address)
+    .setAttributeType(AttributeType.ATTRIBUTE_TYPE_BYTES)
+    .setName(tag)
+    .setValue(ByteString.copyFrom(bankAccountUuid.toByteArray()))
+    .build()
+
+fun AddressDeregistrationRecord.getDeleteAttributeMessage(
+    managerAddress: String,
+    tag: String
+) = MsgDeleteAttributeRequest.newBuilder()
+    .setOwner(managerAddress)
+    .setAccount(addressRegistration.address)
+    .setName(tag)
+    .build()

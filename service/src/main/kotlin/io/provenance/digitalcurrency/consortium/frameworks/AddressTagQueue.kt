@@ -1,13 +1,14 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.AddressTagService
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -24,7 +25,8 @@ class AddressTagOutcome(
 @Component
 class AddressTagQueue(
     coroutineProperties: CoroutineProperties,
-    private val addressTagService: AddressTagService
+    private val pbcService: PbcService,
+    private val bankClientProperties: BankClientProperties
 ) : ActorModel<AddressTagDirective, AddressTagOutcome> {
     private val log = logger()
 
@@ -46,10 +48,25 @@ class AddressTagQueue(
         transaction {
             AddressRegistrationRecord.findForUpdate(message.id).first().let { addressRegistration ->
                 withMdc(*addressRegistration.mdc()) {
-                    when (addressRegistration.status) {
-                        INSERTED -> addressTagService.createEvent(addressRegistration)
-                        PENDING_TAG -> addressTagService.eventComplete(addressRegistration)
-                        else -> log.error("Invalid status - should never get here")
+                    val existing =
+                        pbcService.getAttributeByTagName(
+                            addressRegistration.address,
+                            bankClientProperties.kycTagName
+                        )
+                    when (existing == null) {
+                        true -> {
+                            val response = pbcService.getTransaction(addressRegistration.txHash!!)
+                            if (response == null || response.txResponse.isFailed()) {
+                                log.info("Tag failed - resetting record to retry")
+                                addressRegistration.resetForRetry()
+                            } else {
+                                log.info("blockchain tag not done yet - will check next iteration.")
+                            }
+                        }
+                        false -> {
+                            log.info("tag completed")
+                            addressRegistration.status = TxStatus.COMPLETE
+                        }
                     }
                 }
             }

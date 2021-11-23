@@ -1,6 +1,5 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -13,8 +12,7 @@ import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
-import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
+import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
@@ -31,7 +29,6 @@ class EventStreamConsumer(
     private val eventStreamFactory: EventStreamFactory,
     private val pbcService: PbcService,
     private val rpcClient: RpcClient,
-    private val bankClientProperties: BankClientProperties,
     eventStreamProperties: EventStreamProperties,
     private val serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
@@ -63,9 +60,6 @@ class EventStreamConsumer(
             EventStreamResponseObserver<EventBatch> { batch ->
                 handleEvents(
                     batch.height,
-                    batch.mints(provenanceProperties.contractAddress),
-                    batch.burns(provenanceProperties.contractAddress),
-                    batch.redemptions(provenanceProperties.contractAddress),
                     batch.transfers(provenanceProperties.contractAddress),
                     batch.migrations(provenanceProperties.contractAddress)
                 )
@@ -90,7 +84,12 @@ class EventStreamConsumer(
         // Initialize event stream state and determine start height
         val record = transaction { EventStreamRecord.findById(coinMovementEventStreamId) }
         val lastHeight = record?.lastBlockHeight
-            ?: transaction { EventStreamRecord.insert(coinMovementEventStreamId, coinMovementEpochHeight) }.lastBlockHeight
+            ?: transaction {
+                EventStreamRecord.insert(
+                    coinMovementEventStreamId,
+                    coinMovementEpochHeight
+                )
+            }.lastBlockHeight
         val responseObserver =
             EventStreamResponseObserver<EventBatch> { batch ->
                 handleCoinMovementEvents(
@@ -245,22 +244,16 @@ class EventStreamConsumer(
 
     fun handleEvents(
         blockHeight: Long,
-        mints: Mints,
-        burns: Burns,
-        redemptions: Redemptions,
         transfers: Transfers,
         migrations: Migrations
     ) {
         val events =
-            mints.map { Triple(it.txHash, TxType.MINT_CONTRACT, it) } +
-                burns.map { Triple(it.txHash, TxType.BURN_CONTRACT, it) } +
-                redemptions.map { Triple(it.txHash, TxType.REDEEM_CONTRACT, it) } +
-                transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
+            transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
                 migrations.map { Triple(it.txHash, TxType.MIGRATION, it) }
 
         events.forEach { (txHash, type, event) ->
             log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-            if (transaction { TxStatusRecord.findAllByTxHashForUpdate(txHash) }.isEmpty()) {
+            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty()) {
                 if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
                     handleMigrationEvent(txHash, event)
                 } else if (event is Transfer &&
@@ -269,10 +262,6 @@ class EventStreamConsumer(
                     transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
                 ) {
                     handleTransferEvent(txHash, event)
-                }
-            } else {
-                transaction {
-                    handleAllOtherEvents(txHash, TxStatusRecord.findAllByTxHashForUpdate(txHash))
                 }
             }
         }
@@ -309,34 +298,5 @@ class EventStreamConsumer(
                     )
                 }
             }
-    }
-
-    private fun handleAllOtherEvents(txHash: String, txStatusRecords: List<TxStatusRecord>) {
-        val txResponse = pbcService.getTransaction(txHash)?.txResponse
-        txStatusRecords.forEach { txStatusRecord ->
-            when (txStatusRecord.status) {
-                TxStatus.COMPLETE -> log.warn("Tx status already complete uuid:${txStatusRecord.id.value}")
-                TxStatus.ERROR -> log.error("Tx status was already error but received a complete uuid:${txStatusRecord.id.value}")
-                else -> {
-                    when {
-                        txResponse == null -> {
-                            log.error("Invalid (NULL) transaction response")
-                            txStatusRecord.setStatus(
-                                TxStatus.ERROR,
-                                "Invalid (NULL) transaction response"
-                            )
-                        }
-                        txResponse.isFailed() -> {
-                            log.error("Transaction failed: $txResponse")
-                            txStatusRecord.setStatus(
-                                TxStatus.ERROR,
-                                txResponse.rawLog
-                            )
-                        }
-                        else -> txStatusRecord.setStatus(TxStatus.COMPLETE)
-                    }
-                }
-            }
-        }
     }
 }

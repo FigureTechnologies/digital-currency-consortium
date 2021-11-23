@@ -1,13 +1,14 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.AddressDetagService
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -24,7 +25,8 @@ class AddressDetagOutcome(
 @Component
 class AddressDetagQueue(
     coroutineProperties: CoroutineProperties,
-    private val addressDetagService: AddressDetagService
+    private val pbcService: PbcService,
+    private val bankClientProperties: BankClientProperties
 ) : ActorModel<AddressDetagDirective, AddressDetagOutcome> {
     private val log = logger()
 
@@ -44,12 +46,25 @@ class AddressDetagQueue(
 
     override fun processMessage(message: AddressDetagDirective): AddressDetagOutcome {
         transaction {
-            AddressDeregistrationRecord.findForUpdate(message.id).first().let { addressDeregistration ->
+            AddressDeregistrationRecord.findPendingForUpdate(message.id).first().let { addressDeregistration ->
                 withMdc(*addressDeregistration.mdc()) {
-                    when (addressDeregistration.status) {
-                        INSERTED -> addressDetagService.createEvent(addressDeregistration)
-                        PENDING_TAG -> addressDetagService.eventComplete(addressDeregistration)
-                        else -> log.error("Invalid status - should never get here")
+                    val address = addressDeregistration.addressRegistration.address
+                    val existing = pbcService.getAttributeByTagName(address, bankClientProperties.kycTagName)
+
+                    when (existing == null) {
+                        false -> {
+                            val response = pbcService.getTransaction(addressDeregistration.txHash!!)
+                            if (response == null || response.txResponse.isFailed()) {
+                                log.info("Detag failed - resetting record to retry")
+                                addressDeregistration.resetForRetry()
+                            } else {
+                                log.info("blockchain detag not done yet - will check next iteration.")
+                            }
+                        }
+                        true -> {
+                            log.info("detag completed")
+                            addressDeregistration.status = TxStatus.COMPLETE
+                        }
                     }
                 }
             }

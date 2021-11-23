@@ -13,13 +13,13 @@ fun newPaginationBuilder(offset: Int, limit: Int): PageRequest.Builder =
 
 fun Message.toAny(typeUrlPrefix: String = ""): Any = Any.pack(this, typeUrlPrefix)
 
-fun Iterable<Any>.toTxBody(timeoutHeight: Long): TxBody =
+fun Iterable<Any>.toTxBody(timeoutHeight: Long? = null): TxBody =
     TxBody.newBuilder()
         .addAllMessages(this)
-        .setTimeoutHeight(timeoutHeight)
+        .also { builder -> timeoutHeight?.run { builder.timeoutHeight = this } }
         .build()
 
-fun Any.toTxBody(timeoutHeight: Long): TxBody = listOf(this).toTxBody(timeoutHeight)
+fun Any.toTxBody(timeoutHeight: Long? = null): TxBody = listOf(this).toTxBody(timeoutHeight)
 
 fun ByteArray.toByteString(): ByteString = ByteString.copyFrom(this)
 fun String.toByteString(): ByteString = this.toByteArray().toByteString()

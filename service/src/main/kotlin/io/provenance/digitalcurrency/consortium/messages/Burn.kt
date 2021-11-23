@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class ExecuteBurnRequest(
     val burn: BurnRequest? = null
-)
+) : ContractMessageI
 
 data class BurnRequest(
     val amount: String
