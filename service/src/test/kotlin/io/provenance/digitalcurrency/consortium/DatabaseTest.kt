@@ -8,6 +8,7 @@ import io.provenance.digitalcurrency.consortium.domain.AddressStatus
 import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
+import io.provenance.digitalcurrency.consortium.domain.CBT
 import io.provenance.digitalcurrency.consortium.domain.CMT
 import io.provenance.digitalcurrency.consortium.domain.CRT
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
@@ -37,6 +38,7 @@ abstract class DatabaseTest {
     fun afterEach() {
         transaction {
             ADT.deleteAll()
+            CBT.deleteAll()
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
             CRT.deleteAll()

@@ -3,9 +3,12 @@ package io.provenance.digitalcurrency.consortium.extension
 import com.google.protobuf.Any
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
+import com.google.protobuf.Timestamp
 import cosmos.base.query.v1beta1.Pagination.PageRequest
 import cosmos.tx.v1beta1.TxOuterClass.TxBody
 import java.nio.ByteBuffer
+import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.UUID
 
 fun newPaginationBuilder(offset: Int, limit: Int): PageRequest.Builder =
@@ -43,3 +46,13 @@ fun ByteArray.toUuid(): UUID {
 
     return UUID(first, second)
 }
+
+fun Timestamp.Builder.setValue(instant: Instant): Timestamp.Builder {
+    this.nanos = instant.nano
+    this.seconds = instant.epochSecond
+    return this
+}
+
+fun Timestamp.Builder.setValue(odt: OffsetDateTime): Timestamp.Builder = setValue(odt.toInstant())
+
+fun OffsetDateTime.toProtoTimestamp(): Timestamp = Timestamp.newBuilder().setValue(this).build()
