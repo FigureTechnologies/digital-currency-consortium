@@ -61,7 +61,7 @@ class PbcService(
         try {
             grpcClientService.new().transactions.getTx(txHash)
         } catch (e: StatusRuntimeException) {
-            if (e.status.code == Code.NOT_FOUND) null else throw e
+            if (listOf(Code.UNKNOWN, Code.NOT_FOUND).contains(e.status.code)) null else throw e
         }
 
     fun getAttributes(address: String): List<Attribute> =

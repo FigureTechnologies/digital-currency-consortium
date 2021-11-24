@@ -50,26 +50,26 @@ class CoinRedemptionQueue(
         transaction {
             CoinRedemptionRecord.findPendingForUpdate(message.id).first().let { coinRedemption ->
                 withMdc(*coinRedemption.mdc()) {
-                    val response = pbcService.getTransaction(coinRedemption.txHash!!)!!.txResponse
-
-                    when (response == null || response.isFailed()) {
-                        true -> {
-                            log.info("redeem failed, need to retry")
-                            coinRedemption.resetForRetry()
-                        }
-                        false -> {
-                            log.info("Completing redemption, setting up the burn")
-                            try {
-                                CoinBurnRecord.insert(
-                                    coinRedemption = coinRedemption,
-                                    coinAmount = coinRedemption.coinAmount
-                                )
-                                CoinRedemptionRecord.updateStatus(coinRedemption.id.value, TxStatus.COMPLETE)
-                            } catch (e: Exception) {
-                                log.error("prepping for burn failed; it will retry.", e)
+                    pbcService.getTransaction(coinRedemption.txHash!!)?.let { response ->
+                        when (response.txResponse.isFailed()) {
+                            true -> {
+                                log.info("redeem failed, need to retry")
+                                coinRedemption.resetForRetry()
+                            }
+                            false -> {
+                                log.info("Completing redemption, setting up the burn")
+                                try {
+                                    CoinBurnRecord.insert(
+                                        coinRedemption = coinRedemption,
+                                        coinAmount = coinRedemption.coinAmount
+                                    )
+                                    CoinRedemptionRecord.updateStatus(coinRedemption.id.value, TxStatus.COMPLETE)
+                                } catch (e: Exception) {
+                                    log.error("prepping for burn failed; it will retry.", e)
+                                }
                             }
                         }
-                    }
+                    } ?: log.info("redemption blockchain request not complete. Will retry.")
                 }
             }
         }

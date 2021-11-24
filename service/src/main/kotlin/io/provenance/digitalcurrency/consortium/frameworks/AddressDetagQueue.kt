@@ -53,13 +53,15 @@ class AddressDetagQueue(
 
                     when (existing == null) {
                         false -> {
-                            val response = pbcService.getTransaction(addressDeregistration.txHash!!)
-                            if (response == null || response.txResponse.isFailed()) {
-                                log.info("Detag failed - resetting record to retry")
-                                addressDeregistration.resetForRetry()
-                            } else {
-                                log.info("blockchain detag not done yet - will check next iteration.")
-                            }
+                            pbcService.getTransaction(addressDeregistration.txHash!!)?.let { response ->
+                                if (response.txResponse.isFailed()) {
+                                    log.info("Detag failed - resetting record to retry")
+                                    addressDeregistration.resetForRetry()
+                                } else {
+                                    log.error("Still tagged but the detag blockchain msg succeeded. Should not happen.")
+                                    addressDeregistration.status = TxStatus.ERROR
+                                }
+                            } ?: log.info("blockchain detag not done yet - will check next iteration.")
                         }
                         true -> {
                             log.info("detag completed")

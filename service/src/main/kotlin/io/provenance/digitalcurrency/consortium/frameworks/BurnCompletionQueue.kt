@@ -50,33 +50,33 @@ class CoinBurnQueue(
         transaction {
             CoinBurnRecord.findPendingForUpdate(message.id).first().let { coinBurn ->
                 withMdc(*coinBurn.mdc()) {
-                    val response = pbcService.getTransaction(coinBurn.txHash!!)!!.txResponse
-
-                    when (response == null || response.isFailed()) {
-                        true -> {
-                            log.info("burn failed, need to retry")
-                            coinBurn.resetForRetry()
-                        }
-                        false -> {
-                            if (coinBurn.coinRedemption != null) {
-                                try {
-                                    bankClient.depositFiat(
-                                        DepositFiatRequest(
-                                            uuid = coinBurn.id.value,
-                                            bankAccountUUID = coinBurn.coinRedemption!!.addressRegistration.bankAccountUuid,
-                                            amount = coinBurn.fiatAmount
+                    pbcService.getTransaction(coinBurn.txHash!!)?.let { response ->
+                        when (response.txResponse.isFailed()) {
+                            true -> {
+                                log.info("burn failed, need to retry")
+                                coinBurn.resetForRetry()
+                            }
+                            false -> {
+                                if (coinBurn.coinRedemption != null) {
+                                    try {
+                                        bankClient.depositFiat(
+                                            DepositFiatRequest(
+                                                uuid = coinBurn.id.value,
+                                                bankAccountUUID = coinBurn.coinRedemption!!.addressRegistration.bankAccountUuid,
+                                                amount = coinBurn.fiatAmount
+                                            )
                                         )
-                                    )
+                                        CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
+                                    } catch (e: Exception) {
+                                        log.error("sending fiat deposit request to bank failed; it will retry.", e)
+                                    }
+                                } else {
+                                    // no redemption for the burn - just complete it
                                     CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
-                                } catch (e: Exception) {
-                                    log.error("sending fiat deposit request to bank failed; it will retry.", e)
                                 }
-                            } else {
-                                // no redemption for the burn - just complete it
-                                CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
                             }
                         }
-                    }
+                    } ?: log.info("burn blockchain request not complete. Will retry.")
                 }
             }
         }

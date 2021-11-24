@@ -52,7 +52,9 @@ class MarkerTransferQueue(
         transaction {
             MarkerTransferRecord.findForUpdate(message.id).first().let { transfer ->
                 withMdc(*transfer.mdc()) {
-                    pbcService.getTransaction(transfer.txHash!!)?.txResponse?.takeIf {
+                    // this should fail if we can't find the txn by the txhash because that is how it
+                    // got inserted in this table in the first place
+                    pbcService.getTransaction(transfer.txHash!!)!!.txResponse.takeIf {
                         !it.isFailed()
                     }?.let {
                         // TODO - handle if active address no longer exists due to deregistration

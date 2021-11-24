@@ -55,13 +55,15 @@ class AddressTagQueue(
                         )
                     when (existing == null) {
                         true -> {
-                            val response = pbcService.getTransaction(addressRegistration.txHash!!)
-                            if (response == null || response.txResponse.isFailed()) {
-                                log.info("Tag failed - resetting record to retry")
-                                addressRegistration.resetForRetry()
-                            } else {
-                                log.info("blockchain tag not done yet - will check next iteration.")
-                            }
+                            pbcService.getTransaction(addressRegistration.txHash!!)?.let { response ->
+                                if (response.txResponse.isFailed()) {
+                                    log.info("Tag failed - resetting record to retry")
+                                    addressRegistration.resetForRetry()
+                                } else {
+                                    log.error("No tag but the blockchain msg succeeded. Should not happen.")
+                                    addressRegistration.status = TxStatus.ERROR
+                                }
+                            } ?: log.info("blockchain tag not done yet - will check next iteration.")
                         }
                         false -> {
                             log.info("tag completed")

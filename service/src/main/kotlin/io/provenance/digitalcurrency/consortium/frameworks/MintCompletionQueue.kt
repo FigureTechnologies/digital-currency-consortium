@@ -48,23 +48,23 @@ class CoinMintQueue(
         transaction {
             CoinMintRecord.findPendingForUpdate(message.id).first().let { coinMint ->
                 withMdc(*coinMint.mdc()) {
-                    val response = pbcService.getTransaction(coinMint.txHash!!)!!.txResponse
-
-                    when (response == null || response.isFailed()) {
-                        true -> {
-                            log.info("mint failed, need to retry")
-                            coinMint.resetForRetry()
-                        }
-                        false -> {
-                            log.info("Completing mint contract by notifying bank")
-                            try {
-                                bankClient.completeMint(coinMint.id.value)
-                                CoinMintRecord.updateStatus(coinMint.id.value, TxStatus.COMPLETE)
-                            } catch (e: Exception) {
-                                log.error("updating mint status at bank failed; it will retry.", e)
+                    pbcService.getTransaction(coinMint.txHash!!)?.let { response ->
+                        when (response.txResponse.isFailed()) {
+                            true -> {
+                                log.info("mint failed, need to retry")
+                                coinMint.resetForRetry()
+                            }
+                            false -> {
+                                log.info("Completing mint contract by notifying bank")
+                                try {
+                                    bankClient.completeMint(coinMint.id.value)
+                                    CoinMintRecord.updateStatus(coinMint.id.value, TxStatus.COMPLETE)
+                                } catch (e: Exception) {
+                                    log.error("updating mint status at bank failed; it will retry.", e)
+                                }
                             }
                         }
-                    }
+                    } ?: log.info("mint blockchain request not complete. Will retry.")
                 }
             }
         }
