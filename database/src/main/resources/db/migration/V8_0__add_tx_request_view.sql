@@ -15,39 +15,55 @@ ALTER TABLE address_registration ADD timeout_height BIGINT;
 ALTER TABLE address_registration ADD updated TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc');
 ALTER TABLE address_dereg ADD timeout_height BIGINT;
 ALTER TABLE address_dereg ADD updated TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc');
+
+UPDATE coin_mint
+SET tx_hash = tx_status.tx_hash, updated = tx_status.created
+FROM tx_status
+WHERE tx_status.tx_request_uuid = coin_mint.uuid
+    AND tx_status.type = 'MINT_CONTRACT' AND coin_mint.tx_hash IS NULL;
+
+UPDATE coin_burn
+SET tx_hash = tx_status.tx_hash, updated = tx_status.created
+FROM tx_status
+WHERE tx_status.tx_request_uuid = coin_burn.uuid
+    AND tx_status.type = 'BURN_CONTRACT' AND coin_burn.tx_hash IS NULL;
+
+UPDATE coin_redemption
+SET tx_hash = tx_status.tx_hash, updated = tx_status.created
+FROM tx_status
+WHERE tx_status.tx_request_uuid = coin_redemption.uuid
+    AND tx_status.type = 'REDEEM_CONTRACT' AND coin_redemption.tx_hash IS NULL;
+
 CREATE VIEW tx_request_view AS
 SELECT DISTINCT
-    coin_mint.uuid,
+    uuid,
     'MINT' AS type,
-    tx_status.tx_hash,
-    coin_mint.status,
+    tx_hash,
+    status,
     timeout_height,
-    coin_mint.created,
-    coin_mint.updated
+    created,
+    updated
 FROM coin_mint
-LEFT JOIN tx_status ON coin_mint.uuid = tx_status.tx_request_uuid AND tx_status.status = 'COMPLETE'
 UNION ALL
 SELECT DISTINCT
-    coin_burn.uuid,
+    uuid,
     'BURN' AS type,
-    tx_status.tx_hash,
-    coin_burn.status,
+    tx_hash,
+    status,
     timeout_height,
-    coin_burn.created,
-    coin_burn.updated
+    created,
+    updated
 FROM coin_burn
-LEFT JOIN tx_status ON coin_burn.uuid = tx_status.tx_request_uuid AND tx_status.status = 'COMPLETE'
 UNION ALL
 SELECT DISTINCT
-    coin_redemption.uuid,
+    uuid,
     'REDEEM' AS type,
-    tx_status.tx_hash,
-    coin_redemption.status,
+    tx_hash,
+    status,
     timeout_height,
-    coin_redemption.created,
-    coin_redemption.updated
+    created,
+    updated
 FROM coin_redemption
-LEFT JOIN tx_status ON coin_redemption.uuid = tx_status.tx_request_uuid AND tx_status.status = 'COMPLETE'
 UNION ALL
 SELECT
     uuid,
@@ -68,22 +84,3 @@ SELECT
     created,
     created
 FROM address_dereg;
-
-
-UPDATE coin_mint
-SET tx_hash = tx_status.tx_hash, updated = tx_status.created
-FROM tx_status
-WHERE tx_status.tx_request_uuid = coin_mint.uuid
-    AND tx_status.type = 'MINT_CONTRACT' AND coin_mint.tx_hash IS NULL;
-
-UPDATE coin_burn
-SET tx_hash = tx_status.tx_hash, updated = tx_status.created
-FROM tx_status
-WHERE tx_status.tx_request_uuid = coin_burn.uuid
-    AND tx_status.type = 'BURN_CONTRACT' AND coin_burn.tx_hash IS NULL;
-
-UPDATE coin_redemption
-SET tx_hash = tx_status.tx_hash, updated = tx_status.created
-FROM tx_status
-WHERE tx_status.tx_request_uuid = coin_redemption.uuid
-    AND tx_status.type = 'REDEEM_CONTRACT' AND coin_redemption.tx_hash IS NULL;

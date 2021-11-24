@@ -44,6 +44,7 @@ class DigitalCurrencyService(
             check(existing.status == TxStatus.COMPLETE) { "Bank account $bankAccountUuid is not in a removable status ${existing.status}" }
             check(existing.deleted == null) { "Bank account $bankAccountUuid is already removed" }
 
+            // TODO should we set the deleted date at the end?
             AddressDeregistrationRecord.insert(existing).apply { existing.deleted = created }
         }
     }

@@ -2,7 +2,6 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.and
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -43,7 +42,7 @@ open class CoinRedemptionEntityClass : BaseRequestEntityClass<CRT, CoinRedemptio
 class CoinRedemptionRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CRT, uuid) {
     companion object : CoinRedemptionEntityClass()
 
-    var coinAmount by CMT.coinAmount
-    var fiatAmount by CMT.fiatAmount
+    var coinAmount by CRT.coinAmount
+    var fiatAmount by CRT.fiatAmount
     var addressRegistration by AddressRegistrationRecord referencedOn CRT.addressRegistration
 }

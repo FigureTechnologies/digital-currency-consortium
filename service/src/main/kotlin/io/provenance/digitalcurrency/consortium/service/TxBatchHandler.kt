@@ -75,21 +75,23 @@ class TxBatchHandler(
                 }
             }.let {
                 val (baseRequestRecords, messages) = it.unzip()
-                val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
-                try {
-                    val response = pbcService.broadcastBatch(messages, timeoutHeight)
-                    baseRequestRecords.forEach { baseRequestRecord ->
-                        baseRequestRecord.updateToPending(response.txResponse.txhash, timeoutHeight)
+                if (messages.isNotEmpty()) {
+                    val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
+                    try {
+                        val response = pbcService.broadcastBatch(messages, timeoutHeight)
+                        baseRequestRecords.forEach { baseRequestRecord ->
+                            baseRequestRecord.updateToPending(response.txResponse.txhash, timeoutHeight)
+                        }
+                    } catch (e: Exception) {
+                        log.error("Error submitting batch of messages", e)
                     }
-                } catch (e: Exception) {
-                    log.error("Error submitting batch of messages", e)
                 }
             }
         }
     }
 
     private fun tagExists(address: String): Boolean =
-        pbcService.getAttributeByTagName(address, bankClientProperties.kycTagName) == null
+        pbcService.getAttributeByTagName(address, bankClientProperties.kycTagName) != null
 
     private fun buildExecuteContractMessage(message: ContractMessageI) =
         Tx.MsgExecuteContract.newBuilder()

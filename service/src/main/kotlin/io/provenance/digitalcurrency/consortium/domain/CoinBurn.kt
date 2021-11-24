@@ -41,7 +41,7 @@ open class CoinBurnEntityClass : BaseRequestEntityClass<CBT, CoinBurnRecord>(CBT
 class CoinBurnRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CBT, uuid) {
     companion object : CoinBurnEntityClass()
 
-    var coinAmount by CMT.coinAmount
-    var fiatAmount by CMT.fiatAmount
+    var coinAmount by CBT.coinAmount
+    var fiatAmount by CBT.fiatAmount
     var coinRedemption by CoinRedemptionRecord optionalReferencedOn CBT.coinRedemption
 }

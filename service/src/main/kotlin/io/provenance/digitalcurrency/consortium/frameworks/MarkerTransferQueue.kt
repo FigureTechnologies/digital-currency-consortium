@@ -44,6 +44,7 @@ class MarkerTransferQueue(
 
     override suspend fun loadMessages(): List<MarkerTransferDirective> =
         transaction {
+            // TODO consistent terms
             MarkerTransferRecord.findPending().map { MarkerTransferDirective(it.id.value) }
         }
 
@@ -83,6 +84,5 @@ class MarkerTransferQueue(
 
     override fun onMessageFailure(message: MarkerTransferDirective, e: Exception) {
         log.error("marker transfer queue got error for tx request uuid ${message.id}", e)
-        transaction { MarkerTransferRecord.updateStatus(message.id, TxStatus.ERROR) }
     }
 }
