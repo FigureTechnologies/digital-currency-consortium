@@ -1,4 +1,7 @@
 - Install Azure CLI : brew update && brew install azure-cli
+
+We can also use Azure cloud-shell instead of installig cli : https://docs.microsoft.com/en-us/azure/cloud-shell/quickstart
+
 - Azure Login : az login
 
 - Create a resource group (If not created): az group create --name Fin3 --location centralus
