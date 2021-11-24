@@ -4,8 +4,6 @@ import io.provenance.digitalcurrency.consortium.domain.ADT
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
 import io.provenance.digitalcurrency.consortium.domain.CBT
@@ -15,16 +13,11 @@ import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
-import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
-import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
-import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -42,7 +35,6 @@ abstract class DatabaseTest {
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
             CRT.deleteAll()
-            TST.deleteAll()
             ART.deleteAll()
             MTT.deleteAll()
             BalanceEntryTable.deleteAll()
@@ -53,11 +45,10 @@ abstract class DatabaseTest {
     fun insertRegisteredAddress(
         bankAccountUuid: UUID,
         address: String,
-        status: AddressStatus = INSERTED,
+        status: TxStatus = TxStatus.QUEUED,
         txHash: String? = null
     ) =
         AddressRegistrationRecord.insert(
-            uuid = UUID.randomUUID(),
             bankAccountUuid = bankAccountUuid,
             address = address
         ).apply {
@@ -67,7 +58,7 @@ abstract class DatabaseTest {
 
     fun insertDeregisteredAddress(
         addressRegistrationRecord: AddressRegistrationRecord,
-        status: AddressStatus = INSERTED,
+        status: TxStatus = TxStatus.QUEUED,
         txHash: String? = null
     ) =
         AddressDeregistrationRecord.insert(addressRegistrationRecord).apply {
@@ -75,26 +66,15 @@ abstract class DatabaseTest {
             this.txHash = txHash
         }
 
-    fun insertCoinRedemption(status: CoinRedemptionStatus) = transaction {
+    fun insertCoinRedemption(status: TxStatus, txHash: String) = transaction {
         CoinRedemptionRecord.insert(
             coinAmount = DEFAULT_AMOUNT.toLong(),
             addressRegistration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS)
-        ).also { it.status = status }
-    }
-
-    fun insertTxStatus(
-        txRequestUuid: UUID,
-        txHash: String,
-        txType: TxType,
-        txStatus: TxStatus,
-        created: OffsetDateTime? = OffsetDateTime.now()
-    ): TxStatusRecord =
-        transaction {
-            TxStatusRecord.insert(getDefaultResponse(txHash).txResponse, txRequestUuid, txType).also {
-                it.status = txStatus
-                it.created = created!!
-            }
+        ).also {
+            it.status = status
+            it.txHash = txHash
         }
+    }
 
     fun insertMigration(
         txHash: String
@@ -120,7 +100,7 @@ abstract class DatabaseTest {
                 this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
                 this.height = 50L
                 this.txHash = txHash
-                this.status = MarkerTransferStatus.INSERTED
+                this.status = TxStatus.QUEUED
                 this.created = OffsetDateTime.now()
                 this.updated = OffsetDateTime.now()
             }

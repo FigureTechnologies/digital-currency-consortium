@@ -1,6 +1,5 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -26,7 +25,6 @@ class AddressDetagOutcome(
 class AddressDetagQueue(
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
-    private val bankClientProperties: BankClientProperties
 ) : ActorModel<AddressDetagDirective, AddressDetagOutcome> {
     private val log = logger()
 
@@ -48,26 +46,15 @@ class AddressDetagQueue(
         transaction {
             AddressDeregistrationRecord.findPendingForUpdate(message.id).first().let { addressDeregistration ->
                 withMdc(*addressDeregistration.mdc()) {
-                    val address = addressDeregistration.addressRegistration.address
-                    val existing = pbcService.getAttributeByTagName(address, bankClientProperties.kycTagName)
-
-                    when (existing == null) {
-                        false -> {
-                            pbcService.getTransaction(addressDeregistration.txHash!!)?.let { response ->
-                                if (response.txResponse.isFailed()) {
-                                    log.info("Detag failed - resetting record to retry")
-                                    addressDeregistration.resetForRetry()
-                                } else {
-                                    log.error("Still tagged but the detag blockchain msg succeeded. Should not happen.")
-                                    addressDeregistration.status = TxStatus.ERROR
-                                }
-                            } ?: log.info("blockchain detag not done yet - will check next iteration.")
-                        }
-                        true -> {
+                    pbcService.getTransaction(addressDeregistration.txHash!!)?.let { response ->
+                        if (response.txResponse.isFailed()) {
+                            log.info("Detag failed - resetting record to retry")
+                            addressDeregistration.resetForRetry()
+                        } else {
                             log.info("detag completed")
                             addressDeregistration.status = TxStatus.COMPLETE
                         }
-                    }
+                    } ?: log.info("blockchain detag not done yet - will check next iteration.")
                 }
             }
         }

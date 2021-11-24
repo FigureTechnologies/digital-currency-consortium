@@ -32,10 +32,9 @@ open class AddressRegistrationEntityClass : BaseRequestEntityClass<ART, AddressR
     fun findByBankAccountUuid(bankAccountUuid: UUID) = find { ART.bankAccountUuid eq bankAccountUuid }.firstOrNull()
 
     fun insert(
-        uuid: UUID = UUID.randomUUID(),
         bankAccountUuid: UUID,
         address: String
-    ) = super.insert(uuid).apply {
+    ) = super.insert(UUID.randomUUID()).apply {
         this.bankAccountUuid = bankAccountUuid
         this.address = address
     }

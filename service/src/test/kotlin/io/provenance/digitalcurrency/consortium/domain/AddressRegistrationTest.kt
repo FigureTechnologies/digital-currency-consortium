@@ -2,8 +2,6 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.COMPLETE
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -30,7 +28,10 @@ class AddressRegistrationTest : BaseIntegrationTest() {
     fun `duplicate address where deleted does not trigger unique constraint`() {
         repeat(3) {
             transaction {
-                val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, COMPLETE, randomTxHash())
+                val registration = insertRegisteredAddress(
+                    UUID.randomUUID(), TEST_ADDRESS,
+                    TxStatus.COMPLETE, randomTxHash()
+                )
                 registration.deleted = insertDeregisteredAddress(registration).created
             }
         }
@@ -41,7 +42,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
             Assertions.assertEquals(4, AddressRegistrationRecord.all().count())
             Assertions.assertEquals(3, AddressRegistrationRecord.all().filter { it.deleted != null }.count())
             Assertions.assertEquals(1, AddressRegistrationRecord.all().filter { it.deleted == null }.count())
-            Assertions.assertEquals(INSERTED, AddressRegistrationRecord.findById(uuid)!!.status, "New address registration is inserted")
+            Assertions.assertEquals(TxStatus.QUEUED, AddressRegistrationRecord.findById(uuid)!!.status, "New address registration is inserted")
         }
     }
 
@@ -51,7 +52,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
         fun `always return the active one where available`() {
             repeat(3) {
                 transaction {
-                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, COMPLETE, randomTxHash())
+                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.COMPLETE, randomTxHash())
                     registration.deleted = insertDeregisteredAddress(registration).created
                 }
             }
@@ -68,7 +69,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
             var latestUuid: UUID? = null
             repeat(3) {
                 transaction {
-                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, COMPLETE, randomTxHash())
+                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.COMPLETE, randomTxHash())
                     if (it == 0) {
                         latestUuid = registration.id.value
                         registration.created = OffsetDateTime.now().plusMinutes(1)

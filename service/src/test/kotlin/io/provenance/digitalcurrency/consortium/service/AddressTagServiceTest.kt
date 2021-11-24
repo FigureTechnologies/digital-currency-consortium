@@ -1,13 +1,11 @@
 package io.provenance.digitalcurrency.consortium.service
 
-import com.google.protobuf.ByteString
 import io.provenance.attribute.v1.Attribute
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus
-import io.provenance.digitalcurrency.consortium.extension.toByteArray
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.getDefaultResponse
 import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
 import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
@@ -15,7 +13,6 @@ import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -28,18 +25,11 @@ import java.util.UUID
 
 class AddressTagServiceTest : BaseIntegrationTest() {
 
-    private lateinit var addressTagService: AddressTagService
-
     @Autowired
     lateinit var bankClientProperties: BankClientProperties
 
     @Autowired
     lateinit var pbcService: PbcService
-
-    @BeforeAll
-    fun beforeAll() {
-        addressTagService = AddressTagService(pbcService, bankClientProperties)
-    }
 
     @Nested
     inner class CreateEventFlow {
@@ -55,28 +45,20 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                     bankClientProperties.kycTagName
                 )
             ).thenReturn(null)
-            whenever(
-                pbcService.addAttribute(
-                    TEST_ADDRESS, bankClientProperties.kycTagName,
-                    ByteString.copyFrom(uuid.toByteArray())
-                )
-            ).thenReturn(getDefaultResponse(txHash))
+            whenever(pbcService.broadcastBatch(any(), any())).thenReturn(getDefaultResponse(txHash))
 
             transaction {
-                addressTagService.createEvent(registration)
+                // TODO
+                // addressTagService.createEvent(registration)
             }
 
-            verify(pbcService).addAttribute(
-                TEST_ADDRESS,
-                bankClientProperties.kycTagName,
-                ByteString.copyFrom(uuid.toByteArray())
-            )
+            verify(pbcService).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.PENDING_TAG,
+                    TxStatus.PENDING,
                     "Should be pending tag status"
                 )
                 assertEquals(
@@ -101,20 +83,17 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             )
 
             transaction {
-                addressTagService.createEvent(registration)
+                // TODO
+                // addressTagService.createEvent(registration)
             }
 
-            verify(pbcService, never()).addAttribute(
-                TEST_ADDRESS,
-                bankClientProperties.kycTagName,
-                ByteString.copyFrom(uuid.toByteArray())
-            )
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.COMPLETE,
+                    TxStatus.COMPLETE,
                     "Should be completed tag status"
                 )
             }
@@ -127,29 +106,20 @@ class AddressTagServiceTest : BaseIntegrationTest() {
 
             whenever(pbcService.getAttributeByTagName(TEST_ADDRESS, bankClientProperties.kycTagName)).thenReturn(null)
 
-            whenever(
-                pbcService.addAttribute(
-                    TEST_ADDRESS,
-                    bankClientProperties.kycTagName,
-                    ByteString.copyFrom(uuid.toByteArray())
-                )
-            ).doAnswer { throw Exception() }
+            whenever(pbcService.broadcastBatch(any(), any())).doAnswer { throw Exception() }
 
             transaction {
-                addressTagService.createEvent(registration)
+                // TODO
+                // addressTagService.createEvent(registration)
             }
 
-            verify(pbcService).addAttribute(
-                TEST_ADDRESS,
-                bankClientProperties.kycTagName,
-                ByteString.copyFrom(uuid.toByteArray())
-            )
+            verify(pbcService).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.INSERTED,
+                    TxStatus.QUEUED,
                     "Should not update tag status"
                 )
                 assertNull(updatedRegistration.txHash, "hash should be null")
@@ -164,7 +134,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val uuid = UUID.randomUUID()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressStatus.PENDING_TAG
+                    it.status = TxStatus.PENDING
                 }
             }
 
@@ -182,16 +152,17 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             )
 
             transaction {
-                addressTagService.eventComplete(registration)
+                // TODO
+                // addressTagService.eventComplete(registration)
             }
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.COMPLETE,
+                    TxStatus.COMPLETE,
                     "Should be complete status"
                 )
             }
@@ -203,7 +174,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressStatus.PENDING_TAG
+                    it.status = TxStatus.PENDING
                     it.txHash = txHash
                 }
             }
@@ -213,16 +184,17 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             whenever(pbcService.getTransaction(txHash)).thenReturn(getDefaultTransactionResponse(txHash))
 
             transaction {
-                addressTagService.eventComplete(registration)
+                // TODO
+                // addressTagService.eventComplete(registration)
             }
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.PENDING_TAG,
+                    TxStatus.PENDING,
                     "Should not update tag status"
                 )
             }
@@ -234,7 +206,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressStatus.PENDING_TAG
+                    it.status = TxStatus.PENDING
                     it.txHash = txHash
                 }
             }
@@ -244,16 +216,17 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             whenever(pbcService.getTransaction(txHash)).thenReturn(null)
 
             transaction {
-                addressTagService.eventComplete(registration)
+                // TODO
+                // addressTagService.eventComplete(registration)
             }
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.INSERTED,
+                    TxStatus.QUEUED,
                     "Should reset tag status"
                 )
 
@@ -267,7 +240,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val registration = transaction {
                 insertRegisteredAddress(uuid, TEST_ADDRESS).also {
-                    it.status = AddressStatus.PENDING_TAG
+                    it.status = TxStatus.PENDING
                     it.txHash = txHash
                 }
             }
@@ -277,16 +250,17 @@ class AddressTagServiceTest : BaseIntegrationTest() {
             whenever(pbcService.getTransaction(txHash)).thenReturn(getErrorTransactionResponse(txHash))
 
             transaction {
-                addressTagService.eventComplete(registration)
+                // TODO
+                // addressTagService.eventComplete(registration)
             }
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             transaction {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.INSERTED,
+                    TxStatus.QUEUED,
                     "Should reset tag status"
                 )
 

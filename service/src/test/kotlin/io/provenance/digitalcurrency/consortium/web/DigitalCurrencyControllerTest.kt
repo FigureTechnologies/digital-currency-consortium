@@ -68,7 +68,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
                 blockchainAddress = TEST_ADDRESS
             ).execute(UUID::class.java)
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -97,7 +97,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val response = request.execute(UUID::class.java)
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
             assertNotNull(response.body, "Response must not be null")
@@ -117,7 +117,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val responseError = request.execute(String::class.java)
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
@@ -139,7 +139,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
 
             val responseError = request.execute(String::class.java)
 
-            verify(pbcService, never()).addAttribute(any(), any(), any())
+            verify(pbcService, never()).broadcastBatch(any(), any())
 
             assertTrue(responseError.statusCode.is5xxServerError, "Response is 500")
         }

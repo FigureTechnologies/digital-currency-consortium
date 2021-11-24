@@ -41,7 +41,7 @@ class CoinMintQueue(
 
     override suspend fun loadMessages(): List<CoinMintDirective> =
         transaction {
-            CoinMintRecord.findPendingWithTxHash().map { CoinMintDirective(it.id.value) }
+            CoinMintRecord.findPending().map { CoinMintDirective(it.id.value) }
         }
 
     override fun processMessage(message: CoinMintDirective): CoinMintOutcome {

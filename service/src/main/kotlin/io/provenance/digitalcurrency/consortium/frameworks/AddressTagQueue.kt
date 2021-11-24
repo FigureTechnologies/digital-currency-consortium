@@ -1,6 +1,5 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -26,7 +25,6 @@ class AddressTagOutcome(
 class AddressTagQueue(
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
-    private val bankClientProperties: BankClientProperties
 ) : ActorModel<AddressTagDirective, AddressTagOutcome> {
     private val log = logger()
 
@@ -48,28 +46,15 @@ class AddressTagQueue(
         transaction {
             AddressRegistrationRecord.findForUpdate(message.id).first().let { addressRegistration ->
                 withMdc(*addressRegistration.mdc()) {
-                    val existing =
-                        pbcService.getAttributeByTagName(
-                            addressRegistration.address,
-                            bankClientProperties.kycTagName
-                        )
-                    when (existing == null) {
-                        true -> {
-                            pbcService.getTransaction(addressRegistration.txHash!!)?.let { response ->
-                                if (response.txResponse.isFailed()) {
-                                    log.info("Tag failed - resetting record to retry")
-                                    addressRegistration.resetForRetry()
-                                } else {
-                                    log.error("No tag but the blockchain msg succeeded. Should not happen.")
-                                    addressRegistration.status = TxStatus.ERROR
-                                }
-                            } ?: log.info("blockchain tag not done yet - will check next iteration.")
-                        }
-                        false -> {
+                    pbcService.getTransaction(addressRegistration.txHash!!)?.let { response ->
+                        if (response.txResponse.isFailed()) {
+                            log.info("Tag failed - resetting record to retry")
+                            addressRegistration.resetForRetry()
+                        } else {
                             log.info("tag completed")
                             addressRegistration.status = TxStatus.COMPLETE
                         }
-                    }
+                    } ?: log.info("blockchain tag not done yet - will check next iteration.")
                 }
             }
         }

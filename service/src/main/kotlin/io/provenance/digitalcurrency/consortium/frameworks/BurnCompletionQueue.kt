@@ -1,7 +1,5 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
-import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
-import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
@@ -27,7 +25,6 @@ class CoinBurnOutcome(
 class CoinBurnQueue(
     coroutineProperties: CoroutineProperties,
     private val pbcService: PbcService,
-    private val bankClient: BankClient
 ) :
     ActorModel<CoinBurnDirective, CoinBurnOutcome> {
     private val log = logger()
@@ -57,23 +54,7 @@ class CoinBurnQueue(
                                 coinBurn.resetForRetry()
                             }
                             false -> {
-                                if (coinBurn.coinRedemption != null) {
-                                    try {
-                                        bankClient.depositFiat(
-                                            DepositFiatRequest(
-                                                uuid = coinBurn.id.value,
-                                                bankAccountUUID = coinBurn.coinRedemption!!.addressRegistration.bankAccountUuid,
-                                                amount = coinBurn.fiatAmount
-                                            )
-                                        )
-                                        CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
-                                    } catch (e: Exception) {
-                                        log.error("sending fiat deposit request to bank failed; it will retry.", e)
-                                    }
-                                } else {
-                                    // no redemption for the burn - just complete it
-                                    CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
-                                }
+                                CoinBurnRecord.updateStatus(coinBurn.id.value, TxStatus.COMPLETE)
                             }
                         }
                     } ?: log.info("burn blockchain request not complete. Will retry.")

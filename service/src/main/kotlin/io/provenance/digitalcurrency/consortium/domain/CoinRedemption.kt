@@ -18,13 +18,10 @@ open class CoinRedemptionEntityClass : BaseRequestEntityClass<CRT, CoinRedemptio
     fun insert(
         addressRegistration: AddressRegistrationRecord,
         coinAmount: Long
-    ) = new(UUID.randomUUID()) {
+    ) = super.insert(UUID.randomUUID()).apply {
         this.addressRegistration = addressRegistration
         this.coinAmount = coinAmount
         fiatAmount = coinAmount.toBigInteger().toUSDAmount()
-        status = TxStatus.QUEUED
-        this.created = OffsetDateTime.now()
-        this.updated = OffsetDateTime.now()
     }
 
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =

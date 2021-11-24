@@ -4,9 +4,6 @@ import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.UUIDTable
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.or
-import java.time.OffsetDateTime
 import java.util.UUID
 
 typealias TRV = TxRequestView
@@ -25,13 +22,6 @@ open class TxRequestViewEntityClass : UUIDEntityClass<TxRequestViewRecord>(TRV) 
     fun findQueued(limit: Int = 50) = find { TRV.status eq TxStatus.QUEUED }.limit(limit)
 
     fun findByTxHash(txHash: String) = find { TRV.txHash eq txHash }.toList()
-
-    fun findExpiredWithTxHash(blockHeight: Long) = find {
-        (TRV.updated lessEq OffsetDateTime.now().minusSeconds(30))
-            .and(TRV.status eq TxStatus.PENDING)
-            .and(TRV.txHash.isNotNull())
-            .and(TRV.timeoutHeight.isNull() or (TRV.timeoutHeight less blockHeight))
-    }
 }
 
 class TxRequestViewRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {

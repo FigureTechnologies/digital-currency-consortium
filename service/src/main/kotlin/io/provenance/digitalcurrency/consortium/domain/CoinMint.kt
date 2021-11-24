@@ -20,13 +20,10 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
         uuid: UUID,
         addressRegistration: AddressRegistrationRecord,
         fiatAmount: BigDecimal
-    ) = new(uuid) {
+    ) = super.insert(uuid).apply {
         this.addressRegistration = addressRegistration
         this.fiatAmount = fiatAmount
         this.coinAmount = fiatAmount.toCoinAmount().toLong()
-        this.status = TxStatus.QUEUED
-        this.created = OffsetDateTime.now()
-        this.updated = OffsetDateTime.now()
     }
 
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =
@@ -35,7 +32,7 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
             it.updated = OffsetDateTime.now()
         }
 
-    fun findPendingWithTxHash() = find { (CMT.status eq TxStatus.PENDING) and CMT.txHash.isNotNull() }
+    fun findPending() = find { CMT.status eq TxStatus.PENDING }
 
     fun findPendingForUpdate(uuid: UUID) = find { (CMT.id eq uuid) and (CMT.status eq TxStatus.PENDING) }.forUpdate()
 }

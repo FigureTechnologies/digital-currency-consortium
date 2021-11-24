@@ -17,8 +17,5 @@ enum class TxStatus {
 
 enum class TxType {
     TRANSFER_CONTRACT,
-    // MINT_CONTRACT,
-    // REDEEM_CONTRACT,
-    // BURN_CONTRACT,
     MIGRATION
 }

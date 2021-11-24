@@ -18,13 +18,10 @@ open class CoinBurnEntityClass : BaseRequestEntityClass<CBT, CoinBurnRecord>(CBT
     fun insert(
         coinRedemption: CoinRedemptionRecord?,
         coinAmount: Long
-    ) = new(UUID.randomUUID()) {
+    ) = super.insert(UUID.randomUUID()).apply {
         this.coinRedemption = coinRedemption
         this.fiatAmount = coinAmount.toBigInteger().toUSDAmount()
         this.coinAmount = coinAmount
-        this.status = TxStatus.QUEUED
-        this.created = OffsetDateTime.now()
-        this.updated = OffsetDateTime.now()
     }
 
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =

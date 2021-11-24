@@ -3,8 +3,7 @@ package io.provenance.digitalcurrency.consortium.service
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.COMPLETE
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions
@@ -25,7 +24,7 @@ class DigitalCurrencyServiceTest : BaseIntegrationTest() {
         fun `remove address will mark a registration as deleted`() {
             val uuid = UUID.randomUUID()
             val registration = transaction {
-                insertRegisteredAddress(uuid, TEST_ADDRESS, status = COMPLETE, txHash = randomTxHash())
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.COMPLETE, txHash = randomTxHash())
             }
 
             digitalCurrencyService.removeAddress(uuid)
@@ -50,7 +49,7 @@ class DigitalCurrencyServiceTest : BaseIntegrationTest() {
         fun `address registration in wrong state will exception`() {
             val uuid = UUID.randomUUID()
             transaction {
-                insertRegisteredAddress(uuid, TEST_ADDRESS, status = PENDING_TAG, txHash = randomTxHash())
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.PENDING, txHash = randomTxHash())
             }
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
                 digitalCurrencyService.removeAddress(uuid)
@@ -64,7 +63,7 @@ class DigitalCurrencyServiceTest : BaseIntegrationTest() {
         fun `address registration already deleted will exception`() {
             val uuid = UUID.randomUUID()
             transaction {
-                insertRegisteredAddress(uuid, TEST_ADDRESS, status = COMPLETE, txHash = randomTxHash()).apply {
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.COMPLETE, txHash = randomTxHash()).apply {
                     deleted = OffsetDateTime.now()
                 }
             }

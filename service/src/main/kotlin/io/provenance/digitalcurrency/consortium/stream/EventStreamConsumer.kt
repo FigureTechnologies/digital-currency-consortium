@@ -284,19 +284,19 @@ class EventStreamConsumer(
     private fun handleTransferEvent(txHash: String, transfer: Transfer) {
         // this should fail if we can't find it here because we received an event for the tx hash to get here
         pbcService.getTransaction(txHash)!!.takeIf {
-                !it.txResponse.isFailed()
-            }?.let {
-                log.info("persist received transfer for txhash $txHash")
-                transaction {
-                    MarkerTransferRecord.insert(
-                        fromAddress = transfer.sender,
-                        toAddress = transfer.recipient,
-                        denom = transfer.denom,
-                        amount = transfer.amount,
-                        height = transfer.height,
-                        txHash = txHash
-                    )
-                }
+            !it.txResponse.isFailed()
+        }?.let {
+            log.info("persist received transfer for txhash $txHash")
+            transaction {
+                MarkerTransferRecord.insert(
+                    fromAddress = transfer.sender,
+                    toAddress = transfer.recipient,
+                    denom = transfer.denom,
+                    amount = transfer.amount,
+                    height = transfer.height,
+                    txHash = txHash
+                )
             }
+        }
     }
 }

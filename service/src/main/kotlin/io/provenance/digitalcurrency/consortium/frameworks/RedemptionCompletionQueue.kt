@@ -1,12 +1,17 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
+import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
+import io.provenance.digitalcurrency.consortium.bankclient.BankClient
+import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.extension.coinsAmount
+import io.provenance.digitalcurrency.consortium.extension.findWithdrawEvent
 import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -27,10 +32,13 @@ class CoinRedemptionOutcome(
 @NotTest
 class CoinRedemptionQueue(
     coroutineProperties: CoroutineProperties,
-    private val pbcService: PbcService
+    private val pbcService: PbcService,
+    private val bankClient: BankClient,
+    bankClientProperties: BankClientProperties,
 ) :
     ActorModel<CoinRedemptionDirective, CoinRedemptionOutcome> {
     private val log = logger()
+    private val bankDenom = bankClientProperties.denom
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {
@@ -58,6 +66,20 @@ class CoinRedemptionQueue(
                             }
                             false -> {
                                 log.info("Completing redemption, setting up the burn")
+                                bankClient.depositFiat(
+                                    DepositFiatRequest(
+                                        uuid = coinRedemption.id.value,
+                                        bankAccountUUID = coinRedemption.addressRegistration.bankAccountUuid,
+                                        amount = coinRedemption.fiatAmount
+                                    )
+                                )
+
+                                // If we redeemed bank-specific coin, initialize burn for bank-specific portion
+                                response.txResponse.logsList.first().findWithdrawEvent(bankDenom)?.run {
+                                    CoinBurnRecord.insert(coinRedemption = coinRedemption, coinAmount = coinsAmount(bankDenom)).also {
+                                        log.info("Setting up burn of ${it.coinAmount}")
+                                    }
+                                }
                                 try {
                                     CoinBurnRecord.insert(
                                         coinRedemption = coinRedemption,
