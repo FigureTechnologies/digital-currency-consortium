@@ -18,17 +18,14 @@ object MarkerTransferTable : BaseRequestTable(name = "marker_transfer") {
 
 open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
     fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
-        new(UUID.randomUUID()) {
-            this.fromAddress = fromAddress
-            this.toAddress = toAddress
-            this.coinAmount = amount.toLong()
-            fiatAmount = amount.toBigInteger().toUSDAmount()
-            this.denom = denom
-            this.height = height
-            this.txHash = txHash
-            this.status = TxStatus.QUEUED
-            this.created = OffsetDateTime.now()
-            this.updated = OffsetDateTime.now()
+        super.insert(UUID.randomUUID()).also {
+            it.fromAddress = fromAddress
+            it.toAddress = toAddress
+            it.coinAmount = amount.toLong()
+            it.fiatAmount = amount.toBigInteger().toUSDAmount()
+            it.denom = denom
+            it.height = height
+            it.txHash = txHash
         }
 
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =
@@ -47,8 +44,8 @@ open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransfe
 class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseRequestRecord(MTT, uuid) {
     companion object : MarkerTransferEntityClass()
 
-    var coinAmount by CMT.coinAmount
-    var fiatAmount by CMT.fiatAmount
+    var coinAmount by MTT.coinAmount
+    var fiatAmount by MTT.fiatAmount
     var fromAddress by MTT.fromAddress
     var toAddress by MTT.toAddress
     var denom by MTT.denom

@@ -28,9 +28,6 @@ open class CoinRedemptionEntityClass : BaseRequestEntityClass<CRT, CoinRedemptio
         this.updated = OffsetDateTime.now()
     }
 
-    fun findNew(batchSize: Int) =
-        find { CRT.status eq TxStatus.QUEUED }.orderBy(CRT.created to SortOrder.ASC).limit(batchSize)
-
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =
         findById(uuid)!!.let {
             it.status = newStatus
