@@ -1,13 +1,23 @@
 - Install Azure CLI : brew update && brew install azure-cli
 - Azure Login : az login
-- List locations : az account list-locations
-- Create a resource group : az group create --name digitalCurrencyConsortium --location centralus
-- Json return by previous step will be used as AZURE_CREDENTIALS
-- Get subscription-id : cat ~/.azure/azureProfile.json
-- Create Azure Service Principal for RBAC : az ad sp create-for-rbac --name "digitalCurrencyConsortiumApp" --role contributor --scopes /subscriptions/d4738521-9de7-4360-9c75-9644e292ce4a/resourceGroups/digitalCurrencyConsortium --sdk-auth
-- Create Registry : az acr create --resource-group digitalCurrencyConsortium --name digitalCurrencyConsortiumRegistry --sku Basic
-- Enable admin : az acr update -n digitalCurrencyConsortiumRegistry --admin-enabled true
-- Regenerate login credentials for an Azure Container Registry : az acr credential renew --name digitalCurrencyConsortiumRegistry --password-name password --resource-group digitalCurrencyConsortium
+
+- Create a resource group (If not created): az group create --name Fin3 --location centralus
+
+- Get subscription-id : az account list --query "[?isDefault]"
+- Create Azure Service Principal for RBAC : 
+
+   az ad sp create-for-rbac --name "myApp" --role contributor --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group} --sdk-auth
+  # Replace {subscription-id}, {resource-group} with the subscription, resource group details
+
+
+ e.g. az ad sp create-for-rbac --name "Fin3SP" --role contributor --scopes /subscriptions/8aba92e0-e4c7-48cd-b2e5-3701d331141e/resourceGroups/Fin3 --sdk-auth
+
+ Json return by this step will be used as AZURE_CREDENTIALS
+
+
+- Create Registry : az acr create --resource-group Fin3 --name Fin3Registry --sku Basic
+- Enable admin : az acr update -n Fin3Registry --admin-enabled true
+- Regenerate login credentials for an Azure Container Registry : az acr credential renew --name Fin3Registry --password-name password --resource-group Fin3
 - Add secret AZURE_CREDENTIALS in https://github.com/RadialTheory/digital-currency-consortium/settings/secrets/actions/new 
 - Add secret REGISTRY_USERNAME,REGISTRY_PASSWORD in https://github.com/RadialTheory/digital-currency-consortium/settings/secrets/actions/new 
 - az provider register --namespace Microsoft.ContainerInstance
