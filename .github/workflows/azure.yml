@@ -1,4 +1,7 @@
-name: Azure Build and Publish
+name: Azure Build and deployment
+env:
+      AZURE_DOCKER_REGISTRY: Fin3Registry
+      AZURE_RESOURCE_GROUP: Fin3
 
 on:
   release:
@@ -43,7 +46,7 @@ jobs:
           path: service/build/libs/*.jar
 #        if: github.event_name == 'release'
 
-  docker_build:
+  docker_build_azure_deployment:
     name: Build and Push to Docker Registry
     needs: java_build
 
@@ -94,34 +97,46 @@ jobs:
           name: service
           path: service/build/libs
 
-      - name: Login to DockerHub
+      - name: Publish DB Image
         uses: azure/docker-login@v1
+        # if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
         with:
-          login-server: Fin3Registry.azurecr.io
+          login-server: $AZURE_DOCKER_REGISTRY.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build . -f docker/Dockerfile-service -t Fin3Registry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
-          docker push Fin3Registry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          docker build . -f docker/Dockerfile-database -t $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+          docker push $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
-#      - name: Login to DockerHub
-#        uses: azure/docker-login@v1
-#        if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
-#        with:
-#          login-server: Fin3Registry.azurecr.io
-#          username: ${{ secrets.REGISTRY_USERNAME }}
-#          password: ${{ secrets.REGISTRY_PASSWORD }}
-#      - run: |
-#          docker build . -f docker/Dockerfile-database -t Fin3Registry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
-#          docker push Fin3Registry.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+      - name: Publish DCC Image
+        uses: azure/docker-login@v1
+        with:
+          login-server: $AZURE_DOCKER_REGISTRY.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker build . -f docker/Dockerfile-service -t $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          docker push $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
 
-      - name: 'Deploy to Azure Container Instances'
+      - name: 'Deploy to Azure DB Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
-          resource-group: Fin3
+          resource-group: $AZURE_RESOURCE_GROUP
+          dns-name-label: digital-currency-consortium-postgres
+          image: $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+          environment-variables: POSTGRES_USER=postgres POSTGRES_PASSWORD=password1
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          name: digital-currency-consortium-postgres-container
+          location: 'centralus'
+
+      - name: 'Deploy to Azure DCC Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: $AZURE_RESOURCE_GROUP
           dns-name-label: digital-currency-consortium-service
-          image: Fin3Registry.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
-          environment-variables: SPRING_PROFILES_ACTIVE=container DB_USER=postgres DB_PASS=password1 DB_HOST=digital-currency-consortium-postgres DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_consortium DB_PORT=5432 DB_NAME=digital_currency_consortium DB_SCHEMA=digital_currency_consortium DB_CONNECTION_POOL_SIZE=5 PROVENANCE_MAINNET=false PROVENANCE_CHAIN_ID=chain-local GRPC_CHANNEL_URL=http://host.docker.internal:9090 EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1 EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657 EVENT_STREAM_RPC_URI=http://host.docker.internal:26657 EVENT_STREAM_EPOCH=0 MANAGER_KEY=TODO BANK_URI=TODO KYC_TAG_NAME=TODO CONTRACT_ADDRESS=TODO DCC_DENOM=TODO BANK_DENOM=TODO
+          image: $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/${{ steps.prep.outputs.tags }}
+          environment-variables: SPRING_PROFILES_ACTIVE=container DB_USER=postgres DB_PASS=password1 DB_HOST=digital-currency-consortium-postgres DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_consortium DB_PORT=5432 DB_NAME=digital_currency_consortium DB_SCHEMA=digital_currency_consortium DB_CONNECTION_POOL_SIZE=5 PROVENANCE_MAINNET=false PROVENANCE_CHAIN_ID=chain-local GRPC_CHANNEL_URL=TODO EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1 EVENT_STREAM_WEBSOCKET_URI=TODO EVENT_STREAM_RPC_URI=TODO EVENT_STREAM_EPOCH=0 MANAGER_KEY=TODO BANK_URI=TODO KYC_TAG_NAME=TODO CONTRACT_ADDRESS=TODO DCC_DENOM=TODO BANK_DENOM=TODO
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: digital-currency-consortium-service-container
