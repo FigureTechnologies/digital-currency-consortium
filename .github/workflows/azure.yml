@@ -53,12 +53,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Download Service Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: service
-          path: service/build/libs
-
       - name: Publish DB Image
         uses: azure/docker-login@v1
         # if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
