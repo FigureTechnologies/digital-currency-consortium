@@ -125,6 +125,7 @@ jobs:
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: digital-currency-consortium-postgres-container
           location: 'centralus'
+          ports: 5432 
 
       - name: 'Deploy to Azure DCC Container Instances'
         uses: 'azure/aci-deploy@v1'
@@ -137,3 +138,4 @@ jobs:
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: digital-currency-consortium-service-container
           location: 'centralus'
+          ports: 8080
