@@ -14,7 +14,6 @@ jobs:
     env:
       AZURE_DOCKER_REGISTRY: Fin3Registry
       AZURE_RESOURCE_GROUP: Fin3
-    needs: java_build
     runs-on: ubuntu-latest
 
     steps:
