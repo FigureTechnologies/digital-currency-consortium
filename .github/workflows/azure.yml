@@ -77,8 +77,6 @@ jobs:
           echo "4"
           echo "$AZURE_DOCKER_REGISTRY"
           echo "5"
-          echo $AZURE_DOCKER_REGISTRY
-          echo "6"
           docker build . -f docker/Dockerfile-database -t ${{ env.AZURE_DOCKER_REGISTRY }}.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
           docker push env.AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
