@@ -9,50 +9,13 @@ on:
 
 jobs:
 
-  java_build:
-    name: Build Jar
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Get Version
-        run: |
-          # Strip git ref prefix from version
-          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-
-          # Strip "v" prefix from tag name
-          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
-          server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
-
-      - name: Build with Gradle
-        run: ./gradlew clean build -x test :service:jacocoTestReport --refresh-dependencies -PartifactVersion=$VERSION
-
-      - name: Upload Service Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: service
-          path: service/build/libs/*.jar
-#        if: github.event_name == 'release'
-
   docker_build_azure_deployment:
     name: Build and Push to Docker Registry
     env:
       AZURE_DOCKER_REGISTRY: Fin3Registry
       AZURE_RESOURCE_GROUP: Fin3
     needs: java_build
-
     runs-on: ubuntu-latest
-
-#    if: github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v2
@@ -105,6 +68,17 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
+          echo "1"
+          echo "${{ env.AZURE_DOCKER_REGISTRY }}"
+          echo "2"
+          echo ${{ env.AZURE_DOCKER_REGISTRY }}
+          echo "3"
+          echo "${{ AZURE_DOCKER_REGISTRY }}"
+          echo "4"
+          echo "$AZURE_DOCKER_REGISTRY"
+          echo "5"
+          echo $AZURE_DOCKER_REGISTRY
+          echo "6"
           docker build . -f docker/Dockerfile-database -t ${{ env.AZURE_DOCKER_REGISTRY }}.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
           docker push env.AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
