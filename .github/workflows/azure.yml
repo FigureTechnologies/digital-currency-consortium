@@ -1,7 +1,4 @@
 name: Azure Build and deployment
-env:
-      AZURE_DOCKER_REGISTRY: Fin3Registry
-      AZURE_RESOURCE_GROUP: Fin3
 
 on:
   release:
@@ -48,6 +45,9 @@ jobs:
 
   docker_build_azure_deployment:
     name: Build and Push to Docker Registry
+    env:
+      AZURE_DOCKER_REGISTRY: Fin3Registry
+      AZURE_RESOURCE_GROUP: Fin3
     needs: java_build
 
     runs-on: ubuntu-latest
