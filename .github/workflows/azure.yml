@@ -62,7 +62,7 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
           docker build . -f docker/Dockerfile-database -t $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
-          docker push env.AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+          docker push $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
       - name: Publish DCC Image
         uses: azure/docker-login@v1
