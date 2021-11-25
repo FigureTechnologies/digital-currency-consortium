@@ -24,4 +24,6 @@ We can also use Azure cloud-shell instead of installig cli : https://docs.micros
 - Add secret AZURE_CREDENTIALS in https://github.com/RadialTheory/digital-currency-consortium/settings/secrets/actions/new 
 - Add secret REGISTRY_USERNAME,REGISTRY_PASSWORD in https://github.com/RadialTheory/digital-currency-consortium/settings/secrets/actions/new 
 - az provider register --namespace Microsoft.ContainerInstance
+- az provider register --namespace Microsoft.DataFactory
+
 Ref : https://github.com/marketplace/actions/deploy-to-azure-container-instances#build-and-deploy-a-nodejs-app-to-azure-container-instances
