@@ -57,11 +57,11 @@ jobs:
         uses: azure/docker-login@v1
         # if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
         with:
-          login-server: env.AZURE_DOCKER_REGISTRY.azurecr.io
+          login-server: Fin3Registry.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build . -f docker/Dockerfile-database -t $(env.AZURE_DOCKER_REGISTRY).azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
+          docker build . -f docker/Dockerfile-database -t $AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
           docker push env.AZURE_DOCKER_REGISTRY.azurecr.io/digital-currency-consortium/provenanceio/digital-currency-consortium-database:latest
 
       - name: Publish DCC Image
