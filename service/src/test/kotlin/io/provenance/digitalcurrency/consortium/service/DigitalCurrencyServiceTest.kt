@@ -24,7 +24,7 @@ class DigitalCurrencyServiceTest : BaseIntegrationTest() {
         fun `remove address will mark a registration as deleted`() {
             val uuid = UUID.randomUUID()
             val registration = transaction {
-                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.COMPLETE, txHash = randomTxHash())
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.TXN_COMPLETE, txHash = randomTxHash())
             }
 
             digitalCurrencyService.removeAddress(uuid)
@@ -63,7 +63,7 @@ class DigitalCurrencyServiceTest : BaseIntegrationTest() {
         fun `address registration already deleted will exception`() {
             val uuid = UUID.randomUUID()
             transaction {
-                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.COMPLETE, txHash = randomTxHash()).apply {
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.TXN_COMPLETE, txHash = randomTxHash()).apply {
                     deleted = OffsetDateTime.now()
                 }
             }

@@ -13,10 +13,6 @@ object AddressRegistrationTable : BaseRequestTable(name = "address_registration"
 }
 
 open class AddressRegistrationEntityClass : BaseRequestEntityClass<ART, AddressRegistrationRecord>(ART) {
-    fun findPending() = find { ART.status eq TxStatus.PENDING }
-
-    fun findForUpdate(id: UUID) = find { ART.id eq id }.forUpdate()
-
     fun findLatestByAddress(address: String) =
         find { ART.address eq address }
             .partition { it.deleted == null }

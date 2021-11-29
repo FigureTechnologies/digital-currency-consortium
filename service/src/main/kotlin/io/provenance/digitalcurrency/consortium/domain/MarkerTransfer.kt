@@ -2,6 +2,7 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.and
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -36,7 +37,7 @@ open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransfe
 
     fun findPending() = find { MTT.status eq TxStatus.QUEUED }
 
-    fun findForUpdate(uuid: UUID) = find { MTT.id eq uuid }.forUpdate()
+    fun findPendingForUpdate(uuid: UUID) = find { (MTT.id eq uuid) and (MTT.status eq TxStatus.QUEUED) }.forUpdate()
 
     fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }.firstOrNull()
 }

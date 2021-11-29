@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.consortium
 import com.google.protobuf.Any
 import cosmos.base.abci.v1beta1.Abci
 import cosmos.tx.v1beta1.ServiceOuterClass
-import io.provenance.digitalcurrency.consortium.stream.Burn
 import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
 import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
@@ -93,15 +92,6 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         denom = denom,
         sender = TEST_ADDRESS,
         recipient = toAddress,
-        height = 50,
-        txHash = txHash
-    )
-
-fun getBurnEvent(txHash: String = randomTxHash(), denom: String) =
-    Burn(
-        amount = DEFAULT_AMOUNT.toString(),
-        denom = denom,
-        memberId = TEST_MEMBER_ADDRESS,
         height = 50,
         txHash = txHash
     )

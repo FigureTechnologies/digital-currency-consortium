@@ -1,13 +1,22 @@
 UPDATE coin_mint SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE coin_mint SET status = 'PENDING' WHERE status LIKE 'PENDING%';
+UPDATE coin_mint SET status = 'ACTION_COMPLETE' WHERE status = 'COMPLETE';
+
 UPDATE coin_burn SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE coin_burn SET status = 'PENDING' WHERE status LIKE 'PENDING%';
+UPDATE coin_burn SET status = 'TXN_COMPLETE' WHERE status = 'COMPLETE';
+
 UPDATE coin_redemption SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE coin_redemption SET status = 'PENDING' WHERE status LIKE 'PENDING%';
+UPDATE coin_redemption SET status = 'ACTION_COMPLETE' WHERE status = 'COMPLETE';
+
 UPDATE address_registration SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE address_registration SET status = 'PENDING' WHERE status LIKE 'PENDING%';
+UPDATE address_registration SET status = 'TXN_COMPLETE' WHERE status = 'COMPLETE';
+
 UPDATE address_dereg SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE address_dereg SET status = 'PENDING' WHERE status LIKE 'PENDING%';
+UPDATE address_dereg SET status = 'TXN_COMPLETE' WHERE status = 'COMPLETE';
 
 ALTER TABLE tx_request ADD tx_hash TEXT;
 ALTER TABLE tx_request ADD timeout_height BIGINT;
@@ -54,16 +63,6 @@ SELECT DISTINCT
     created,
     updated
 FROM coin_burn
-UNION ALL
-SELECT DISTINCT
-    uuid,
-    'REDEEM' AS type,
-    tx_hash,
-    status,
-    timeout_height,
-    created,
-    updated
-FROM coin_redemption
 UNION ALL
 SELECT
     uuid,

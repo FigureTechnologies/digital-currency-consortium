@@ -30,7 +30,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
             transaction {
                 val registration = insertRegisteredAddress(
                     UUID.randomUUID(), TEST_ADDRESS,
-                    TxStatus.COMPLETE, randomTxHash()
+                    TxStatus.TXN_COMPLETE, randomTxHash()
                 )
                 registration.deleted = insertDeregisteredAddress(registration).created
             }
@@ -52,7 +52,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
         fun `always return the active one where available`() {
             repeat(3) {
                 transaction {
-                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.COMPLETE, randomTxHash())
+                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.TXN_COMPLETE, randomTxHash())
                     registration.deleted = insertDeregisteredAddress(registration).created
                 }
             }
@@ -69,7 +69,7 @@ class AddressRegistrationTest : BaseIntegrationTest() {
             var latestUuid: UUID? = null
             repeat(3) {
                 transaction {
-                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.COMPLETE, randomTxHash())
+                    val registration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS, TxStatus.TXN_COMPLETE, randomTxHash())
                     if (it == 0) {
                         latestUuid = registration.id.value
                         registration.created = OffsetDateTime.now().plusMinutes(1)

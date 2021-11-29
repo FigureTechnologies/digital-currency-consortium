@@ -41,7 +41,7 @@ class DigitalCurrencyService(
         transaction {
             val existing = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
             checkNotNull(existing) { "Bank account $bankAccountUuid does not exist" }
-            check(existing.status == TxStatus.COMPLETE) { "Bank account $bankAccountUuid is not in a removable status ${existing.status}" }
+            check(existing.status == TxStatus.TXN_COMPLETE) { "Bank account $bankAccountUuid is not in a removable status ${existing.status}" }
             check(existing.deleted == null) { "Bank account $bankAccountUuid is already removed" }
 
             AddressDeregistrationRecord.insert(existing).apply { existing.deleted = created }

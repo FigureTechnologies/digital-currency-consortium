@@ -81,7 +81,7 @@ class CoinRedemptionServiceTest : BaseIntegrationTest() {
                 assertEquals(redemption.id, burn.coinRedemption!!.id, "Coin burn must be for specified redemption")
                 assertEquals(10L, burn.coinAmount, "Coin burn is for 10 coins")
                 assertEquals(
-                    TxStatus.COMPLETE,
+                    TxStatus.TXN_COMPLETE,
                     CoinRedemptionRecord.findById(redemption.id)!!.status,
                     "Redemption status is now complete"
                 )
@@ -110,7 +110,7 @@ class CoinRedemptionServiceTest : BaseIntegrationTest() {
                 assertEquals(redemption.id, burn.coinRedemption!!.id, "Coin burn must be for specified redemption")
                 assertEquals(199870L, burn.coinAmount, "Coin burn is for 199,870 coins")
                 assertEquals(
-                    TxStatus.COMPLETE,
+                    TxStatus.TXN_COMPLETE,
                     CoinRedemptionRecord.findById(redemption.id)!!.status,
                     "Redemption status is now complete"
                 )
@@ -136,7 +136,7 @@ class CoinRedemptionServiceTest : BaseIntegrationTest() {
             transaction {
                 assertEquals(true, CoinBurnRecord.all().empty(), "No burn records")
                 assertEquals(
-                    TxStatus.COMPLETE,
+                    TxStatus.TXN_COMPLETE,
                     CoinRedemptionRecord.findById(redemption.id)!!.status,
                     "Redemption status is now complete"
                 )

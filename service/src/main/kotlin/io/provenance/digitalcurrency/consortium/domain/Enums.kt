@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.consortium.domain
 enum class TxRequestType {
     MINT,
     BURN,
-    REDEEM,
     TAG,
     DETAG
 }
@@ -11,11 +10,11 @@ enum class TxRequestType {
 enum class TxStatus {
     QUEUED,
     PENDING,
-    COMPLETE,
-    ERROR
+    TXN_COMPLETE,
+    ACTION_COMPLETE
 }
 
 enum class TxType {
     TRANSFER_CONTRACT,
-    MIGRATION
+    MIGRATION,
 }

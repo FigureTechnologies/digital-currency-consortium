@@ -32,9 +32,9 @@ open class CoinMintEntityClass : BaseRequestEntityClass<CMT, CoinMintRecord>(CMT
             it.updated = OffsetDateTime.now()
         }
 
-    fun findPending() = find { CMT.status eq TxStatus.PENDING }
+    fun findTxnCompleted() = find { CMT.status eq TxStatus.TXN_COMPLETE }
 
-    fun findPendingForUpdate(uuid: UUID) = find { (CMT.id eq uuid) and (CMT.status eq TxStatus.PENDING) }.forUpdate()
+    fun findTxnCompletedForUpdate(uuid: UUID) = find { (CMT.id eq uuid) and (CMT.status eq TxStatus.TXN_COMPLETE) }.forUpdate()
 }
 
 class CoinMintRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CMT, uuid) {

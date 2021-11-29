@@ -5,6 +5,7 @@ import io.provenance.digitalcurrency.consortium.stream.Event
 
 data class TxResultResponse(
     val code: Int?,
+    val codespace: String?,
     val data: String?,
     val log: String,
     val info: String,

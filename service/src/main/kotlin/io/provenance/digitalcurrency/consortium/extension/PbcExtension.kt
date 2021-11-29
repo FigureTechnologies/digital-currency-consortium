@@ -13,6 +13,7 @@ private const val EVENT_MARKER_WITHDRAW_ATTRIBUTE = "EventMarkerWithdraw"
 private const val DENOM_KEY = "denom"
 private const val COINS_KEY = "coins"
 
+// TODO store this in the event
 fun TxResponse.isFailed() = code > 0 && !codespace.isNullOrBlank() && rawLog.isNotBlank() && logsCount == 0
 fun TxResponse.isSingleTx() = logsCount == 1
 fun TxResponse.details() =

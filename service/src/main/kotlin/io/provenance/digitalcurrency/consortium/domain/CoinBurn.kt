@@ -2,8 +2,6 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.and
-import java.time.OffsetDateTime
 import java.util.UUID
 
 typealias CBT = CoinBurnTable
@@ -23,16 +21,6 @@ open class CoinBurnEntityClass : BaseRequestEntityClass<CBT, CoinBurnRecord>(CBT
         this.fiatAmount = coinAmount.toBigInteger().toUSDAmount()
         this.coinAmount = coinAmount
     }
-
-    fun updateStatus(uuid: UUID, newStatus: TxStatus) =
-        findById(uuid)!!.let {
-            it.status = newStatus
-            it.updated = OffsetDateTime.now()
-        }
-
-    fun findPending() = find { CBT.status eq TxStatus.PENDING }
-
-    fun findPendingForUpdate(uuid: UUID) = find { (CBT.id eq uuid) and (CBT.status eq TxStatus.PENDING) }.forUpdate()
 }
 
 class CoinBurnRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CBT, uuid) {

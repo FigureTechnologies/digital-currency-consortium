@@ -7,6 +7,7 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
@@ -18,6 +19,7 @@ import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
+import io.provenance.digitalcurrency.consortium.service.TxRequestService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -32,18 +34,20 @@ class EventStreamConsumer(
     eventStreamProperties: EventStreamProperties,
     private val serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
+    private val txRequestService: TxRequestService,
 ) {
     private val log = logger()
 
     // We're only interested in specific wasm events from pbc
-    private val eventTypes = listOf(WASM_EVENT, MARKER_TRANSFER_EVENT, MIGRATE_EVENT)
+    private val eventTypes =
+        listOf(WASM_EVENT, MARKER_TRANSFER_EVENT, MIGRATE_EVENT, ATTRIBUTE_DELETE_EVENT, ATTRIBUTE_ADD_EVENT)
 
     // The current event stream IDs
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
     private val coinMovementEventStreamId = UUID.fromString(eventStreamProperties.coinMovementId)
 
-    private val epochHeight = eventStreamProperties.epoch.toLong()
-    private val coinMovementEpochHeight = eventStreamProperties.coinMovementEpoch.toLong()
+    private val epochHeight = eventStreamProperties.epoch
+    private val coinMovementEpochHeight = eventStreamProperties.coinMovementEpoch
 
     // This is scheduled so if the event streaming server or its proxied blockchain daemon node go down,
     // we'll attempt to re-connect after a fixed delay.
@@ -58,11 +62,7 @@ class EventStreamConsumer(
             ?: transaction { EventStreamRecord.insert(eventStreamId, epochHeight) }.lastBlockHeight
         val responseObserver =
             EventStreamResponseObserver<EventBatch> { batch ->
-                handleEvents(
-                    batch.height,
-                    batch.transfers(provenanceProperties.contractAddress),
-                    batch.migrations(provenanceProperties.contractAddress)
-                )
+                handleEvents(batch)
 
                 transaction { EventStreamRecord.update(eventStreamId, batch.height) }
             }
@@ -242,27 +242,30 @@ class EventStreamConsumer(
         }
     }
 
-    fun handleEvents(
-        blockHeight: Long,
-        transfers: Transfers,
-        migrations: Migrations
-    ) {
-        val events =
-            transfers.map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
-                migrations.map { Triple(it.txHash, TxType.MIGRATION, it) }
+    fun handleEvents(batch: EventBatch) {
+        batch.events.forEach { (txHash, _) ->
+            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty() &&
+                transaction { CoinRedemptionRecord.findByTxHash(txHash) }.isEmpty()
+            ) {
+                val parsedEvents = batch.transfers(provenanceProperties.contractAddress)
+                    .map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
+                    batch.migrations(provenanceProperties.contractAddress)
+                        .map { Triple(it.txHash, TxType.MIGRATION, it) }
 
-        events.forEach { (txHash, type, event) ->
-            log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty()) {
-                if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
-                    handleMigrationEvent(txHash, event)
-                } else if (event is Transfer &&
-                    event.recipient == pbcService.managerAddress &&
-                    event.denom == serviceProperties.dccDenom &&
-                    transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
-                ) {
-                    handleTransferEvent(txHash, event)
+                parsedEvents.forEach { (txHash, type, event) ->
+                    log.info("event stream found txhash $txHash and type $type [event = {$event}]")
+                    if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
+                        handleMigrationEvent(txHash, event)
+                    } else if (event is Transfer &&
+                        event.recipient == pbcService.managerAddress &&
+                        event.denom == serviceProperties.dccDenom &&
+                        transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
+                    ) {
+                        handleTransferEvent(txHash, event)
+                    }
                 }
+            } else {
+                handleAllOtherEvents(txHash, batch.height)
             }
         }
     }
@@ -297,6 +300,19 @@ class EventStreamConsumer(
                     txHash = txHash
                 )
             }
+        }
+    }
+
+    // TODO add back in the expired reaper to get pendings in the tx request view
+    private fun handleAllOtherEvents(txHash: String, blockHeight: Long) {
+        log.info("completing other txn events for $txHash")
+        val txResponse = pbcService.getTransaction(txHash)?.txResponse!!
+        when (txResponse.isFailed()) {
+            true -> {
+                log.error("Transactions for $txHash failed: $txResponse")
+                txRequestService.resetTxns(txHash, blockHeight)
+            }
+            false -> txRequestService.completeTxns(txHash)
         }
     }
 }

@@ -110,7 +110,9 @@ class RpcEventStream(
             if (batches.isNotEmpty()) {
                 numHistoricalEvents += batches.fold(0) { acc, batch -> acc + batch.events.size }
 
-                batches.sortedBy { it.height }.forEach { handleEventBatch(it) }
+                batches.sortedBy { it.height }.forEach {
+                    handleEventBatch(it)
+                }
             }
 
             height += capacity * chunkSize
@@ -197,10 +199,10 @@ class RpcEventStream(
             ?.takeIf { it.isNotEmpty() }
     }
 
-    private fun queryEvents(height: Long): List<StreamEvent> {
+    private fun queryEvents(height: Long): Map<String, List<StreamEvent>> {
         val block = rpcClient.fetchBlock(height)
         if (block.block.data.txs == null || block.block.data.txs.isEmpty()) { // empty block
-            return listOf()
+            return emptyMap()
         }
 
         val results = rpcClient.fetchBlockResults(height)
@@ -218,7 +220,9 @@ class RpcEventStream(
                         attributes = event.attributes
                     )
                 }
-        } ?: emptyList()
+        }?.groupBy {
+            it.txHash
+        } ?: emptyMap()
     }
 
     private fun Event.shouldStream(txHash: String): Boolean {

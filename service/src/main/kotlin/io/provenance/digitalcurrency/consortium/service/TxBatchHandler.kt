@@ -9,7 +9,6 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -43,9 +42,6 @@ class TxBatchHandler(
                     TxRequestType.MINT -> CoinMintRecord.findById(request.id)!!.let {
                         it to buildExecuteContractMessage(it.getExecuteContractMessage())
                     }
-                    TxRequestType.REDEEM -> CoinRedemptionRecord.findById(request.id)!!.let {
-                        it to buildExecuteContractMessage(it.getExecuteContractMessage(bankClientProperties.denom))
-                    }
                     TxRequestType.BURN -> CoinBurnRecord.findById(request.id)!!.let {
                         it to buildExecuteContractMessage(it.getExecuteContractMessage())
                     }
@@ -55,7 +51,7 @@ class TxBatchHandler(
                         } else {
                             // technically should not happen
                             log.warn("Address ${it.id} already tagged - completing")
-                            it.status = TxStatus.COMPLETE
+                            it.status = TxStatus.TXN_COMPLETE
                             null
                         }
                     }
@@ -68,7 +64,7 @@ class TxBatchHandler(
                         } else {
                             // technically should not happen
                             log.warn("Address ${it.id} already de-tagged - completing")
-                            it.status = TxStatus.COMPLETE
+                            it.status = TxStatus.TXN_COMPLETE
                             null
                         }
                     }

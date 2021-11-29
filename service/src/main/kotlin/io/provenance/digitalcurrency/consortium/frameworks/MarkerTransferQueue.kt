@@ -8,9 +8,7 @@ import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -28,7 +26,6 @@ class MarkerTransferOutcome(
 @NotTest
 class MarkerTransferQueue(
     coroutineProperties: CoroutineProperties,
-    private val pbcService: PbcService
 ) :
     ActorModel<MarkerTransferDirective, MarkerTransferOutcome> {
     private val log = logger()
@@ -44,36 +41,24 @@ class MarkerTransferQueue(
 
     override suspend fun loadMessages(): List<MarkerTransferDirective> =
         transaction {
-            // TODO consistent terms
             MarkerTransferRecord.findPending().map { MarkerTransferDirective(it.id.value) }
         }
 
     override fun processMessage(message: MarkerTransferDirective): MarkerTransferOutcome {
         transaction {
-            MarkerTransferRecord.findForUpdate(message.id).first().let { transfer ->
+            MarkerTransferRecord.findPendingForUpdate(message.id).first().let { transfer ->
                 withMdc(*transfer.mdc()) {
-                    // this should fail if we can't find the txn by the txhash because that is how it
-                    // got inserted in this table in the first place
-                    pbcService.getTransaction(transfer.txHash!!)!!.txResponse.takeIf {
-                        !it.isFailed()
-                    }?.let {
-                        // TODO - handle if active address no longer exists due to deregistration
-                        val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
-                        check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
-                        // TODO handle batches
-                        // check(
-                        // TODO is this situation handled
-                        //     TxStatusRecord.findByTxHash(transfer.txHash!!).empty()
-                        // ) { "Marker transfer for ${transfer.txHash} already handled" }
+                    // TODO - handle if active address no longer exists due to deregistration
+                    val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
+                    check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
 
-                        // set up the redeem
-                        CoinRedemptionRecord.insert(
-                            addressRegistration = registration,
-                            coinAmount = transfer.coinAmount
-                        )
+                    // set up the redeem
+                    CoinRedemptionRecord.insert(
+                        addressRegistration = registration,
+                        coinAmount = transfer.coinAmount
+                    )
 
-                        MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.COMPLETE)
-                    }
+                    MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ACTION_COMPLETE)
                 }
             }
         }

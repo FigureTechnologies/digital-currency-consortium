@@ -23,7 +23,9 @@ import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteAcceptRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteJoinRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
+import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
 import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
 import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
@@ -81,6 +83,27 @@ class PbcService(
                 .map { it.toAny() }
                 .toTxBody(timeoutHeight)
         ).throwIfFailed("Batch broadcast failed")
+
+    fun redeem(amount: BigInteger, timeoutHeight: Long) =
+        grpcClientService.new().estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerKey)),
+            txBody = Tx.MsgExecuteContract.newBuilder()
+                .setSender(managerAddress)
+                .setContract(provenanceProperties.contractAddress)
+                .setMsg(
+                    mapper.writeValueAsString(
+                        ExecuteRedeemRequest(
+                            redeem = RedeemRequest(
+                                amount = amount.toString(),
+                                reserveDenom = bankClientProperties.denom
+                            )
+                        )
+                    ).toByteString()
+                )
+                .build()
+                .toAny()
+                .toTxBody(timeoutHeight)
+        ).throwIfFailed("Redeem failed")
 
     fun join(name: String, maxSupply: BigInteger) =
         grpcClientService.new().estimateAndBroadcastTx(
