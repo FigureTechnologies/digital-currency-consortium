@@ -37,6 +37,12 @@ open class CoinRedemptionEntityClass : BaseRequestEntityClass<CRT, CoinRedemptio
 
     fun findPendingForUpdate(uuid: UUID) =
         find { (CRT.id eq uuid) and (CRT.status inList listOf(TxStatus.QUEUED, TxStatus.TXN_COMPLETE)) }.forUpdate()
+
+    fun findExpiredForUpdate() = find {
+        (CRT.created lessEq OffsetDateTime.now().minusSeconds(30))
+            .and(CRT.status eq TxStatus.PENDING)
+            .and(CRT.txHash.isNotNull())
+    }.forUpdate().toList()
 }
 
 class CoinRedemptionRecord(uuid: EntityID<UUID>) : BaseRequestRecord(CRT, uuid) {
