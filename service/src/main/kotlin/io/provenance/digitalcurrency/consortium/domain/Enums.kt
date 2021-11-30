@@ -8,10 +8,10 @@ enum class TxRequestType {
 }
 
 enum class TxStatus {
-    QUEUED,
-    PENDING,
-    TXN_COMPLETE,
-    ACTION_COMPLETE
+    QUEUED, // waiting for blockchain transaction to be broadcast
+    PENDING, // blockchain transaction has been broadcast, waiting to make sure it is done
+    TXN_COMPLETE, // blockchain txn is complete - may be final status for most requests
+    ACTION_COMPLETE // final status for requests that need to do another activity after blockchain status is complete
 }
 
 enum class TxType {
