@@ -15,7 +15,6 @@ import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxType
-import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -271,48 +270,30 @@ class EventStreamConsumer(
     }
 
     private fun handleMigrationEvent(txHash: String, migration: Migration) {
-        pbcService.getTransaction(txHash)
-            ?.takeIf {
-                !it.txResponse!!.isFailed()
-            }?.let {
-                transaction {
-                    MigrationRecord.insert(
-                        codeId = migration.codeId,
-                        txHash = migration.txHash
-                    )
-                }
-            }
+        transaction {
+            MigrationRecord.insert(
+                codeId = migration.codeId,
+                txHash = migration.txHash
+            )
+        }
     }
 
     private fun handleTransferEvent(txHash: String, transfer: Transfer) {
-        // this should fail if we can't find it here because we received an event for the tx hash to get here
-        pbcService.getTransaction(txHash)!!.takeIf {
-            !it.txResponse.isFailed()
-        }?.let {
-            log.info("persist received transfer for txhash $txHash")
-            transaction {
-                MarkerTransferRecord.insert(
-                    fromAddress = transfer.sender,
-                    toAddress = transfer.recipient,
-                    denom = transfer.denom,
-                    amount = transfer.amount,
-                    height = transfer.height,
-                    txHash = txHash
-                )
-            }
+        log.info("persist received transfer for txhash $txHash")
+        transaction {
+            MarkerTransferRecord.insert(
+                fromAddress = transfer.sender,
+                toAddress = transfer.recipient,
+                denom = transfer.denom,
+                amount = transfer.amount,
+                height = transfer.height,
+                txHash = txHash
+            )
         }
     }
 
-    // TODO add back in the expired reaper to get pendings in the tx request view
     private fun handleAllOtherEvents(txHash: String, blockHeight: Long) {
         log.info("completing other txn events for $txHash")
-        val txResponse = pbcService.getTransaction(txHash)?.txResponse!!
-        when (txResponse.isFailed()) {
-            true -> {
-                log.error("Transactions for $txHash failed: $txResponse")
-                txRequestService.resetTxns(txHash, blockHeight)
-            }
-            false -> txRequestService.completeTxns(txHash)
-        }
+        txRequestService.completeTxns(txHash)
     }
 }
