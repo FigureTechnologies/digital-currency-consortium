@@ -37,46 +37,61 @@ class TxBatchHandler(
     )
     fun batchQueuedTxns() {
         transaction {
-            TxRequestViewRecord.findQueued().mapNotNull { request ->
-                when (request.type) {
-                    TxRequestType.MINT -> CoinMintRecord.findById(request.id)!!.let {
-                        it to buildExecuteContractMessage(it.getExecuteContractMessage())
-                    }
-                    TxRequestType.BURN -> CoinBurnRecord.findById(request.id)!!.let {
-                        it to buildExecuteContractMessage(it.getExecuteContractMessage())
-                    }
-                    TxRequestType.TAG -> AddressRegistrationRecord.findById(request.id)!!.let {
-                        if (!tagExists(it.address)) {
-                            it to it.getAddAttributeMessage(pbcService.managerAddress, bankClientProperties.kycTagName)
-                        } else {
-                            // technically should not happen
-                            log.warn("Address ${it.id} already tagged - completing")
-                            it.status = TxStatus.TXN_COMPLETE
-                            null
+            TxRequestViewRecord.findQueued().map { it.id to it.type }.mapNotNull { (id, type) ->
+                when (type) {
+                    TxRequestType.MINT -> transaction {
+                        CoinMintRecord.findById(id)!!.let {
+                            it to buildExecuteContractMessage(it.getExecuteContractMessage())
                         }
                     }
-                    TxRequestType.DETAG -> AddressDeregistrationRecord.findById(request.id)!!.let {
-                        if (tagExists(it.addressRegistration.address)) {
-                            it to it.getDeleteAttributeMessage(
-                                pbcService.managerAddress,
-                                bankClientProperties.kycTagName
-                            )
-                        } else {
-                            // technically should not happen
-                            log.warn("Address ${it.id} already de-tagged - completing")
-                            it.status = TxStatus.TXN_COMPLETE
-                            null
+                    TxRequestType.BURN -> transaction {
+                        CoinBurnRecord.findById(id)!!.let {
+                            it to buildExecuteContractMessage(it.getExecuteContractMessage())
+                        }
+                    }
+                    TxRequestType.TAG -> transaction {
+                        AddressRegistrationRecord.findById(id)!!.let {
+                            if (!tagExists(it.address)) {
+                                it to it.getAddAttributeMessage(
+                                    pbcService.managerAddress,
+                                    bankClientProperties.kycTagName
+                                )
+                            } else {
+                                // technically should not happen
+                                log.warn("Address ${it.id} already tagged - completing")
+                                it.status = TxStatus.TXN_COMPLETE
+                                null
+                            }
+                        }
+                    }
+                    TxRequestType.DETAG -> transaction {
+                        AddressDeregistrationRecord.findById(id)!!.let {
+                            if (tagExists(it.addressRegistration.address)) {
+                                it to it.getDeleteAttributeMessage(
+                                    pbcService.managerAddress,
+                                    bankClientProperties.kycTagName
+                                )
+                            } else {
+                                // technically should not happen
+                                log.warn("Address ${it.id} already de-tagged - completing")
+                                it.status = TxStatus.TXN_COMPLETE
+                                null
+                            }
                         }
                     }
                 }
             }.let {
-                val (baseRequestRecords, messages) = it.unzip()
+                val (records, messages) = it.unzip()
                 if (messages.isNotEmpty()) {
                     val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
                     try {
-                        val response = pbcService.broadcastBatch(messages, timeoutHeight)
-                        baseRequestRecords.forEach { baseRequestRecord ->
-                            baseRequestRecord.updateToPending(response.txResponse.txhash, timeoutHeight)
+                        val txHash = pbcService.broadcastBatch(messages, timeoutHeight).txResponse.txhash
+                        log.info("broadcast batch result $txHash")
+                        records.forEach { baseRequest ->
+                            transaction {
+                                // TODO add retry
+                                baseRequest.updateToPending(txHash, timeoutHeight)
+                            }
                         }
                     } catch (e: Exception) {
                         log.error("Error submitting batch of messages", e)

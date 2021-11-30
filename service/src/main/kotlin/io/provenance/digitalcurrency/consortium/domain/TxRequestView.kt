@@ -20,6 +20,7 @@ object TxRequestView : UUIDTable(name = "tx_request_view", columnName = "uuid") 
 }
 
 open class TxRequestViewEntityClass : UUIDEntityClass<TxRequestViewRecord>(TRV) {
+    fun findForUpdate(id: UUID) = find { TRV.id eq id }.forUpdate()
 
     fun findQueued(limit: Int = 50) = find { TRV.status eq TxStatus.QUEUED }.limit(limit)
 

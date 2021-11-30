@@ -13,9 +13,7 @@ import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.messages.BurnRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteBurnRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
 import io.provenance.digitalcurrency.consortium.messages.MintRequest
-import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -52,40 +50,11 @@ fun CoinRedemptionRecord.mdc() = listOf(
     "to address" to addressRegistration.address
 ).toTypedArray()
 
-fun CoinBurnRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "type" to "Burn",
-    "status" to status,
-    "coin amount" to coinAmount,
-    "redemption" to coinRedemption?.id?.value
-).toTypedArray()
-
-fun AddressRegistrationRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "address" to address,
-    "status" to status,
-    "txhash" to txHash
-).toTypedArray()
-
-fun AddressDeregistrationRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "status" to status,
-    "txhash" to txHash
-).toTypedArray()
-
 fun CoinMintRecord.getExecuteContractMessage() =
     ExecuteMintRequest(
         mint = MintRequest(
             amount = coinAmount.toString(),
             address = addressRegistration.address
-        )
-    )
-
-fun CoinRedemptionRecord.getExecuteContractMessage(bankDenom: String) =
-    ExecuteRedeemRequest(
-        redeem = RedeemRequest(
-            amount = coinAmount.toString(),
-            reserveDenom = bankDenom
         )
     )
 
