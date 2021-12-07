@@ -110,6 +110,7 @@ pub fn execute(
             amount,
             reserve_denom,
         } => try_redeem(deps, info, amount, reserve_denom),
+        ExecuteMsg::RedeemAndBurn { amount } => try_redeem_and_burn(deps, info, amount),
         ExecuteMsg::Swap {
             amount,
             denom,
@@ -382,6 +383,7 @@ fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg
 }
 
 // Redeem dcc tokens for member reserve tokens.
+// Note, this is should be replaced with try_redeem_and_burn.
 fn try_redeem(
     deps: DepsMut,
     info: MessageInfo,
@@ -512,6 +514,80 @@ fn try_redeem(
         .add_attribute("redeem_denom", &state.dcc_denom)
         .add_attribute("amount", amount)
         .add_attribute("reserve_denom", &reserve_denom);
+    Ok(res)
+}
+
+fn try_redeem_and_burn(
+    deps: DepsMut,
+    info: MessageInfo,
+    amount: Uint128,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Ensure no funds were sent.
+    if !info.funds.is_empty() {
+        return Err(contract_err("no funds should be sent during dcc redemtion"));
+    }
+
+    // Validate params
+    if amount.is_zero() {
+        return Err(contract_err("invalid redeem amount"));
+    }
+
+    // Read state
+    let state = config_read(deps.storage).load()?;
+
+    // Ensure message sender is a member.
+    let mut member = members_read(deps.storage).load(info.sender.as_bytes())?;
+
+    // Ensure member holds at least the requested amount of dcc tokens.
+    let balance = deps.querier.query_balance(&member.id, &state.dcc_denom)?;
+    if balance.amount < amount {
+        return Err(contract_err("insufficient dcc token balance"));
+    }
+
+    // Use the member's reserve denom.
+    let reserve_denom = member.denom.clone();
+
+    // Ensure marker holds at least the request amount of reserve token.
+    let querier = ProvenanceQuerier::new(&deps.querier);
+    let member_marker = querier.get_marker_by_denom(&reserve_denom)?;
+    let reserve_balance = member_marker
+        .coins
+        .into_iter()
+        .find(|c| c.denom == reserve_denom)
+        .map(|c| c.amount)
+        .unwrap_or_else(Uint128::zero);
+    if reserve_balance < amount {
+        return Err(contract_err("insufficient reserve token balance"));
+    }
+
+    // Update reserve supply and re-calculate weight for member.
+    let key = info.sender.as_bytes();
+    member.supply = Uint128::new(member.supply.u128() - amount.u128());
+    members(deps.storage).save(key, &member)?;
+
+    // Get dcc marker
+    let dcc_marker = querier.get_marker_by_denom(&state.dcc_denom)?;
+
+    let res = Response::new()
+        // Escrow dcc in the marker account for burn.
+        .add_message(transfer_marker_coins(
+            amount.u128(),
+            &state.dcc_denom,
+            dcc_marker.address,
+            info.sender.clone(),
+        )?)
+        // Burn the dcc token.
+        .add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?)
+        // Burn the reserve token.
+        .add_message(burn_marker_supply(amount.u128(), &reserve_denom)?)
+        // Add wasm event attributes.
+        .add_attribute("action", "redeem_and_burn")
+        .add_attribute("member_id", info.sender)
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &state.dcc_denom)
+        .add_attribute("amount", amount)
+        .add_attribute("reserve_denom", &reserve_denom);
+
     Ok(res)
 }
 
@@ -733,6 +809,7 @@ fn try_mint(
 }
 
 // Decrease reserve token supply.
+// Note, this is should be replaced with try_redeem_and_burn.
 fn try_burn(
     deps: DepsMut,
     info: MessageInfo,
