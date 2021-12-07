@@ -529,7 +529,7 @@ fn try_redeem_and_burn(
 
     // Validate params
     if amount.is_zero() {
-        return Err(contract_err("invalid redeem amount"));
+        return Err(contract_err("invalid redeem and burn amount"));
     }
 
     // Read state
@@ -556,6 +556,7 @@ fn try_redeem_and_burn(
         .find(|c| c.denom == reserve_denom)
         .map(|c| c.amount)
         .unwrap_or_else(Uint128::zero);
+    println!("{:?}", reserve_balance);
     if reserve_balance < amount {
         return Err(contract_err("insufficient reserve token balance"));
     }
@@ -3490,6 +3491,278 @@ mod tests {
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "unsupported reserve denom")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn redeem_and_burn_test() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Redeem needs to query the dcc marker address, so we mock it here
+        let bin = must_read_binary_file("testdata/dcc.json");
+        let dcc_marker: Marker = from_binary(&bin).unwrap();
+        let bin = must_read_binary_file("testdata/bank.json");
+        let bank_marker: Marker = from_binary(&bin).unwrap();
+        deps.querier.with_markers(vec![dcc_marker, bank_marker]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(10),
+                kyc_attrs: vec![],
+                admin_weight: None,
+            },
+        )
+        .unwrap();
+
+        // Create join proposal
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Vote yes as 'admin'
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept join proposal
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Mint reserve tokens.
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Mint {
+                amount: Uint128::new(100),
+                address: Some("bank".into()),
+            },
+        )
+        .unwrap();
+
+        let addr = Addr::unchecked("bank");
+        let key: &[u8] = addr.as_bytes();
+        let member = members_read(&deps.storage).load(key).unwrap();
+        assert_eq!(member.supply, Uint128::new(100));
+
+        // Simulate a mint(10,000) + swap(5,000) first, so bank has dcc and reserve tokens
+        let dcc = coin(100, "dcc.coin");
+        deps.querier.base.update_balance(addr.clone(), vec![dcc]);
+
+        // Redeem dcc for reserve tokens
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::new(25),
+            },
+        )
+        .unwrap();
+
+        // Ensure messages were created.
+        // TODO: validate marker messages (transfer dcc, burn dcc, burn reserve)...
+        assert_eq!(3, res.messages.len());
+
+        // Ensure supply was reduced as expected.
+        let member = members_read(&deps.storage).load(key).unwrap();
+        assert_eq!(member.supply, Uint128::new(75));
+    }
+
+    #[test]
+    fn redeem_and_burn_param_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Redeem needs to query the dcc marker address, so we mock it here
+        let bin = must_read_binary_file("testdata/dcc.json");
+        let dcc_marker: Marker = from_binary(&bin).unwrap();
+        let bin = must_read_binary_file("testdata/bank.json");
+        let bank_marker: Marker = from_binary(&bin).unwrap();
+        deps.querier.with_markers(vec![dcc_marker, bank_marker]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(10),
+                kyc_attrs: vec![],
+                admin_weight: None,
+            },
+        )
+        .unwrap();
+
+        // Create join proposal
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Vote yes as 'admin'
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept join proposal
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Try to send funds w/ redeem and burn message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[funds]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::new(2500),
+            },
+        )
+            .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during dcc redemtion")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to redeem and burn with an amount of zero.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::zero(),
+            },
+        )
+            .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "invalid redeem and burn amount")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to redeem and burn from a non-member account
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("non.member", &[]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::new(2500),
+            },
+        )
+            .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::NotFound { kind }) => {
+                assert_eq!(kind, "dcc::state::Member")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Simulate balance update due to swap.
+        let addr = Addr::unchecked("bank");
+        let swapped = coin(1000, "dcc.coin");
+        deps.querier
+            .base
+            .update_balance(addr.clone(), vec![swapped]);
+
+        // Try to redeem more dcc tokens than the member holds.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::new(2500),
+            },
+        )
+            .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "insufficient dcc token balance")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        let swapped = coin(10_000, "dcc.coin");
+        deps.querier
+            .base
+            .update_balance(addr.clone(), vec![swapped]);
+
+        // Try to redeem more dcc tokens than backed by bank token.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::RedeemAndBurn {
+                amount: Uint128::new(6000),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "insufficient reserve token balance")
             }
             _ => panic!("unexpected execute error"),
         }
