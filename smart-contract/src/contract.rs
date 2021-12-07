@@ -383,7 +383,6 @@ fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg
 }
 
 // Redeem dcc tokens for member reserve tokens.
-// Note, this is should be replaced with try_redeem_and_burn.
 fn try_redeem(
     deps: DepsMut,
     info: MessageInfo,
@@ -406,114 +405,58 @@ fn try_redeem(
     // Ensure message sender is a member.
     let member = members_read(deps.storage).load(info.sender.as_bytes())?;
 
+    // Ensure reserve_denom is always the bank reserve token.
+    // Note: originally we supported a specified reserve denom to support other bank reserve tokens.
+    let reserve_denom = reserve_denom.unwrap_or_else(|| member.denom.clone());
+    if reserve_denom != member.denom {
+        return Err(contract_err("unsupported reserve denom"));
+    }
+
     // Ensure member holds at least the requested amount of dcc tokens.
     let balance = deps.querier.query_balance(&member.id, &state.dcc_denom)?;
     if balance.amount < amount {
         return Err(contract_err("insufficient dcc token balance"));
     }
 
-    // Use the member's reserve denom if nothing was requested explicitly.
-    let reserve_denom = reserve_denom.unwrap_or_else(|| member.denom.clone());
-
-    // Ensure denom is supported by the consortium.
-    if reserve_denom != member.denom {
-        let members = get_members(deps.as_ref())?;
-        let maybe_member = members.iter().find(|m| m.denom == reserve_denom);
-        if maybe_member.is_none() {
-            return Err(contract_err("unsupported reserve denom"));
-        }
-    }
-
-    // Withdraw reserve tokens from marker(s) to member.
-    let mut res = Response::new();
+    // Ensure marker holds at least the request amount of reserve token.
     let querier = ProvenanceQuerier::new(&deps.querier);
-    let requested_marker = querier.get_marker_by_denom(&reserve_denom)?;
-
-    // Track the amount withdrawn
-    let mut remaining = amount.u128();
-
-    // Try and withdraw from the requested marker first.
-    for c in requested_marker.coins.iter() {
-        if c.denom == reserve_denom && !c.amount.is_zero() {
-            // Determine the max amount that can be withdrawn.
-            let wamt = if c.amount.u128() >= remaining {
-                remaining
-            } else {
-                c.amount.u128()
-            };
-            // Withdraw max amount from the requested marker.
-            res = res
-                .add_message(withdraw_coins(
-                    &reserve_denom,
-                    wamt,
-                    &reserve_denom,
-                    info.sender.clone(),
-                )?)
-                .add_attribute("withdraw_amount", Uint128::new(wamt))
-                .add_attribute("withdraw_denom", &reserve_denom);
-            // Decrement the pending amount due
-            remaining -= wamt;
-        }
-    }
-
-    // Try and withdraw from other reserve markers if total due hasn't been withdrawn.
-    if remaining > 0 {
-        // Query markers with non-zero balances excluding the requested denom
-        let bres = get_balances(deps.as_ref())?;
-        let balances: Vec<Balance> = bres
-            .balances
-            .iter()
-            .filter(|b| b.denom != reserve_denom && !b.amount.is_zero())
-            .cloned()
-            .collect();
-        // Process withdrawals
-        for balance in balances.iter() {
-            if remaining > 0 {
-                // Determine the max amount that can be withdrawn.
-                let wamt = if balance.amount.u128() >= remaining {
-                    remaining
-                } else {
-                    balance.amount.u128()
-                };
-                // Withdraw available amount from the requested marker.
-                res = res
-                    .add_message(withdraw_coins(
-                        &balance.denom,
-                        wamt,
-                        &balance.denom,
-                        info.sender.clone(),
-                    )?)
-                    .add_attribute("withdraw_amount", Uint128::new(wamt))
-                    .add_attribute("withdraw_denom", &balance.denom);
-                // Decrement the pending amount due
-                remaining -= wamt;
-            }
-        }
-    }
-
-    // If there is still a due amount, we can't meet the request so fail the tx
-    if remaining > 0 {
-        return Err(contract_err("insufficient reserve tokens in escrow"));
+    let member_marker = querier.get_marker_by_denom(&reserve_denom)?;
+    let reserve_balance = member_marker
+        .coins
+        .into_iter()
+        .find(|c| c.denom == reserve_denom)
+        .map(|c| c.amount)
+        .unwrap_or_else(Uint128::zero);
+    if reserve_balance < amount {
+        return Err(contract_err("insufficient reserve token balance"));
     }
 
     // Get dcc marker
     let dcc_marker = querier.get_marker_by_denom(&state.dcc_denom)?;
 
     // Escrow dcc in the marker account for burn.
-    res = res
+    let res = Response::new()
         .add_message(transfer_marker_coins(
             amount.u128(),
             &state.dcc_denom,
             dcc_marker.address,
             info.sender.clone(),
         )?)
-        .add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?) // Burn the dcc tokens
-        .add_attribute("action", "redeem") // Add wasm event attributes
+        // Burn the dcc tokens.
+        .add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?)
+        // Withdraw reserve token from marker to member.
+        .add_message(withdraw_coins(
+            &reserve_denom,
+            amount.u128(),
+            &reserve_denom,
+            info.sender.clone(),
+        )?)
+        .add_attribute("action", "redeem")
         .add_attribute("member_id", info.sender)
-        .add_attribute("redeem_amount", amount)
-        .add_attribute("redeem_denom", &state.dcc_denom)
+        .add_attribute("denom", &state.dcc_denom)
         .add_attribute("amount", amount)
         .add_attribute("reserve_denom", &reserve_denom);
+
     Ok(res)
 }
 
@@ -556,7 +499,6 @@ fn try_redeem_and_burn(
         .find(|c| c.denom == reserve_denom)
         .map(|c| c.amount)
         .unwrap_or_else(Uint128::zero);
-    println!("{:?}", reserve_balance);
     if reserve_balance < amount {
         return Err(contract_err("insufficient reserve token balance"));
     }
@@ -810,7 +752,6 @@ fn try_mint(
 }
 
 // Decrease reserve token supply.
-// Note, this is should be replaced with try_redeem_and_burn.
 fn try_burn(
     deps: DepsMut,
     info: MessageInfo,
@@ -3303,13 +3244,10 @@ mod tests {
         )
         .unwrap();
 
-        // Simulate a mint(10,000) + swap(5,000) first, so bank has dcc and reserve tokens
+        // Simulate a mint(5,000) + swap(5,000) first, so bank has dcc
         let addr = Addr::unchecked("bank");
-        let reserve = coin(5000, "bank.coin");
         let dcc = coin(5000, "dcc.coin");
-        deps.querier
-            .base
-            .update_balance(addr.clone(), vec![reserve, dcc]);
+        deps.querier.base.update_balance(addr.clone(), vec![dcc]);
 
         // Redeem dcc for reserve tokens
         let res = execute(
@@ -3669,7 +3607,7 @@ mod tests {
                 amount: Uint128::new(2500),
             },
         )
-            .unwrap_err();
+        .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {
@@ -3688,7 +3626,7 @@ mod tests {
                 amount: Uint128::zero(),
             },
         )
-            .unwrap_err();
+        .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {
@@ -3707,7 +3645,7 @@ mod tests {
                 amount: Uint128::new(2500),
             },
         )
-            .unwrap_err();
+        .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {
@@ -3733,7 +3671,7 @@ mod tests {
                 amount: Uint128::new(2500),
             },
         )
-            .unwrap_err();
+        .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {
