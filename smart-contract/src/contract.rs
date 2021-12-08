@@ -3244,7 +3244,7 @@ mod tests {
         )
         .unwrap();
 
-        // Simulate a mint(5,000) + swap(5,000) first, so bank has dcc
+        // Simulate a mint(5,000) first, so bank has dcc
         let addr = Addr::unchecked("bank");
         let dcc = coin(5000, "dcc.coin");
         deps.querier.base.update_balance(addr.clone(), vec![dcc]);
@@ -3512,11 +3512,11 @@ mod tests {
         let member = members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(100));
 
-        // Simulate a mint(10,000) + swap(5,000) first, so bank has dcc and reserve tokens
+        // Simulate a mint(100) first, so bank has dcc
         let dcc = coin(100, "dcc.coin");
         deps.querier.base.update_balance(addr.clone(), vec![dcc]);
 
-        // Redeem dcc for reserve tokens
+        // Redeem and burn dcc and reserve tokens
         let res = execute(
             deps.as_mut(),
             mock_env(),
