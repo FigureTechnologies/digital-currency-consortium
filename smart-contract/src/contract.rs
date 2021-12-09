@@ -525,7 +525,6 @@ fn try_redeem_and_burn(
         .add_attribute("member_id", info.sender)
         .add_attribute("amount", amount)
         .add_attribute("denom", &state.dcc_denom)
-        .add_attribute("amount", amount)
         .add_attribute("reserve_denom", &member.denom);
 
     Ok(res)
