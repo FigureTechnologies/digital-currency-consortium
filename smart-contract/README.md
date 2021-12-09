@@ -830,7 +830,46 @@ provenanced tx wasm execute \
 ## Redeem and burn
 
 Let's say `bank2` wants to redeem `usdf.local` and burn `bank2.coin` at the same time.
-Members can redeem and burn their tokens in a single transaction.
+Members can redeem and burn reserve tokens in a single transaction.
+
+`bank2` currently has $25 in escrow available to be burned.
+`bank2` also has $50 of `usdf.local` available for redemption. The maximum allowable to be redeemed and burned
+in a single transaction is $25 or the minimum of bank held `usdf.local` and `bank2` reserve token escrowed.
+
+```bash
+provenanced q marker escrow "bank2.coin" -t -o json | jq
+{
+  "escrow": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    }
+  ]
+}
+
+provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
+{
+  "balances": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    },
+    {
+      "denom": "nhash",
+      "amount": "98000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "5000"
+    }
+  ],
+  "pagination": {
+    "next_key": null,
+    "total": "0"
+  }
+```
+
+To redeem and burn $25
 
 ```bash
 provenanced tx wasm execute \
@@ -844,6 +883,37 @@ provenanced tx wasm execute \
     --broadcast-mode block \
     --yes \
     --testnet -o json | jq
+```
+
+The `bank2.coin` reserve tokens escrowed are removed and `bank2` balance of `usdf.local` has been reduced by $25.
+
+```bash
+provenanced q marker escrow "bank2.coin" -t -o json | jq
+{
+  "escrow": []
+}
+
+provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
+{
+  "balances": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    },
+    {
+      "denom": "nhash",
+      "amount": "97000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "2500"
+    }
+  ],
+  "pagination": {
+    "next_key": null,
+    "total": "0"
+  }
+}
 ```
 
 ## Manage KYC attributes

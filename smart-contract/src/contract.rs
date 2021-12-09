@@ -391,7 +391,7 @@ fn try_redeem(
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Ensure no funds were sent.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during dcc redemtion"));
+        return Err(contract_err("no funds should be sent during dcc redemption"));
     }
 
     // Validate params
@@ -467,7 +467,7 @@ fn try_redeem_and_burn(
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Ensure no funds were sent.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during dcc redemtion"));
+        return Err(contract_err("no funds should be sent during dcc redemption"));
     }
 
     // Validate params
@@ -487,16 +487,13 @@ fn try_redeem_and_burn(
         return Err(contract_err("insufficient dcc token balance"));
     }
 
-    // Use the member's reserve denom.
-    let reserve_denom = member.denom.clone();
-
     // Ensure marker holds at least the request amount of reserve token.
     let querier = ProvenanceQuerier::new(&deps.querier);
-    let member_marker = querier.get_marker_by_denom(&reserve_denom)?;
+    let member_marker = querier.get_marker_by_denom(&member.denom)?;
     let reserve_balance = member_marker
         .coins
         .into_iter()
-        .find(|c| c.denom == reserve_denom)
+        .find(|c| c.denom == member.denom)
         .map(|c| c.amount)
         .unwrap_or_else(Uint128::zero);
     if reserve_balance < amount {
@@ -522,14 +519,14 @@ fn try_redeem_and_burn(
         // Burn the dcc token.
         .add_message(burn_marker_supply(amount.u128(), &state.dcc_denom)?)
         // Burn the reserve token.
-        .add_message(burn_marker_supply(amount.u128(), &reserve_denom)?)
+        .add_message(burn_marker_supply(amount.u128(), &member.denom)?)
         // Add wasm event attributes.
         .add_attribute("action", "redeem_and_burn")
         .add_attribute("member_id", info.sender)
         .add_attribute("amount", amount)
         .add_attribute("denom", &state.dcc_denom)
         .add_attribute("amount", amount)
-        .add_attribute("reserve_denom", &reserve_denom);
+        .add_attribute("reserve_denom", &member.denom);
 
     Ok(res)
 }
@@ -3341,7 +3338,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "no funds should be sent during dcc redemtion")
+                assert_eq!(msg, "no funds should be sent during dcc redemption")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -3612,7 +3609,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "no funds should be sent during dcc redemtion")
+                assert_eq!(msg, "no funds should be sent during dcc redemption")
             }
             _ => panic!("unexpected execute error"),
         }
