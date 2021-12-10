@@ -2,7 +2,6 @@ package io.provenance.digitalcurrency.consortium.stream
 
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.logger
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -30,18 +29,6 @@ class ExpiredEventReaper(private val pbcService: PbcService, private val txReque
                 response == null -> log.info("no tx response, wait?")
                 response.txResponse.height > 0 -> txRequestService.completeTxns(txHash)
                 response.txResponse.isFailed() -> txRequestService.resetTxns(txHash, response.txResponse.height)
-            }
-        }
-
-        // these cannot be batched and therefore are not in the above view, must be handled separately
-        transaction {
-            CoinRedemptionRecord.findExpiredForUpdate().forEach { coinRedemption ->
-                val response = pbcService.getTransaction(coinRedemption.txHash!!)
-                when {
-                    response == null -> log.info("no tx response, wait?")
-                    response.txResponse.height > 0 -> coinRedemption.updateToTxnComplete()
-                    response.txResponse.isFailed() -> coinRedemption.resetForRetry(response.txResponse.height)
-                }
             }
         }
     }

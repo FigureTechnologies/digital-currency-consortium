@@ -2,7 +2,7 @@ package io.provenance.digitalcurrency.consortium.domain
 
 enum class TxRequestType {
     MINT,
-    BURN,
+    REDEEM_BURN,
     TAG,
     DETAG
 }

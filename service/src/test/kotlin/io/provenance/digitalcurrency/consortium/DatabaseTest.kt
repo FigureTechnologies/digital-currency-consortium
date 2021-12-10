@@ -6,13 +6,11 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
-import io.provenance.digitalcurrency.consortium.domain.CBT
 import io.provenance.digitalcurrency.consortium.domain.CMT
-import io.provenance.digitalcurrency.consortium.domain.CRT
+import io.provenance.digitalcurrency.consortium.domain.CRBT
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
@@ -31,10 +29,9 @@ abstract class DatabaseTest {
     fun afterEach() {
         transaction {
             ADT.deleteAll()
-            CBT.deleteAll()
+            CRBT.deleteAll()
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
-            CRT.deleteAll()
             ART.deleteAll()
             MTT.deleteAll()
             BalanceEntryTable.deleteAll()
@@ -65,16 +62,6 @@ abstract class DatabaseTest {
             this.status = status
             this.txHash = txHash
         }
-
-    fun insertCoinRedemption(status: TxStatus, txHash: String) = transaction {
-        CoinRedemptionRecord.insert(
-            coinAmount = DEFAULT_AMOUNT.toLong(),
-            addressRegistration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS)
-        ).also {
-            it.status = status
-            it.txHash = txHash
-        }
-    }
 
     fun insertMigration(
         txHash: String

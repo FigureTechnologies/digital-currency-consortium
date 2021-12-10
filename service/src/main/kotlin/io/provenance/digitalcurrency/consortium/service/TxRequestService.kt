@@ -4,9 +4,8 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BaseRequestRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -20,7 +19,7 @@ class TxRequestService {
 
     fun getBaseRequest(uuid: UUID, type: TxRequestType): BaseRequestRecord = when (type) {
         TxRequestType.MINT -> CoinMintRecord.findById(uuid)!!
-        TxRequestType.BURN -> CoinBurnRecord.findById(uuid)!!
+        TxRequestType.REDEEM_BURN -> CoinRedeemBurnRecord.findById(uuid)!!
         TxRequestType.TAG -> AddressRegistrationRecord.findById(uuid)!!
         TxRequestType.DETAG -> AddressDeregistrationRecord.findById(uuid)!!
     }
@@ -31,13 +30,6 @@ class TxRequestService {
                 when (it.status) {
                     TxStatus.PENDING -> getBaseRequest(it.id.value, it.type).updateToTxnComplete()
                     else -> log.error("Txn ${it.id} has invalid status ${it.status} to complete the txn")
-                }
-            }
-
-            CoinRedemptionRecord.findByTxHash(txHash).forEach {
-                when (it.status) {
-                    TxStatus.PENDING -> it.updateToTxnComplete()
-                    else -> log.error("Coin redemption ${it.id} has invalid status ${it.status} to complete")
                 }
             }
         }

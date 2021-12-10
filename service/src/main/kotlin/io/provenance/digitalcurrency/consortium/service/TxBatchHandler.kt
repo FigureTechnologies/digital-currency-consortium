@@ -7,11 +7,10 @@ import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
-import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.getAddAttributeMessage
 import io.provenance.digitalcurrency.consortium.extension.getDeleteAttributeMessage
 import io.provenance.digitalcurrency.consortium.extension.getExecuteContractMessage
@@ -36,16 +35,16 @@ class TxBatchHandler(
         fixedRateString = "\${queue.batch_polling_delay_ms}"
     )
     fun batchQueuedTxns() {
-        transaction {
-            TxRequestViewRecord.findQueued().map { it.id to it.type }.mapNotNull { (id, type) ->
+        val requests = transaction { TxRequestViewRecord.findQueued().map { it.id to it.type } }
+            .mapNotNull { (id, type) ->
                 when (type) {
                     TxRequestType.MINT -> transaction {
                         CoinMintRecord.findById(id)!!.let {
                             it to buildExecuteContractMessage(it.getExecuteContractMessage())
                         }
                     }
-                    TxRequestType.BURN -> transaction {
-                        CoinBurnRecord.findById(id)!!.let {
+                    TxRequestType.REDEEM_BURN -> transaction {
+                        CoinRedeemBurnRecord.findById(id)!!.let {
                             it to buildExecuteContractMessage(it.getExecuteContractMessage())
                         }
                     }
@@ -58,8 +57,7 @@ class TxBatchHandler(
                                 )
                             } else {
                                 // technically should not happen
-                                log.warn("Address ${it.id} already tagged - completing")
-                                it.status = TxStatus.TXN_COMPLETE
+                                log.error("Address ${it.id} already tagged - skip")
                                 null
                             }
                         }
@@ -73,28 +71,29 @@ class TxBatchHandler(
                                 )
                             } else {
                                 // technically should not happen
-                                log.warn("Address ${it.id} already de-tagged - completing")
-                                it.status = TxStatus.TXN_COMPLETE
+                                log.error("Address ${it.id} already de-tagged - skip")
                                 null
                             }
                         }
                     }
                 }
-            }.let {
-                val (records, messages) = it.unzip()
-                if (messages.isNotEmpty()) {
-                    val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
-                    try {
-                        val txHash = pbcService.broadcastBatch(messages, timeoutHeight).txResponse.txhash
-                        log.info("broadcast batch result $txHash")
-                        records.forEach { baseRequest ->
-                            transaction {
-                                // TODO add retry
-                                baseRequest.updateToPending(txHash, timeoutHeight)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        log.error("Error submitting batch of messages", e)
+            }
+
+        val (records, messages) = requests.unzip()
+        if (messages.isNotEmpty()) {
+            val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
+            val txHash = try {
+                pbcService.broadcastBatch(messages, timeoutHeight).txResponse.txhash.also {
+                    log.info("broadcast batch result $it")
+                }
+            } catch (e: Exception) {
+                log.error("Error submitting batch of messages", e)
+                null
+            }?.let { txHash ->
+                records.forEach { baseRequest ->
+                    transaction {
+                        // TODO add retry
+                        baseRequest.updateToPending(txHash, timeoutHeight)
                     }
                 }
             }

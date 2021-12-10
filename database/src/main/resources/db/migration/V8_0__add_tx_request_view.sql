@@ -19,6 +19,7 @@ UPDATE address_dereg SET status = 'PENDING' WHERE status LIKE 'PENDING%';
 UPDATE address_dereg SET status = 'TXN_COMPLETE' WHERE status = 'COMPLETE';
 
 ALTER TABLE tx_request ADD tx_hash TEXT;
+ALTER TABLE tx_request ADD status TEXT;
 ALTER TABLE tx_request ADD timeout_height BIGINT;
 ALTER TABLE address_registration ADD timeout_height BIGINT;
 ALTER TABLE address_registration ADD updated TIMESTAMPTZ NOT NULL DEFAULT (NOW() AT TIME ZONE 'utc');
@@ -43,6 +44,8 @@ FROM tx_status
 WHERE tx_status.tx_request_uuid = coin_redemption.uuid
     AND tx_status.type = 'REDEEM_CONTRACT' AND coin_redemption.tx_hash IS NULL;
 
+CREATE TABLE coin_redeem_burn() INHERITS (tx_request);
+
 CREATE VIEW tx_request_view AS
 SELECT DISTINCT
     uuid,
@@ -56,13 +59,13 @@ FROM coin_mint
 UNION ALL
 SELECT DISTINCT
     uuid,
-    'BURN' AS type,
+    'REDEEM_BURN' AS type,
     tx_hash,
     status,
     timeout_height,
     created,
     updated
-FROM coin_burn
+FROM coin_redeem_burn
 UNION ALL
 SELECT
     uuid,
@@ -83,3 +86,4 @@ SELECT
     created,
     created
 FROM address_dereg;
+

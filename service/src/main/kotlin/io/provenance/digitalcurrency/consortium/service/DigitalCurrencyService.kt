@@ -5,6 +5,7 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
@@ -63,5 +64,11 @@ class DigitalCurrencyService(
                 addressRegistration = registration,
                 fiatAmount = amount
             )
+        }
+
+    fun redeemBurnCoin(uuid: UUID, amount: BigDecimal) =
+        transaction {
+            // TODO - validate by querying marker reserve token balance + cached redeem burns not yet executed.
+            CoinRedeemBurnRecord.insert(uuid, amount)
         }
 }

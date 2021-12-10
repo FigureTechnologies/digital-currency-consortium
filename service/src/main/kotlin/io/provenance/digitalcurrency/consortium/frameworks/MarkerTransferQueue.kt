@@ -1,11 +1,12 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
+import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
+import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.mdc
@@ -25,6 +26,7 @@ class MarkerTransferOutcome(
 @Component
 @NotTest
 class MarkerTransferQueue(
+    private val bankClient: BankClient,
     coroutineProperties: CoroutineProperties,
 ) :
     ActorModel<MarkerTransferDirective, MarkerTransferOutcome> {
@@ -50,15 +52,22 @@ class MarkerTransferQueue(
                 withMdc(*transfer.mdc()) {
                     // TODO - handle if active address no longer exists due to deregistration
                     val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
-                    check(registration != null) { "Address ${transfer.fromAddress} is not registered" }
+                    checkNotNull(registration) { "Address ${transfer.fromAddress} is not registered" }
 
-                    // set up the redeem
-                    CoinRedemptionRecord.insert(
-                        addressRegistration = registration,
-                        coinAmount = transfer.coinAmount
-                    )
+                    // Let bank know of dcc deposit to member bank.
+                    try {
+                        bankClient.depositFiat(
+                            DepositFiatRequest(
+                                uuid = transfer.id.value,
+                                bankAccountUUID = registration.bankAccountUuid,
+                                amount = transfer.fiatAmount
+                            )
+                        )
 
-                    MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ACTION_COMPLETE)
+                        MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ACTION_COMPLETE)
+                    } catch (e: Exception) {
+                        log.error("sending fiat deposit request to bank failed; it will retry.", e)
+                    }
                 }
             }
         }

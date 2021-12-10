@@ -6,13 +6,11 @@ import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
-import io.provenance.digitalcurrency.consortium.messages.BurnRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteBurnRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
+import io.provenance.digitalcurrency.consortium.messages.AmountRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.MintRequest
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -42,25 +40,24 @@ fun MarkerTransferRecord.mdc() = listOf(
     "from" to fromAddress
 ).toTypedArray()
 
-fun CoinRedemptionRecord.mdc() = listOf(
+fun CoinRedeemBurnRecord.mdc() = listOf(
     "uuid" to id.value,
     "type" to "Redeem",
     "status" to status,
-    "coin amount" to coinAmount,
-    "to address" to addressRegistration.address
+    "coin amount" to coinAmount
 ).toTypedArray()
 
 fun CoinMintRecord.getExecuteContractMessage() =
-    ExecuteMintRequest(
+    ExecuteRequest(
         mint = MintRequest(
             amount = coinAmount.toString(),
             address = addressRegistration.address
         )
     )
 
-fun CoinBurnRecord.getExecuteContractMessage() =
-    ExecuteBurnRequest(
-        burn = BurnRequest(
+fun CoinRedeemBurnRecord.getExecuteContractMessage() =
+    ExecuteRequest(
+        redeemAndBurn = AmountRequest(
             amount = coinAmount.toString(),
         )
     )

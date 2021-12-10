@@ -4,6 +4,7 @@ import cosmos.base.v1beta1.CoinOuterClass.Coin
 import io.provenance.digitalcurrency.consortium.api.GrantRequest
 import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
+import io.provenance.digitalcurrency.consortium.api.RedeemBurnCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
@@ -89,6 +90,23 @@ class DigitalCurrencyController(
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, amount) = request
         digitalCurrencyService.mintCoin(uuid, bankAccountUuid, amount)
+        return ResponseEntity.ok(uuid)
+    }
+
+    @PostMapping(REDEEM_BURN_V1)
+    @ApiOperation(
+        value = "Redeem and burn dcc/reserve token",
+        notes = """
+            Request that the middleware redeem and burn dcc and reserve token.
+            """
+    )
+    fun redeemBurn(
+        @Valid
+        @ApiParam(value = "MintCoinRequest")
+        @RequestBody request: RedeemBurnCoinRequest
+    ): ResponseEntity<UUID> {
+        val (uuid, amount) = request
+        digitalCurrencyService.redeemBurnCoin(uuid, amount)
         return ResponseEntity.ok(uuid)
     }
 

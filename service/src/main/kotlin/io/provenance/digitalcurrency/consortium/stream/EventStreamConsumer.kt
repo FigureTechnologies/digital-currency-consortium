@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.stream
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -7,7 +8,6 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
@@ -26,6 +26,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Component
+@NotTest
 class EventStreamConsumer(
     private val eventStreamFactory: EventStreamFactory,
     private val pbcService: PbcService,
@@ -94,6 +95,7 @@ class EventStreamConsumer(
                 handleCoinMovementEvents(
                     batch.height,
                     mints = batch.mints(provenanceProperties.contractAddress),
+                    // TODO - these are really redemption requests, probably need to distinguish between redemption transfers and burns
                     burns = batch.transfers(provenanceProperties.contractAddress),
                     transfers = batch.markerTransfers(),
                 )
@@ -243,9 +245,7 @@ class EventStreamConsumer(
 
     fun handleEvents(batch: EventBatch) {
         batch.events.forEach { (txHash, _) ->
-            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty() &&
-                transaction { CoinRedemptionRecord.findByTxHash(txHash) }.isEmpty()
-            ) {
+            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty()) {
                 val parsedEvents = batch.transfers(provenanceProperties.contractAddress)
                     .map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
                     batch.migrations(provenanceProperties.contractAddress)
@@ -253,14 +253,13 @@ class EventStreamConsumer(
 
                 parsedEvents.forEach { (txHash, type, event) ->
                     log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-                    if (event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null }) {
-                        handleMigrationEvent(txHash, event)
-                    } else if (event is Transfer &&
-                        event.recipient == pbcService.managerAddress &&
-                        event.denom == serviceProperties.dccDenom &&
-                        transaction { MarkerTransferRecord.findByTxHash(txHash) == null }
-                    ) {
-                        handleTransferEvent(txHash, event)
+                    when {
+                        event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null } ->
+                            handleMigrationEvent(event)
+                        event is Transfer &&
+                            event.recipient == pbcService.managerAddress &&
+                            event.denom == serviceProperties.dccDenom &&
+                            transaction { MarkerTransferRecord.findByTxHash(txHash) == null } -> handleTransferEvent(txHash, event)
                     }
                 }
             } else {
@@ -269,7 +268,7 @@ class EventStreamConsumer(
         }
     }
 
-    private fun handleMigrationEvent(txHash: String, migration: Migration) {
+    private fun handleMigrationEvent(migration: Migration) {
         transaction {
             MigrationRecord.insert(
                 codeId = migration.codeId,
