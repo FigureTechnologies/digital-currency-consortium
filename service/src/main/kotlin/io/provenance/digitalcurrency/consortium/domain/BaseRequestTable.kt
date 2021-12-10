@@ -17,7 +17,7 @@ open class BaseRequestTable(name: String) : UUIDTable(name = name, columnName = 
 
 open class BaseRequestEntityClass<T : BaseRequestTable, R : BaseRequestRecord>(childTable: T) :
     UUIDEntityClass<R>(childTable) {
-    fun insert(uuid: UUID) = new(uuid) {
+    open fun insert(uuid: UUID) = new(uuid) {
         this.status = TxStatus.QUEUED
         created = OffsetDateTime.now()
         updated = OffsetDateTime.now()
