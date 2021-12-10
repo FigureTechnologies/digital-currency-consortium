@@ -14,6 +14,7 @@ import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
+import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
@@ -259,11 +260,13 @@ class EventStreamConsumer(
                         event is Transfer &&
                             event.recipient == pbcService.managerAddress &&
                             event.denom == serviceProperties.dccDenom &&
+                            // TODO - handle multiple transfers in single tx
                             transaction { MarkerTransferRecord.findByTxHash(txHash) == null } -> handleTransferEvent(txHash, event)
                     }
                 }
             } else {
-                handleAllOtherEvents(txHash, batch.height)
+                log.info("completing other txn events for $txHash")
+                txRequestService.completeTxns(txHash)
             }
         }
     }
@@ -286,13 +289,9 @@ class EventStreamConsumer(
                 denom = transfer.denom,
                 amount = transfer.amount,
                 height = transfer.height,
-                txHash = txHash
+                txHash = txHash,
+                txStatus = TxStatus.TXN_COMPLETE
             )
         }
-    }
-
-    private fun handleAllOtherEvents(txHash: String, blockHeight: Long) {
-        log.info("completing other txn events for $txHash")
-        txRequestService.completeTxns(txHash)
     }
 }

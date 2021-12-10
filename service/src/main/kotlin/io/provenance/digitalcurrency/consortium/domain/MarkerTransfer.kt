@@ -15,18 +15,27 @@ object MarkerTransferTable : BaseCoinRequestTable(name = "marker_transfer") {
 }
 
 open class MarkerTransferEntityClass : BaseCoinRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
-    fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
+    fun insert(
+        fromAddress: String,
+        denom: String,
+        amount: String,
+        toAddress: String,
+        height: Long,
+        txHash: String,
+        txStatus: TxStatus
+    ) =
         super.insert(UUID.randomUUID(), amount.toBigInteger().toUSDAmount()).also {
             it.fromAddress = fromAddress
             it.toAddress = toAddress
             it.denom = denom
             it.height = height
             it.txHash = txHash
+            it.status = txStatus
         }
 
-    fun findPending() = find { MTT.status eq TxStatus.QUEUED }
+    fun findTxnCompleted() = find { MTT.status eq TxStatus.TXN_COMPLETE }
 
-    fun findPendingForUpdate(uuid: UUID) = find { (MTT.id eq uuid) and (MTT.status eq TxStatus.QUEUED) }.forUpdate()
+    fun findTxnCompletedForUpdate(uuid: UUID) = find { (MTT.id eq uuid) and (MTT.status eq TxStatus.TXN_COMPLETE) }.forUpdate()
 
     fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }.firstOrNull()
 }

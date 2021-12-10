@@ -43,12 +43,12 @@ class MarkerTransferQueue(
 
     override suspend fun loadMessages(): List<MarkerTransferDirective> =
         transaction {
-            MarkerTransferRecord.findPending().map { MarkerTransferDirective(it.id.value) }
+            MarkerTransferRecord.findTxnCompleted().map { MarkerTransferDirective(it.id.value) }
         }
 
     override fun processMessage(message: MarkerTransferDirective): MarkerTransferOutcome {
         transaction {
-            MarkerTransferRecord.findPendingForUpdate(message.id).first().let { transfer ->
+            MarkerTransferRecord.findTxnCompletedForUpdate(message.id).first().let { transfer ->
                 withMdc(*transfer.mdc()) {
                     // TODO - handle if active address no longer exists due to deregistration
                     val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
