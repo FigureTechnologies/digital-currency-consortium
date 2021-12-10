@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.consortium.domain
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import java.math.BigDecimal
-import java.time.OffsetDateTime
 import java.util.UUID
 
 typealias CMT = CoinMintTable
@@ -20,12 +19,6 @@ open class CoinMintEntityClass : BaseCoinRequestEntityClass<CMT, CoinMintRecord>
     ) = super.insert(uuid, fiatAmount).apply {
         this.addressRegistration = addressRegistration
     }
-
-    fun updateStatus(uuid: UUID, newStatus: TxStatus) =
-        findById(uuid)!!.let {
-            it.status = newStatus
-            it.updated = OffsetDateTime.now()
-        }
 
     fun findTxnCompleted() = find { CMT.status eq TxStatus.TXN_COMPLETE }
 

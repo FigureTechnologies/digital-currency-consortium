@@ -17,11 +17,18 @@ open class BaseRequestTable(name: String) : UUIDTable(name = name, columnName = 
 
 open class BaseRequestEntityClass<T : BaseRequestTable, R : BaseRequestRecord>(childTable: T) :
     UUIDEntityClass<R>(childTable) {
+
     open fun insert(uuid: UUID) = new(uuid) {
         this.status = TxStatus.QUEUED
         created = OffsetDateTime.now()
         updated = OffsetDateTime.now()
     }
+
+    open fun updateStatus(uuid: UUID, newStatus: TxStatus) =
+        findById(uuid)!!.let {
+            it.status = newStatus
+            it.updated = OffsetDateTime.now()
+        }
 }
 
 open class BaseRequestRecord(childTable: BaseRequestTable, uuid: EntityID<UUID>) : UUIDEntity(uuid) {
