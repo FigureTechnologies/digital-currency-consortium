@@ -12,11 +12,11 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.7.3, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.7.5, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.7.3
+cd provenance && git checkout v1.7.5
 make install
 make localnet-start
 ```
@@ -308,7 +308,7 @@ Grant for bank 1
 provenanced tx marker grant-authz \
     tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
     "transfer" \
-    --transfer-limit 50000000usdf.local,50000000bank1.coin,50000000bank2.coin \
+    --transfer-limit 50000000usdf.local,50000000bank1.coin \
     --from bank1 \
     --keyring-backend test \
     --home build/node0 \
@@ -325,7 +325,7 @@ Grant for bank 2
 provenanced tx marker grant-authz \
     tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
     "transfer" \
-    --transfer-limit 50000000usdf.local,50000000bank1.coin,50000000bank2.coin \
+    --transfer-limit 50000000usdf.local,50000000bank2.coin \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
@@ -630,6 +630,61 @@ NOTE: you can get the address for `bank2` with the following command:
 provenanced keys show -a bank2 --home build/node0 -t
 ```
 
+You can now see that `bank2` holds $50 of `usdf.local`.
+
+```bash
+provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
+{
+  "balances": [
+    {
+      "denom": "nhash",
+      "amount": "98000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "5000"
+    }
+  ],
+  "pagination": {
+    "next_key": null,
+    "total": "0"
+  }
+}
+```
+
+However, `bank2` does not have sufficient reserve token to redeem `usdf.local` for `bank2.coin`.
+`bank2` must mint to cover before redemption.
+
+TODO: provide instructions on bank-to-bank settlement or holding `usdf.local` backed by `bank2.coin`.
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    '{"mint":{"amount":"5000","address":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"}}' \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+You can now see that `bank2` holds sufficient `bank2.coin` to back the available `usdf.local`.
+
+```bash
+provenanced q marker escrow "bank2.coin" -t -o json | jq
+{
+  "escrow": [
+    {
+      "denom": "bank2.coin",
+      "amount": "5000"
+    }
+  ]
+}
+```
+
 Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract.
 
 ```bash
@@ -646,15 +701,14 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-You can now see that `bank2` holds reserve tokens minted by `bank1`, since these were the only
-reserve tokens available for redemption.
+You can now see that `bank2` holds reserve tokens.
 
 ```bash
 provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
 {
   "balances": [
     {
-      "denom": "bank1.coin",
+      "denom": "bank2.coin",
       "amount": "5000"
     },
     {
@@ -663,7 +717,7 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
     },
     {
       "denom": "usdf.local",
-      "amount": "0"
+      "amount": "5000"
     }
   ],
   "pagination": {
@@ -673,20 +727,19 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
 }
 ```
 
-Now, `bank2` can deliver the cash/fiat to `user2` (off chain process). In addition, `bank2` can
-request the debt from `bank1` be paid. They can also sit on the reserve tokens and swap them for
+Now, `bank2` can burn the reserve tokens held. They can also sit on the reserve tokens and swap them for
 `usdf.local` when another user provides cash/fiat.
 
 ## Swap
 
 Let's say `user2` now wants $25 worth of tokens back from `bank2`. The bank can then swap the
-`bank1.coin` they hold back out for `usdf.local`, minting and withdrawing the tokens directly to
+`bank2.coin` they hold back out for `usdf.local`, minting and withdrawing the tokens directly to
 `user2`.
 
 ```bash
 provenanced tx wasm execute \
     tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"swap":{"amount":"2500","denom":"bank1.coin","address":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
+    '{"swap":{"amount":"2500","denom":"bank2.coin","address":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
@@ -774,8 +827,94 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-NOTE: Members can't burn another member's tokens. For example, `bank2` cannot burn the `bank1`
-tokens they currently hold.
+## Redeem and burn
+
+Let's say `bank2` wants to redeem `usdf.local` and burn `bank2.coin` at the same time.
+Members can redeem and burn reserve tokens in a single transaction.
+
+`bank2` currently has $25 in escrow available to be burned.
+`bank2` also has $50 of `usdf.local` available for redemption. The maximum allowable to be redeemed and burned
+in a single transaction is $25 or the minimum of bank held `usdf.local` and `bank2` reserve token escrowed.
+
+```bash
+provenanced q marker escrow "bank2.coin" -t -o json | jq
+{
+  "escrow": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    }
+  ]
+}
+
+provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
+{
+  "balances": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    },
+    {
+      "denom": "nhash",
+      "amount": "98000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "5000"
+    }
+  ],
+  "pagination": {
+    "next_key": null,
+    "total": "0"
+  }
+```
+
+To redeem and burn $25
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    '{"redeem_and_burn":{"amount":"2500"}}' \
+    --from bank2 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+The `bank2.coin` reserve tokens escrowed are removed and `bank2` balance of `usdf.local` has been reduced by $25.
+
+```bash
+provenanced q marker escrow "bank2.coin" -t -o json | jq
+{
+  "escrow": []
+}
+
+provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
+{
+  "balances": [
+    {
+      "denom": "bank2.coin",
+      "amount": "2500"
+    },
+    {
+      "denom": "nhash",
+      "amount": "97000000000"
+    },
+    {
+      "denom": "usdf.local",
+      "amount": "2500"
+    }
+  ],
+  "pagination": {
+    "next_key": null,
+    "total": "0"
+  }
+}
+```
 
 ## Manage KYC attributes
 
