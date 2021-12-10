@@ -11,6 +11,8 @@ object CoinRedeemBurnTable : BaseCoinRequestTable(name = "coin_redeem_burn")
 
 open class CoinRedeemBurnEntityClass : BaseCoinRequestEntityClass<CRBT, CoinRedeemBurnRecord>(CRBT) {
 
+    fun findPending() = find { CRBT.status inList listOf(TxStatus.PENDING, TxStatus.QUEUED) }
+
     fun updateStatus(uuid: UUID, newStatus: TxStatus) =
         findById(uuid)!!.let {
             it.status = newStatus

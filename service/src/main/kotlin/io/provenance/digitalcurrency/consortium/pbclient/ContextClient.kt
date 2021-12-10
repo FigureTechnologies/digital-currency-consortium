@@ -5,6 +5,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Accounts
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Attributes
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Blocks
+import io.provenance.digitalcurrency.consortium.pbclient.grpc.Markers
 import io.provenance.digitalcurrency.consortium.pbclient.grpc.Transactions
 import java.io.Closeable
 import java.net.URI
@@ -54,6 +55,7 @@ open class ContextClient(
 
     val accounts = Accounts(channel)
     val attributes = Attributes(channel)
+    val markers = Markers(channel)
     val transactions = Transactions(channel)
     val blocks = Blocks(channel)
 

@@ -21,7 +21,6 @@ import io.provenance.digitalcurrency.consortium.extension.toByteString
 import io.provenance.digitalcurrency.consortium.extension.toProtoTimestamp
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
-import io.provenance.digitalcurrency.consortium.messages.AmountRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
@@ -38,7 +37,7 @@ class PbcService(
     private val grpcClientService: GrpcClientService,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
-    private val bankClientProperties: BankClientProperties,
+    bankClientProperties: BankClientProperties,
     serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
@@ -46,10 +45,15 @@ class PbcService(
         InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet).keyRing(0)
     private val managerKey: KeyI = keyRing.key(0, serviceProperties.managerKeyHarden)
     final val managerAddress: String by lazy { managerKey.address() }
+    final val reserveDenom = bankClientProperties.denom
 
     init {
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
+
+    fun getMarkerEscrowBalance(escrowDenom: String = reserveDenom) =
+        // id is marker denom, denom is escrow denom
+        grpcClientService.new().markers.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
         grpcClientService.new().accounts.getAccountCoins(address)
@@ -82,26 +86,6 @@ class PbcService(
                 .toTxBody(timeoutHeight)
         ).throwIfFailed("Batch broadcast failed")
 
-    fun redeemAndBurn(amount: BigInteger, timeoutHeight: Long) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteRequest(
-                            redeemAndBurn = AmountRequest(
-                                amount = amount.toString()
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody(timeoutHeight)
-        ).throwIfFailed("Redeem failed")
-
     fun join(name: String, maxSupply: BigInteger) =
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(BaseReqSigner(managerKey)),
@@ -112,7 +96,7 @@ class PbcService(
                     mapper.writeValueAsString(
                         ExecuteRequest(
                             join = JoinRequest(
-                                denom = bankClientProperties.denom,
+                                denom = reserveDenom,
                                 maxSupply = maxSupply.toString(),
                                 name = name
                             )

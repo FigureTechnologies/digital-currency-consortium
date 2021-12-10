@@ -7,7 +7,7 @@ import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
+import io.provenance.digitalcurrency.consortium.service.BankService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -32,7 +32,7 @@ import org.springframework.http.ResponseEntity
 import java.math.BigDecimal
 import java.util.UUID
 
-class DigitalCurrencyControllerTest : BaseIntegrationTest() {
+class BankControllerTest : BaseIntegrationTest() {
     @Autowired
     lateinit var pbcService: PbcService
 
@@ -40,12 +40,12 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
     lateinit var restTemplate: TestRestTemplate
 
     @SpyBean
-    lateinit var digitalCurrencyService: DigitalCurrencyService
+    lateinit var bankService: BankService
 
     @BeforeEach
     fun beforeEach() {
         reset(pbcService)
-        reset(digitalCurrencyService)
+        reset(bankService)
     }
 
     @Nested
@@ -135,7 +135,7 @@ class DigitalCurrencyControllerTest : BaseIntegrationTest() {
                 blockchainAddress = TEST_ADDRESS
             )
 
-            whenever(digitalCurrencyService.registerAddress(uuid, TEST_ADDRESS)).doAnswer { throw Exception() }
+            whenever(bankService.registerAddress(uuid, TEST_ADDRESS)).doAnswer { throw Exception() }
 
             val responseError = request.execute(String::class.java)
 
