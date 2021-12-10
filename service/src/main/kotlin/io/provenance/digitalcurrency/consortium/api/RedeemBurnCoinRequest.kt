@@ -15,10 +15,10 @@ import javax.validation.constraints.NotNull
  * @param amount The amount in USD to mint to the address.
  */
 @ApiModel(
-    value = "MintCoinRequest",
+    value = "RedeemBurnCoinRequest",
     description = """
         Request to the middleware to redeem and burn dcc token and corresponding bank token. 
-        Must have sufficient reserve token available.
+        Must have sufficient dcc coin at bank address and reserve token escrowed.
     """
 )
 data class RedeemBurnCoinRequest(
