@@ -56,6 +56,9 @@ dependencies {
         it(Libraries.ScarletWebsocket)
         it(Libraries.ScarletMessageAdapter)
 
+        // telemetry
+        it(Libraries.MicrometerPrometheusRegistry)
+
         // ----- Misc -----
         it(Libraries.Swagger2)
         it(Libraries.SwaggerStarter)
