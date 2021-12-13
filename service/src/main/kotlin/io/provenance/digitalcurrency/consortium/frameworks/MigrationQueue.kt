@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
@@ -19,6 +20,7 @@ class MigrationOutcome(
 ) : Outcome()
 
 @Component
+@NotTest
 class MigrationQueue(
     coroutineProperties: CoroutineProperties,
     private val bankClient: BankClient

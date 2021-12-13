@@ -1,7 +1,7 @@
 [package]
 name = "dcc"
-version = "0.2.0"
-authors = ["David Pederson <dpederson@figure.com>"]
+version = "0.3.0"
+authors = ["David Pederson <dpederson@figure.com>", "Lee Duan <lduan@figure.com>"]
 edition = "2018"
 
 exclude = [

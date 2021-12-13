@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
+import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.BalanceReportProperties
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -22,6 +23,7 @@ class BalanceReportOutcome(
 ) : Outcome()
 
 @Component
+@NotTest
 class BalanceReportQueue(
     balanceReportProperties: BalanceReportProperties,
     private val serviceProperties: ServiceProperties,

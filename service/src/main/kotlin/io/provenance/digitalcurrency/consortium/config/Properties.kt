@@ -28,6 +28,7 @@ class ServiceProperties(
     val name: String,
     val environment: String,
     val managerKey: String,
+    val managerKeyHarden: Boolean,
     val dccDenom: String
 ) {
     fun isProd() = environment == "production"
@@ -63,6 +64,7 @@ class EventStreamProperties(
 @Validated
 class BankClientProperties(
     val uri: String,
+    val context: String,
     val kycTagName: String,
     val denom: String
 )
