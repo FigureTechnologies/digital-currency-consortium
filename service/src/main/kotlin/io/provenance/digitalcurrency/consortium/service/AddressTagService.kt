@@ -31,7 +31,7 @@ class AddressTagService(
                         addressRegistrationRecord.status = AddressStatus.PENDING_TAG
                     }
                 } catch (e: Exception) {
-                    if (e.isPermanent() == true){
+                    if (e.isPermanent() == true) {
                         log.error("Tag failed permanently; setting registration record status to ERRORED", e)
                         addressRegistrationRecord.status = AddressStatus.ERRORED
                     } else {
