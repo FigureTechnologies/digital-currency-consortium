@@ -5,9 +5,9 @@ import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.AddressStatus.ERRORED
 import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.domain.AddressStatus.PENDING_TAG
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.ERRORED
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import io.provenance.digitalcurrency.consortium.service.AddressTagService
 import org.jetbrains.exposed.sql.transactions.transaction
