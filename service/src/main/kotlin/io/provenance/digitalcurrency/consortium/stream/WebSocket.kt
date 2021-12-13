@@ -35,7 +35,7 @@ data class Event(
 
 data class EventBatch(
     val height: Long,
-    val events: Map<String, List<StreamEvent>>
+    val events: List<StreamEvent>
 )
 
 data class StreamEvent(

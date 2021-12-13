@@ -6,7 +6,6 @@ import com.tinder.scarlet.ShutdownReason
 import com.tinder.scarlet.WebSocket
 import com.tinder.scarlet.lifecycle.LifecycleRegistry
 import io.provenance.digitalcurrency.consortium.config.logger
-import io.provenance.digitalcurrency.consortium.extension.isFailed
 import io.provenance.digitalcurrency.consortium.extension.newFixedThreadPool
 import io.provenance.digitalcurrency.consortium.extension.removeShutdownHook
 import io.provenance.digitalcurrency.consortium.extension.shutdownHook
@@ -111,9 +110,7 @@ class RpcEventStream(
             if (batches.isNotEmpty()) {
                 numHistoricalEvents += batches.fold(0) { acc, batch -> acc + batch.events.size }
 
-                batches.sortedBy { it.height }.forEach {
-                    handleEventBatch(it)
-                }
+                batches.sortedBy { it.height }.forEach { handleEventBatch(it) }
             }
 
             height += capacity * chunkSize
@@ -200,45 +197,42 @@ class RpcEventStream(
             ?.takeIf { it.isNotEmpty() }
     }
 
-    private fun queryEvents(height: Long): Map<String, List<StreamEvent>> {
+    private fun queryEvents(height: Long): List<StreamEvent> {
         val block = rpcClient.fetchBlock(height)
         if (block.block.data.txs == null || block.block.data.txs.isEmpty()) { // empty block
-            return emptyMap()
+            return listOf()
         }
 
         val results = rpcClient.fetchBlockResults(height)
         return results.txsResults?.flatMapIndexed { index, tx ->
             val txHash = block.block.data.txs[index].hash()
-            tx.takeIf {
-                !it.isFailed() && txHash.isNotBlank()
-            }?.let {
-                tx.events
-                    .filter { it.shouldStream() }
-                    .map { event ->
-                        StreamEvent(
-                            height = results.height,
-                            eventType = event.type,
-                            resultIndex = index,
-                            txHash = txHash,
-                            attributes = event.attributes
-                        )
-                    }
-            } ?: listOf()
-        }?.groupBy {
-            it.txHash
-        } ?: emptyMap()
+            tx.events
+                .filter { it.shouldStream(txHash) }
+                .map { event ->
+                    StreamEvent(
+                        height = results.height,
+                        eventType = event.type,
+                        resultIndex = index,
+                        txHash = txHash,
+                        attributes = event.attributes
+                    )
+                }
+        } ?: emptyList()
     }
 
-    private fun Event.shouldStream(): Boolean =
-        eventTypes.contains(type) || // check for simple event type match first
-            eventTypes.isEmpty() || // no filtering requested
-            eventTypes.firstOrNull { // Check for "event_type:attribute_key" matches.
-            it.contains(':') && it.split(':').let { elements ->
-                elements.size == 2 &&
-                    elements[0] == type && // event type match
-                    attributes.firstOrNull { attribute -> attribute.key == elements[1] } != null // at least one attribute match
-            }
-        } != null
+    private fun Event.shouldStream(txHash: String): Boolean =
+        txHash.isNotBlank() &&
+            (
+                eventTypes.contains(type) || // check for simple event type match first
+                    eventTypes.isEmpty() || // no filtering requested
+                    eventTypes.firstOrNull { // Check for "event_type:attribute_key" matches.
+                    it.contains(':') && it.split(':').let { elements ->
+                        elements.size == 2 &&
+                            elements[0] == type && // event type match
+                            attributes.firstOrNull { attribute -> attribute.key == elements[1] } != null // at least one attribute match
+                    }
+                } != null
+                )
 
     private fun String.hash(): String = sha256(BaseEncoding.base64().decode(this)).toHexString()
 

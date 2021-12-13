@@ -245,7 +245,7 @@ class EventStreamConsumer(
 
     fun handleEvents(batch: EventBatch) {
         // Handle dcc initialized transactions marked as complete
-        batch.events.forEach { (txHash, _) ->
+        batch.txHashes().forEach { txHash ->
             if (transaction { !TxRequestViewRecord.findByTxHash(txHash).empty() }) {
                 log.info("completing other txn events for $txHash")
                 txRequestService.completeTxns(txHash)

@@ -6,7 +6,6 @@ private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
 private const val ATTRIBUTE_FROM = "from_address"
-private const val ATTRIBUTE_RESERVE_DENOM = "reserve_denom"
 private const val ATTRIBUTE_WITHDRAW_DENOM = "withdraw_denom"
 private const val ATTRIBUTE_WITHDRAW_ADDRESS = "withdraw_address"
 private const val ATTRIBUTE_MEMBER_ID = "member_id"
@@ -52,7 +51,7 @@ data class MarkerTransfer(
 
 typealias MarkerTransfers = List<MarkerTransfer>
 
-fun EventBatch.markerTransfers(): MarkerTransfers = events.values.flatten()
+fun EventBatch.markerTransfers(): MarkerTransfers = events
     .filter { it.eventType == MARKER_TRANSFER_EVENT }
     .flatMap { event ->
         val nestedAttributes = event.attributes.splitAttributes()
@@ -71,7 +70,7 @@ private fun List<Attribute>.toMarkerTransfer(height: Long, txHash: String): Mark
     )
 
 fun EventBatch.mints(contractAddress: String): Mints =
-    events.values.flatten()
+    events
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
@@ -104,7 +103,7 @@ private fun StreamEvent.toMint(): Mint =
     )
 
 fun EventBatch.transfers(contractAddress: String): Transfers =
-    events.values.flatten()
+    events
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
@@ -135,7 +134,7 @@ private fun StreamEvent.toTransfer(): Transfer =
     )
 
 fun EventBatch.migrations(contractAddress: String): Migrations =
-    events.values.flatten()
+    events
         .filter { event ->
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == MIGRATE_EVENT &&
@@ -156,3 +155,5 @@ private fun StreamEvent.toMigration(): Migration =
         height = height,
         txHash = txHash
     )
+
+fun EventBatch.txHashes() = events.map { it.txHash }.distinct()
