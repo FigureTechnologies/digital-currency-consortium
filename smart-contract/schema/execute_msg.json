@@ -121,6 +121,26 @@
     {
       "type": "object",
       "required": [
+        "redeem_and_burn"
+      ],
+      "properties": {
+        "redeem_and_burn": {
+          "type": "object",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "swap"
       ],
       "properties": {
