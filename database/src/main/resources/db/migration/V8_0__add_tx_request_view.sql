@@ -18,6 +18,7 @@ UPDATE address_dereg SET status = 'QUEUED' WHERE status = 'INSERTED';
 UPDATE address_dereg SET status = 'PENDING' WHERE status LIKE 'PENDING%';
 UPDATE address_dereg SET status = 'TXN_COMPLETE' WHERE status = 'COMPLETE';
 
+DROP INDEX IF EXISTS marker_transfer_txhash_idx;
 ALTER TABLE tx_request ADD tx_hash TEXT;
 ALTER TABLE tx_request ADD status TEXT;
 ALTER TABLE tx_request ADD timeout_height BIGINT;

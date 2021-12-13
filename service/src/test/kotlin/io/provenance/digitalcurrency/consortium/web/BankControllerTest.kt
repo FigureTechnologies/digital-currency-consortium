@@ -215,7 +215,7 @@ class BankControllerTest : BaseIntegrationTest() {
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
 
-            val expected = "{\"errors\":[\"IllegalArgumentException: No registration found for bank account $uuid for coin mint $uuid\"]}"
+            val expected = "{\"errors\":[\"IllegalStateException: No registration found for bank account $uuid for coin mint $uuid\"]}"
 
             assertEquals(expected, responseError.body.toString())
         }

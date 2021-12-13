@@ -62,7 +62,12 @@ class EventStreamConsumer(
             ?: transaction { EventStreamRecord.insert(eventStreamId, epochHeight) }.lastBlockHeight
         val responseObserver =
             EventStreamResponseObserver<EventBatch> { batch ->
-                handleEvents(batch)
+                handleEvents(
+                    batch.height,
+                    txHashes = batch.txHashes(),
+                    migrations = batch.migrations(provenanceProperties.contractAddress),
+                    transfers = batch.transfers(provenanceProperties.contractAddress)
+                )
 
                 transaction { EventStreamRecord.update(eventStreamId, batch.height) }
             }
@@ -243,9 +248,9 @@ class EventStreamConsumer(
         }
     }
 
-    fun handleEvents(batch: EventBatch) {
+    fun handleEvents(blockHeight: Long, txHashes: List<String>, migrations: Migrations, transfers: Transfers) {
         // Handle dcc initialized transactions marked as complete
-        batch.txHashes().forEach { txHash ->
+        txHashes.forEach { txHash ->
             if (transaction { !TxRequestViewRecord.findByTxHash(txHash).empty() }) {
                 log.info("completing other txn events for $txHash")
                 txRequestService.completeTxns(txHash)
@@ -254,25 +259,25 @@ class EventStreamConsumer(
 
         // Handle externally initialized transactions
         // Migrations of smart contract
-        batch.migrations(provenanceProperties.contractAddress)
+        migrations
             .groupBy { it.txHash }
             .forEach { (txHash, migrations) ->
                 transaction {
                     when {
-                        MigrationRecord.findByTxHash(txHash) == null -> {} // noop - prevent dupe processing
+                        !MigrationRecord.findByTxHash(txHash).empty() -> {} // noop - prevent dupe processing
                         else -> migrations.forEach { migration -> insertMigrationEvent(migration) }
                     }
                 }
             }
 
         // Transfers to bank member
-        batch.transfers(provenanceProperties.contractAddress)
+        transfers
             .filter { it.recipient == pbcService.managerAddress && it.denom == serviceProperties.dccDenom }
             .groupBy { it.txHash }
             .forEach { (txHash, transfers) ->
                 transaction {
                     when {
-                        MarkerTransferRecord.findByTxHash(txHash) == null -> {} // noop - prevent dupe processing
+                        !MarkerTransferRecord.findByTxHash(txHash).empty() -> {} // noop - prevent dupe processing
                         else -> transfers.forEach { transfer -> insertTransferEvent(transfer) }
                     }
                 }

@@ -37,7 +37,7 @@ open class MarkerTransferEntityClass : BaseCoinRequestEntityClass<MTT, MarkerTra
 
     fun findTxnCompletedForUpdate(uuid: UUID) = find { (MTT.id eq uuid) and (MTT.status eq TxStatus.TXN_COMPLETE) }.forUpdate()
 
-    fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }.firstOrNull()
+    fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }
 }
 
 class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseCoinRequestRecord(MTT, uuid) {
