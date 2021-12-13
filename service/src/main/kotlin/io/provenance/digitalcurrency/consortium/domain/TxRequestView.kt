@@ -20,9 +20,12 @@ object TxRequestView : UUIDTable(name = "tx_request_view", columnName = "uuid") 
 }
 
 open class TxRequestViewEntityClass : UUIDEntityClass<TxRequestViewRecord>(TRV) {
+
+    fun findPending() = find { TRV.status eq TxStatus.PENDING }
+
     fun findQueued(limit: Int = 50) = find { TRV.status eq TxStatus.QUEUED }.limit(limit)
 
-    fun findByTxHash(txHash: String) = find { TRV.txHash eq txHash }.toList()
+    fun findByTxHash(txHash: String) = find { TRV.txHash eq txHash }
 
     fun findExpired() = find {
         (TRV.created lessEq OffsetDateTime.now().minusSeconds(30))

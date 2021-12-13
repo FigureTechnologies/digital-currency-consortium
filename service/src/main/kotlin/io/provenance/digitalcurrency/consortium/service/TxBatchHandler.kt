@@ -35,6 +35,13 @@ class TxBatchHandler(
         fixedRateString = "\${queue.batch_polling_delay_ms}"
     )
     fun batchQueuedTxns() {
+        // Waiting for last tx committed to completed before we execute another one
+        var waitingForCommit: Boolean
+        do {
+            Thread.sleep(100)
+            waitingForCommit = transaction { !TxRequestViewRecord.findPending().empty() }
+        } while (waitingForCommit)
+
         val requests = transaction { TxRequestViewRecord.findQueued().map { it.id to it.type } }
             .mapNotNull { (id, type) ->
                 when (type) {
@@ -81,15 +88,23 @@ class TxBatchHandler(
 
         val (records, messages) = requests.unzip()
         if (messages.isNotEmpty()) {
+            log.info("Executing tx requests:${messages.size}")
+
             val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
-            val txHash = try {
-                pbcService.broadcastBatch(messages, timeoutHeight).txResponse.txhash.also {
-                    log.info("broadcast batch result $it")
+            try {
+                val txResponse = pbcService.broadcastBatch(messages, timeoutHeight).txResponse
+                when {
+                    txResponse.code > 0 -> txResponse.txhash
+                    else -> {
+                        log.error("Error executing match raw:${txResponse.rawLog}")
+                        null
+                    }
                 }
             } catch (e: Exception) {
                 log.error("Error submitting batch of messages", e)
                 null
             }?.let { txHash ->
+                log.info("Broadcast batch result $txHash")
                 records.forEach { baseRequest ->
                     transaction {
                         // TODO add retry

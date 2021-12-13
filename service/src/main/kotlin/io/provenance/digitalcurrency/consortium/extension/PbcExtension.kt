@@ -10,6 +10,7 @@ private val log = logger("PbcException")
 
 fun TxResultResponse.isFailed() = code != null && code > 0 && codespace.isNullOrBlank() && log.isBlank()
 fun TxResponse.isFailed() = code > 0 && !codespace.isNullOrBlank() && rawLog.isNotBlank() && logsCount == 0
+fun TxResponse.isSuccess() = !isFailed() && height > 0
 fun TxResponse.details() =
     """
         Error Code: $code

@@ -4,6 +4,7 @@ import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.extension.isFailed
+import io.provenance.digitalcurrency.consortium.extension.isSuccess
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.provenance.digitalcurrency.consortium.service.TxRequestService
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -27,8 +28,11 @@ class ExpiredEventReaper(private val pbcService: PbcService, private val txReque
             val response = pbcService.getTransaction(txHash!!)
             when {
                 response == null -> log.info("no tx response, wait?")
-                response.txResponse.height > 0 -> txRequestService.completeTxns(txHash)
-                response.txResponse.isFailed() -> txRequestService.resetTxns(txHash, response.txResponse.height)
+                response.txResponse.isSuccess() -> txRequestService.completeTxns(txHash)
+                response.txResponse.isFailed() -> {
+                    log.error("Unexpected error for tx:$txHash")
+                    txRequestService.resetTxns(txHash, response.txResponse.height)
+                }
             }
         }
     }

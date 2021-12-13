@@ -75,7 +75,7 @@ class BankService(
             log.info("Redeem burning coin for $uuid for amount $amount")
             val coinAmount = amount.toCoinAmount()
             // Account for any pending records in progress by netting out from balance lookups
-            val pendingAmount = CoinRedeemBurnRecord.findPending()
+            val pendingAmount = CoinRedeemBurnRecord.findPending().forUpdate()
                 .fold(0L) { acc, record -> acc + record.coinAmount }
                 .toBigInteger()
 

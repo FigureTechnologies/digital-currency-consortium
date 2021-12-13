@@ -15,7 +15,6 @@ import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
@@ -245,53 +244,59 @@ class EventStreamConsumer(
     }
 
     fun handleEvents(batch: EventBatch) {
+        // Handle dcc initialized transactions marked as complete
         batch.events.forEach { (txHash, _) ->
-            if (transaction { TxRequestViewRecord.findByTxHash(txHash) }.isEmpty()) {
-                val parsedEvents = batch.transfers(provenanceProperties.contractAddress)
-                    .map { Triple(it.txHash, TxType.TRANSFER_CONTRACT, it) } +
-                    batch.migrations(provenanceProperties.contractAddress)
-                        .map { Triple(it.txHash, TxType.MIGRATION, it) }
-
-                parsedEvents.forEach { (txHash, type, event) ->
-                    log.info("event stream found txhash $txHash and type $type [event = {$event}]")
-                    when {
-                        event is Migration && transaction { MigrationRecord.findByTxHash(txHash) == null } ->
-                            handleMigrationEvent(event)
-                        event is Transfer &&
-                            event.recipient == pbcService.managerAddress &&
-                            event.denom == serviceProperties.dccDenom &&
-                            // TODO - handle multiple transfers in single tx
-                            transaction { MarkerTransferRecord.findByTxHash(txHash) == null } -> handleTransferEvent(txHash, event)
-                    }
-                }
-            } else {
+            if (transaction { !TxRequestViewRecord.findByTxHash(txHash).empty() }) {
                 log.info("completing other txn events for $txHash")
                 txRequestService.completeTxns(txHash)
             }
         }
+
+        // Handle externally initialized transactions
+        // Migrations of smart contract
+        batch.migrations(provenanceProperties.contractAddress)
+            .groupBy { it.txHash }
+            .forEach { (txHash, migrations) ->
+                transaction {
+                    when {
+                        MigrationRecord.findByTxHash(txHash) == null -> {} // noop - prevent dupe processing
+                        else -> migrations.forEach { migration -> insertMigrationEvent(migration) }
+                    }
+                }
+            }
+
+        // Transfers to bank member
+        batch.transfers(provenanceProperties.contractAddress)
+            .filter { it.recipient == pbcService.managerAddress && it.denom == serviceProperties.dccDenom }
+            .groupBy { it.txHash }
+            .forEach { (txHash, transfers) ->
+                transaction {
+                    when {
+                        MarkerTransferRecord.findByTxHash(txHash) == null -> {} // noop - prevent dupe processing
+                        else -> transfers.forEach { transfer -> insertTransferEvent(transfer) }
+                    }
+                }
+            }
     }
 
-    private fun handleMigrationEvent(migration: Migration) {
-        transaction {
-            MigrationRecord.insert(
-                codeId = migration.codeId,
-                txHash = migration.txHash
-            )
-        }
+    private fun insertMigrationEvent(migration: Migration) {
+        log.info("persisting migration record for txhash ${migration.txHash}")
+        MigrationRecord.insert(
+            codeId = migration.codeId,
+            txHash = migration.txHash
+        )
     }
 
-    private fun handleTransferEvent(txHash: String, transfer: Transfer) {
-        log.info("persist received transfer for txhash $txHash")
-        transaction {
-            MarkerTransferRecord.insert(
-                fromAddress = transfer.sender,
-                toAddress = transfer.recipient,
-                denom = transfer.denom,
-                amount = transfer.amount,
-                height = transfer.height,
-                txHash = txHash,
-                txStatus = TxStatus.TXN_COMPLETE
-            )
-        }
+    private fun insertTransferEvent(transfer: Transfer) {
+        log.info("persist received transfer for txhash ${transfer.txHash}")
+        MarkerTransferRecord.insert(
+            fromAddress = transfer.sender,
+            toAddress = transfer.recipient,
+            denom = transfer.denom,
+            amount = transfer.amount,
+            height = transfer.height,
+            txHash = transfer.txHash,
+            txStatus = TxStatus.TXN_COMPLETE
+        )
     }
 }
