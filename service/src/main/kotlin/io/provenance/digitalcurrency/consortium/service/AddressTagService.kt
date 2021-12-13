@@ -31,8 +31,13 @@ class AddressTagService(
                         addressRegistrationRecord.status = AddressStatus.PENDING_TAG
                     }
                 } catch (e: Exception) {
-                    log.error("Tag failed; setting registration record status to ERRORED", e)
-                    addressRegistrationRecord.status = AddressStatus.ERRORED
+                    if (e.isPermanent() == true){
+                        log.error("Tag failed permanently; setting registration record status to ERRORED", e)
+                        addressRegistrationRecord.status = AddressStatus.ERRORED
+                    } else {
+                        log.error("Tag failed transiently; setting registration record status back to INSERTED", e)
+                        addressRegistrationRecord.status = AddressStatus.INSERTED
+                    }
                 }
             }
             false -> {
@@ -64,4 +69,9 @@ class AddressTagService(
             }
         }
     }
+
+    /**
+     * Temporary implementation for testing. Will be replaced by Exception subclasses indicating transient/permanent nature of issue.
+     */
+    fun Exception.isPermanent() = this.message?.startsWith("PERMANENT")
 }
