@@ -141,7 +141,7 @@ class Account {
      */
     constructor(extendedKey: ExtendedKey, pathString: String) : this(
         // ensure that path starts with ACCOUNT_PREFIX ... but only once
-        BIP44(ACCOUNT_ROOT + pathString.toLowerCase().removePrefix(ACCOUNT_ROOT)).path
+        BIP44(ACCOUNT_ROOT + pathString.lowercase().removePrefix(ACCOUNT_ROOT)).path
             .fold(extendedKey) { current, bip44Element ->
                 current.generateChildKey(bip44Element)
             }
