@@ -13,6 +13,12 @@ plugins {
 configurations {
     all {
         exclude(group = "log4j")
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.apache.logging.log4j") {
+                useVersion("2.15.0")
+                because("CVE-2021-44228")
+            }
+        }
     }
 }
 
