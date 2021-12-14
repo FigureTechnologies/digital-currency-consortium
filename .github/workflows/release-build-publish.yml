@@ -17,10 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Debug info
-        run: echo "${{ github.event_name }}"
-        id: debuginfo
-
       - name: Get Version
         run: |
           # Strip git ref prefix from version
@@ -86,6 +82,10 @@ jobs:
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+
+      - name: Debug info
+        run: echo "${{ steps.prep.outputs }}"
+        id: debuginfo
 
       - name: Set up Docker Buildx
         id: buildx
