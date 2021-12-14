@@ -83,9 +83,8 @@ jobs:
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-      - name: Debug info
-        run: echo "steps.prep.outputs.branch ${{ steps.prep.outputs.branch}} steps.prep.outputs.tags ${{ steps.prep.outputs.tags }}"
-        id: debuginfo
+      - name: Set env.BRANCH
+        run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         id: buildx
@@ -115,7 +114,7 @@ jobs:
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
-        if: ${{ steps.prep.outputs.branch == 'dev' }} || ${{ steps.prep.outputs.branch == 'main' }}
+        if: env.BRANCH == 'main' || env.BRANCH == 'dev'
         with:
           file: docker/Dockerfile-database
           context: .
