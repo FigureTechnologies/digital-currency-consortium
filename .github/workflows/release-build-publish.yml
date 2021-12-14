@@ -63,12 +63,10 @@ jobs:
           # Strip "v" prefix from tag name
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
-          echo "VERSION=$VERSION"
-
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" || "$VERSION" == "FIN3-1-fix-worflow" ] && VERSION=latest
-
-          echo "VERSION=$VERSION"
+          if [[ "$VERSION" == "FIN3-1-fix-worflow" || "$VERSION" == "main" ]]; then
+              VERSION=latest
+          fi
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -77,9 +75,6 @@ jobs:
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-
-      - name: Set env.BRANCH
-        run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         id: buildx
@@ -109,7 +104,7 @@ jobs:
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
-        if: env.BRANCH == 'main' || env.BRANCH == 'dev'
+        if: env.VERSION == 'latest'
         with:
           file: docker/Dockerfile-database
           context: .
