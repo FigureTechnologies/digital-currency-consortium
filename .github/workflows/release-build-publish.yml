@@ -64,7 +64,7 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          if [[ "$VERSION" == "FIN3-1-fix-worflow" || "$VERSION" == "main" ]]; then
+          if [[ "$VERSION" == "dev" || "$VERSION" == "main" ]]; then
               VERSION=latest
           fi
 
