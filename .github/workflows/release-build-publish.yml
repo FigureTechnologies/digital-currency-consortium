@@ -64,7 +64,7 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" || "$VERSION" == "dev" ] && VERSION=latest
+          [ "$VERSION" == "main" || "$VERSION" == "FIN3-1-fix-worflow" ] && VERSION=latest
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
