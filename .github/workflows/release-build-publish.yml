@@ -63,21 +63,16 @@ jobs:
           # Strip "v" prefix from tag name
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
+          echo "VERSION=$VERSION"
+
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" || "$VERSION" == "dev" ] && VERSION=latest
+          [ "$VERSION" == "main" || "$VERSION" == "FIN3-1-fix-worflow" ] && VERSION=latest
+
+          echo "VERSION=$VERSION"
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          IMAGE_ID=radialtheory/digital-currency-consortium-service
-
-          TAGS=$IMAGE_ID:$VERSION
-
-          PRERELEASE=${{ github.event.release.prerelease }}
-          echo PRERELEASE=$PRERELEASE
-
-          if [ "$PRERELEASE" == "false" ]; then
-              TAGS=$TAGS,$IMAGE_ID:latest
-          fi
+          TAGS=$VERSION
 
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
@@ -85,9 +80,6 @@ jobs:
 
       - name: Set env.BRANCH
         run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
 
       - name: Set up Docker Buildx
         id: buildx
@@ -113,7 +105,7 @@ jobs:
           file: docker/Dockerfile-service
           context: .
           push: true
-          tags: ${{ steps.prep.outputs.tags }}
+          tags: radialtheory/digital-currency-consortium-service:${{ steps.prep.outputs.tags }}
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
