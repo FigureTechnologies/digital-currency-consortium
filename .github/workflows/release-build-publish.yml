@@ -68,7 +68,7 @@ jobs:
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          IMAGE_ID=provenanceio/digital-currency-consortium-service
+          IMAGE_ID=radialtheory/digital-currency-consortium-service
 
           TAGS=$IMAGE_ID:$VERSION
 
@@ -116,4 +116,4 @@ jobs:
           file: docker/Dockerfile-database
           context: .
           push: true
-          tags: provenanceio/digital-currency-consortium-database:latest
+          tags: radialtheory/digital-currency-consortium-database:latest
