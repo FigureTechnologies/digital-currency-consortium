@@ -17,6 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Debug info
+        id: debuginfo
+        run: |
+          echo ::${github.event_name}
+
       - name: Get Version
         run: |
           # Strip git ref prefix from version
