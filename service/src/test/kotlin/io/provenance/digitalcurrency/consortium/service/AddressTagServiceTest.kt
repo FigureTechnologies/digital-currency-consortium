@@ -121,7 +121,16 @@ class AddressTagServiceTest : BaseIntegrationTest() {
         }
 
         @Test
-        fun `error in pbc call leaves in queue`() {
+        fun `transient error in pbc call leaves in queue`() {
+            runAddressTagServiceTest(Exception(), AddressStatus.INSERTED)
+        }
+
+        @Test
+        fun `permanent error in pbc call removes from queue`() {
+            runAddressTagServiceTest(Exception("PERMANENT"), AddressStatus.ERRORED)
+        }
+
+        fun runAddressTagServiceTest(pbcServiceException: Exception, expectedFinalStatus: AddressStatus) {
             val uuid = UUID.randomUUID()
             val registration = transaction { insertRegisteredAddress(uuid, TEST_ADDRESS) }
 
@@ -133,7 +142,7 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                     bankClientProperties.kycTagName,
                     ByteString.copyFrom(uuid.toByteArray())
                 )
-            ).doAnswer { throw Exception() }
+            ).doAnswer { throw pbcServiceException }
 
             transaction {
                 addressTagService.createEvent(registration)
@@ -149,8 +158,8 @@ class AddressTagServiceTest : BaseIntegrationTest() {
                 val updatedRegistration = AddressRegistrationRecord.findActiveByAddress(TEST_ADDRESS)!!
                 assertEquals(
                     updatedRegistration.status,
-                    AddressStatus.INSERTED,
-                    "Should not update tag status"
+                    expectedFinalStatus,
+                    "Unexpected final AddressRegistrationRecord status"
                 )
                 assertNull(updatedRegistration.txHash, "hash should be null")
             }
