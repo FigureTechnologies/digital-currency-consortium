@@ -1,5 +1,6 @@
 package io.provenance.digitalcurrency.consortium.domain
 
+import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.sql.and
 import java.util.UUID
@@ -43,4 +44,6 @@ class AddressRegistrationRecord(uuid: EntityID<UUID>) : BaseRequestRecord(ART, u
     var address by ART.address
     var deleted by ART.deleted
     val addressDeregistrations by AddressDeregistrationRecord referrersOn ADT.addressRegistration
+
+    fun isActive() = deleted == null && status == TXN_COMPLETE
 }

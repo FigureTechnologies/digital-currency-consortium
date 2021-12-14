@@ -46,14 +46,17 @@ class TxBatchHandler(
             .mapNotNull { (id, type) ->
                 when (type) {
                     TxRequestType.MINT -> transaction {
-                        CoinMintRecord.findById(id)!!.let {
-                            it to buildExecuteContractMessage(it.getExecuteContractMessage())
-                        }
+                        CoinMintRecord.findById(id)!!
+                            .takeIf { it.addressRegistration.isActive() }
+                            ?.let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
+                            ?: run {
+                                log.error("Coin mint $id skipped due to inactive address registration")
+                                null
+                            }
                     }
                     TxRequestType.REDEEM_BURN -> transaction {
-                        CoinRedeemBurnRecord.findById(id)!!.let {
-                            it to buildExecuteContractMessage(it.getExecuteContractMessage())
-                        }
+                        CoinRedeemBurnRecord.findById(id)!!
+                            .let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
                     }
                     TxRequestType.TAG -> transaction {
                         AddressRegistrationRecord.findById(id)!!.let {
@@ -93,8 +96,8 @@ class TxBatchHandler(
             val timeoutHeight = pbcTimeoutService.getBlockTimeoutHeight()
             try {
                 val txResponse = pbcService.broadcastBatch(messages, timeoutHeight).txResponse
-                when {
-                    txResponse.code > 0 -> txResponse.txhash
+                when (txResponse.code) {
+                    0 -> txResponse.txhash
                     else -> {
                         log.error("Error executing match raw:${txResponse.rawLog}")
                         null

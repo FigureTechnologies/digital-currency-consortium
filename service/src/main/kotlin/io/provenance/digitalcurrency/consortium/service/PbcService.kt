@@ -145,6 +145,7 @@ class PbcService(
                 .build()
                 .toAny()
                 .toTxBody(),
-            mode = BROADCAST_MODE_BLOCK
+            mode = BROADCAST_MODE_BLOCK,
+            gasAdjustment = 1.5
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 }
