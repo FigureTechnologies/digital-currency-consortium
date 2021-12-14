@@ -68,7 +68,7 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" ] && VERSION=latest
+          [ "$VERSION" == "main" || "$VERSION" == "dev" ] && VERSION=latest
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -115,7 +115,7 @@ jobs:
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
-        # if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
+        if: ${{ steps.prep.outputs.branch == 'dev' }} || ${{ steps.prep.outputs.branch == 'main' }}
         with:
           file: docker/Dockerfile-database
           context: .
