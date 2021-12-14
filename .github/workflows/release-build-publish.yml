@@ -64,7 +64,7 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" || "$VERSION" == "FIN3-1-fix-worflow" ] && VERSION=latest
+          [ "$VERSION" == "main" || "$VERSION" == "dev" ] && VERSION=latest
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -85,6 +85,9 @@ jobs:
 
       - name: Set env.BRANCH
         run: echo "BRANCH=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> $GITHUB_ENV
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       - name: Set up Docker Buildx
         id: buildx
