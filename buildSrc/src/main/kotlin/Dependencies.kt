@@ -47,6 +47,8 @@ object Versions {
     const val SwaggerUi = "2.9.2"
     const val SpringBoot = PluginVersions.SpringBoot
 
+    const val MicrometerPrometheusRegistry = "1.8.1"
+
     // Testing
     const val JunitJupiter = "5.7.1"
     const val JunitCommons = "1.7.0"
@@ -117,6 +119,9 @@ object Libraries {
     const val SpringBootStarterWeb = "org.springframework.boot:spring-boot-starter-web:${Versions.SpringBoot}"
     const val SpringBootStarterValidation = "org.springframework.boot:spring-boot-starter-validation:${Versions.SpringBoot}"
     const val JavaxValidation = "javax.validation:validation-api:${Versions.JavaxValidation}"
+
+    // Telemetry
+    const val MicrometerPrometheusRegistry = "io.micrometer:micrometer-registry-prometheus:${Versions.MicrometerPrometheusRegistry}"
 
     // Testing
     const val JunitJupiterApi = "org.junit.jupiter:junit-jupiter-api:${Versions.JunitJupiter}"
