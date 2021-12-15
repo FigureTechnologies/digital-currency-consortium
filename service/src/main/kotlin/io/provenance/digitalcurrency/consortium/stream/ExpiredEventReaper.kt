@@ -30,8 +30,8 @@ class ExpiredEventReaper(private val pbcService: PbcService, private val txReque
                 response == null -> log.info("no tx response, wait?")
                 response.txResponse.isSuccess() -> txRequestService.completeTxns(txHash)
                 response.txResponse.isFailed() -> {
-                    log.error("Unexpected error for tx:$txHash")
-                    txRequestService.resetTxns(txHash, response.txResponse.height)
+                    log.error("Unexpected error for tx:$txHash, log:${response.txResponse.rawLog}")
+                    txRequestService.resetTxns(txHash)
                 }
             }
         }

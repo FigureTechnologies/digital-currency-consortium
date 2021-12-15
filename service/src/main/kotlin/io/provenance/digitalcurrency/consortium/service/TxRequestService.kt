@@ -35,11 +35,11 @@ class TxRequestService {
         }
     }
 
-    fun resetTxns(txHash: String, blockHeight: Long) {
+    fun resetTxns(txHash: String) {
         transaction {
             TxRequestViewRecord.findByTxHash(txHash).forEach {
                 when (it.status) {
-                    TxStatus.PENDING -> getBaseRequest(it.id.value, it.type).resetForRetry(blockHeight)
+                    TxStatus.PENDING -> getBaseRequest(it.id.value, it.type).resetForRetry()
                     else -> log.error("Txn ${it.id} has invalid status ${it.status} for a txn error")
                 }
             }

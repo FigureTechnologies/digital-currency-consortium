@@ -50,12 +50,10 @@ open class BaseRequestRecord(childTable: BaseRequestTable, uuid: EntityID<UUID>)
         updated = OffsetDateTime.now()
     }
 
-    fun resetForRetry(blockHeight: Long) {
-        if (timeoutHeight == null || timeoutHeight!! < blockHeight) {
-            status = TxStatus.QUEUED
-            txHash = null
-            timeoutHeight = null
-            updated = OffsetDateTime.now()
-        }
+    fun resetForRetry() {
+        status = TxStatus.QUEUED
+        txHash = null
+        timeoutHeight = null
+        updated = OffsetDateTime.now()
     }
 }

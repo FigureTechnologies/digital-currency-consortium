@@ -83,7 +83,8 @@ class PbcService(
             ),
             txBody = messages
                 .map { it.toAny() }
-                .toTxBody(timeoutHeight)
+                .toTxBody(timeoutHeight),
+            gasAdjustment = 1.3,
         ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
