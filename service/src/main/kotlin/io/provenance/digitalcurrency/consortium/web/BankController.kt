@@ -106,7 +106,6 @@ class BankController(
         @RequestBody request: RedeemBurnCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, amount) = request
-        // TODO - this could benefit from locking
         bankService.redeemBurnCoin(uuid, amount)
         return ResponseEntity.ok(uuid)
     }
@@ -142,7 +141,9 @@ class BankController(
     ): ResponseEntity<String> {
         log.info("Trying to grant authz: $request")
         val (coinRequests, expiration) = request
-        val coins = coinRequests.map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
+        val coins = coinRequests
+            .map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
+            .sortedBy { it.denom }
         pbcService.grantAuthz(coins, expiration)
         return ResponseEntity.ok("Granted Authz Set")
     }

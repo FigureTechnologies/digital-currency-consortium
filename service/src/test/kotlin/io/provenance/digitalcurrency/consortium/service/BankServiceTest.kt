@@ -172,6 +172,17 @@ class BankServiceTest : BaseIntegrationTest() {
         }
 
         @Test
+        fun `redeem burning coin with duplicate uuid will exception`() {
+            val uuid = transaction { CoinRedeemBurnRecord.all().first().id.value }
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.redeemBurnCoin(uuid, BigDecimal("1"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("already exists"), "Should error with already exists")
+        }
+
+        @Test
         fun `redeem burning coin with insufficient dcc coin will exception`() {
             val uuid = UUID.randomUUID()
 

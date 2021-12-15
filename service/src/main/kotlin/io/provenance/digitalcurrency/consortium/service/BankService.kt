@@ -71,21 +71,25 @@ class BankService(
         }
 
     fun redeemBurnCoin(uuid: UUID, amount: BigDecimal) =
-        transaction {
-            log.info("Redeem burning coin for $uuid for amount $amount")
-            val coinAmount = amount.toCoinAmount()
-            // Account for any pending records in progress by netting out from balance lookups
-            val pendingAmount = CoinRedeemBurnRecord.findPending().forUpdate()
-                .fold(0L) { acc, record -> acc + record.coinAmount }
-                .toBigInteger()
+        synchronized(CoinRedeemBurnRecord::class.java) {
+            transaction {
+                log.info("Redeem burning coin for $uuid for amount $amount")
+                check(CoinRedeemBurnRecord.findById(uuid) == null) { "Coin redeem burn request for uuid $uuid already exists" }
 
-            val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
-                .toBigInteger() - pendingAmount
-            check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
+                val coinAmount = amount.toCoinAmount()
+                // Account for any pending records in progress by netting out from balance lookups
+                val pendingAmount = CoinRedeemBurnRecord.findPending()
+                    .fold(0L) { acc, record -> acc + record.coinAmount }
+                    .toBigInteger()
 
-            val markerEscrowBalance = pbcService.getMarkerEscrowBalance().toBigInteger() - pendingAmount
-            check(coinAmount <= markerEscrowBalance) { "Insufficient bank reserve coin escrowed $markerEscrowBalance" }
+                val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
+                    .toBigInteger() - pendingAmount
+                check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
 
-            CoinRedeemBurnRecord.insert(uuid, amount)
+                val markerEscrowBalance = pbcService.getMarkerEscrowBalance().toBigInteger() - pendingAmount
+                check(coinAmount <= markerEscrowBalance) { "Insufficient bank reserve coin escrowed $markerEscrowBalance" }
+
+                CoinRedeemBurnRecord.insert(uuid, amount)
+            }
         }
 }
