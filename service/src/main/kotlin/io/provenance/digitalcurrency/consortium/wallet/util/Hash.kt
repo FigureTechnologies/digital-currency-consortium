@@ -29,7 +29,7 @@ object Hash {
      */
     fun hash(input: ByteArray?, algorithm: String): ByteArray {
         return try {
-            val digest = MessageDigest.getInstance(algorithm.toUpperCase())
+            val digest = MessageDigest.getInstance(algorithm.uppercase())
             digest.digest(input)
         } catch (e: NoSuchAlgorithmException) {
             throw RuntimeException("Couldn't find a $algorithm provider", e)

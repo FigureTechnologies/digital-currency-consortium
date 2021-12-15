@@ -41,7 +41,7 @@ jobs:
         with:
           name: service
           path: service/build/libs/*.jar
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
 
   docker_build:
     name: Build and Push to Docker Registry
@@ -49,7 +49,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    if: github.event_name == 'release'
+    # if: github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v2
@@ -64,20 +64,13 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          [ "$VERSION" == "main" ] && VERSION=latest
+          if [[ "$VERSION" == "dev" || "$VERSION" == "main" ]]; then
+              VERSION=latest
+          fi
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          IMAGE_ID=provenanceio/digital-currency-consortium-service
-
-          TAGS=$IMAGE_ID:$VERSION
-
-          PRERELEASE=${{ github.event.release.prerelease }}
-          echo PRERELEASE=$PRERELEASE
-
-          if [ "$PRERELEASE" == "false" ]; then
-              TAGS=$TAGS,$IMAGE_ID:latest
-          fi
+          TAGS=$VERSION
 
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
@@ -107,13 +100,13 @@ jobs:
           file: docker/Dockerfile-service
           context: .
           push: true
-          tags: ${{ steps.prep.outputs.tags }}
+          tags: radialtheory/digital-currency-consortium-service:${{ steps.prep.outputs.tags }}
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
-        if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
+        if: env.VERSION == 'latest'
         with:
           file: docker/Dockerfile-database
           context: .
           push: true
-          tags: provenanceio/digital-currency-consortium-database:latest
+          tags: radialtheory/digital-currency-consortium-database:latest
