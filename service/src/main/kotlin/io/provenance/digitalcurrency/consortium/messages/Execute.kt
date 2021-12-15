@@ -10,5 +10,6 @@ data class ExecuteRequest(
     val accept: AcceptRequest? = null,
     val burn: AmountRequest? = null,
     val mint: MintRequest? = null,
-    @JsonProperty("redeem_and_burn") val redeemAndBurn: AmountRequest? = null
+    @JsonProperty("redeem_and_burn") val redeemAndBurn: AmountRequest? = null,
+    val transfer: TransferRequest? = null,
 ) : ContractMessageI
