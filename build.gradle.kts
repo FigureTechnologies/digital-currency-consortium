@@ -22,6 +22,11 @@ allprojects {
     }
 }
 
+task<Exec>("generateDccSpec") {
+    workingDir("scripts/swagger-generation")
+    commandLine("node", "generator.mjs")
+}
+
 subprojects {
     project.ext.properties["kotlin_version"] = Versions.Kotlin
 
