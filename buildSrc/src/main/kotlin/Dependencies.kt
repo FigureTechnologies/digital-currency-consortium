@@ -129,6 +129,7 @@ object Libraries {
     const val TestContainersPostgres = "org.testcontainers:postgresql:${Versions.TestContainers}"
     const val TestContainers = "org.testcontainers:testcontainers:${Versions.TestContainers}"
     const val TestContainersJunitJupiter = "org.testcontainers:junit-jupiter:${Versions.TestContainers}"
+    const val TestCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-test:${Versions.Coroutines}"
 
     const val KtLint = "com.pinterest:ktlint:${Versions.KtLint}"
 }

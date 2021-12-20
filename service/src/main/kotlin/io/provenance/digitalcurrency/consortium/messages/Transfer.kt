@@ -1,7 +1,7 @@
 // ktlint-disable filename
 package io.provenance.digitalcurrency.consortium.messages
 
-data class MintRequest(
+data class TransferRequest(
     val amount: String,
-    val address: String
+    val recipient: String
 )

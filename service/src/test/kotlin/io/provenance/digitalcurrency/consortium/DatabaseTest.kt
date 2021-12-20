@@ -4,30 +4,23 @@ import io.provenance.digitalcurrency.consortium.domain.ADT
 import io.provenance.digitalcurrency.consortium.domain.ART
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus
-import io.provenance.digitalcurrency.consortium.domain.AddressStatus.INSERTED
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
-import io.provenance.digitalcurrency.consortium.domain.CBT
 import io.provenance.digitalcurrency.consortium.domain.CMT
-import io.provenance.digitalcurrency.consortium.domain.CRT
+import io.provenance.digitalcurrency.consortium.domain.CRBT
+import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionStatus
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
-import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
-import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
-import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -36,11 +29,9 @@ abstract class DatabaseTest {
     fun afterEach() {
         transaction {
             ADT.deleteAll()
-            CBT.deleteAll()
+            CRBT.deleteAll()
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
-            CRT.deleteAll()
-            TST.deleteAll()
             ART.deleteAll()
             MTT.deleteAll()
             BalanceEntryTable.deleteAll()
@@ -48,9 +39,13 @@ abstract class DatabaseTest {
         }
     }
 
-    fun insertRegisteredAddress(bankAccountUuid: UUID, address: String, status: AddressStatus = INSERTED, txHash: String? = null) =
+    fun insertRegisteredAddress(
+        bankAccountUuid: UUID,
+        address: String,
+        status: TxStatus = TxStatus.QUEUED,
+        txHash: String? = null
+    ) =
         AddressRegistrationRecord.insert(
-            uuid = UUID.randomUUID(),
             bankAccountUuid = bankAccountUuid,
             address = address
         ).apply {
@@ -60,33 +55,12 @@ abstract class DatabaseTest {
 
     fun insertDeregisteredAddress(
         addressRegistrationRecord: AddressRegistrationRecord,
-        status: AddressStatus = INSERTED,
+        status: TxStatus = TxStatus.QUEUED,
         txHash: String? = null
     ) =
         AddressDeregistrationRecord.insert(addressRegistrationRecord).apply {
             this.status = status
             this.txHash = txHash
-        }
-
-    fun insertCoinRedemption(status: CoinRedemptionStatus) = transaction {
-        CoinRedemptionRecord.insert(
-            coinAmount = DEFAULT_AMOUNT.toLong(),
-            addressRegistration = insertRegisteredAddress(UUID.randomUUID(), TEST_ADDRESS)
-        ).also { it.status = status }
-    }
-
-    fun insertTxStatus(
-        txRequestUuid: UUID,
-        txHash: String,
-        txType: TxType,
-        txStatus: TxStatus,
-        created: OffsetDateTime? = OffsetDateTime.now()
-    ): TxStatusRecord =
-        transaction {
-            TxStatusRecord.insert(getDefaultResponse(txHash).txResponse, txRequestUuid, txType).also {
-                it.status = txStatus
-                it.created = created!!
-            }
         }
 
     fun insertMigration(
@@ -113,7 +87,7 @@ abstract class DatabaseTest {
                 this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
                 this.height = 50L
                 this.txHash = txHash
-                this.status = MarkerTransferStatus.INSERTED
+                this.status = TxStatus.QUEUED
                 this.created = OffsetDateTime.now()
                 this.updated = OffsetDateTime.now()
             }
@@ -131,5 +105,13 @@ abstract class DatabaseTest {
                 denom = denom,
                 type = type
             )
+        }
+
+    fun insertCoinMint(uuid: UUID = UUID.randomUUID(), address: String = "testaddress"): CoinMintRecord =
+        insertRegisteredAddress(
+            bankAccountUuid = uuid,
+            address = address
+        ).let {
+            CoinMintRecord.insert(UUID.randomUUID(), addressRegistration = it, fiatAmount = BigDecimal("1000"))
         }
 }

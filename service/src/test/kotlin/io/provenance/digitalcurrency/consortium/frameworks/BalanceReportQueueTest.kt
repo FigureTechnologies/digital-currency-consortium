@@ -43,8 +43,8 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
     @Test
     fun `empty whitelist should not error`() {
         val balanceReportProperties = BalanceReportProperties(
-            pageSize = "1",
-            pollingDelayMs = "1000",
+            pageSize = 1,
+            pollingDelayMs = 1000,
             addressesWhitelist = ""
         )
         val balanceReportQueue = BalanceReportQueue(
@@ -74,8 +74,8 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("500")
 
         val balanceReportProperties = BalanceReportProperties(
-            pageSize = "1",
-            pollingDelayMs = "1000",
+            pageSize = 1,
+            pollingDelayMs = 1000,
             addressesWhitelist = TEST_ADDRESS
         )
         val balanceReportQueue = BalanceReportQueue(
@@ -107,8 +107,8 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
     fun `one whitelist, some addresses should generate report`() {
         whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("500")
         val balanceReportProperties = BalanceReportProperties(
-            pageSize = "1",
-            pollingDelayMs = "1000",
+            pageSize = 1,
+            pollingDelayMs = 1000,
             addressesWhitelist = TEST_ADDRESS
         )
         val balanceReportQueue = BalanceReportQueue(

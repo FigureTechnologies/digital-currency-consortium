@@ -50,7 +50,7 @@ data class BaseReq(
             .addAllSignerInfos(
                 signers.map {
                     SignerInfo.newBuilder()
-                        // .setPublicKey(it.pubKeyAny())
+                        .setPublicKey(it.pubKeyAny())
                         .setModeInfo(
                             ModeInfo.newBuilder()
                                 .setSingle(Single.newBuilder().setModeValue(SignMode.SIGN_MODE_DIRECT_VALUE))

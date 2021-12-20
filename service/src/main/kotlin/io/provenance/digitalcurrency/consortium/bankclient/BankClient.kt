@@ -22,6 +22,9 @@ interface BankClient {
     @RequestLine("POST /api/v1/mints/complete/{uuid}")
     fun completeMint(@Param("uuid") uuid: UUID, request: EmptyRequest = EmptyRequest()): ResponseEntity<String>
 
+    @RequestLine("POST /api/v1/burns/complete/{uuid}")
+    fun completeBurn(@Param("uuid") uuid: UUID, request: EmptyRequest = EmptyRequest()): ResponseEntity<String>
+
     @RequestLine("POST /api/v1/fiat/deposits")
     fun depositFiat(request: DepositFiatRequest): ResponseEntity<String>
 

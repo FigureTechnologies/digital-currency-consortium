@@ -10,21 +10,18 @@ import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
+import io.provenance.digitalcurrency.consortium.domain.ART
+import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CMT
+import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
 import io.provenance.digitalcurrency.consortium.domain.MT
 import io.provenance.digitalcurrency.consortium.domain.MTT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
-import io.provenance.digitalcurrency.consortium.domain.MarkerTransferStatus
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
-import io.provenance.digitalcurrency.consortium.domain.TST
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.domain.TxStatusRecord
-import io.provenance.digitalcurrency.consortium.domain.TxType
 import io.provenance.digitalcurrency.consortium.frameworks.toOutput
-import io.provenance.digitalcurrency.consortium.getBurnEvent
-import io.provenance.digitalcurrency.consortium.getDefaultTransactionResponse
-import io.provenance.digitalcurrency.consortium.getErrorTransactionResponse
 import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
 import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
@@ -36,6 +33,7 @@ import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.PartSetHeader
 import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import io.provenance.digitalcurrency.consortium.service.PbcService
+import io.provenance.digitalcurrency.consortium.service.TxRequestService
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -44,10 +42,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
-import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -66,6 +61,9 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
     @Autowired
     private lateinit var serviceProperties: ServiceProperties
+
+    @Autowired
+    private lateinit var txRequestService: TxRequestService
 
     @MockBean
     lateinit var eventStreamFactory: EventStreamFactory
@@ -93,10 +91,10 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamFactory,
             pbcServiceMock,
             rpcClientMock,
-            bankClientProperties,
             eventStreamProperties,
             serviceProperties,
             provenanceProperties,
+            txRequestService
         )
     }
 
@@ -290,28 +288,64 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     }
 
     @Nested
+    inner class TxRequestEvents {
+        @Test
+        fun `mark tx request events as complete`() {
+            val txHash = randomTxHash()
+            transaction {
+                insertRegisteredAddress(
+                    bankAccountUuid = UUID.randomUUID(),
+                    address = TEST_ADDRESS,
+                    status = TxStatus.PENDING,
+                    txHash = txHash
+                )
+            }
+            transaction {
+                insertCoinMint(address = "$TEST_ADDRESS.2").also {
+                    it.txHash = txHash
+                    it.status = TxStatus.PENDING
+                }
+            }
+
+            eventStreamConsumer.handleEvents(
+                blockHeight = 50,
+                txHashes = listOf(txHash),
+                transfers = emptyList(),
+                migrations = emptyList()
+            )
+
+            Assertions.assertEquals(
+                1,
+                transaction { AddressRegistrationRecord.find { ART.status eq TxStatus.TXN_COMPLETE }.count() }
+            )
+
+            Assertions.assertEquals(
+                1,
+                transaction { CoinMintRecord.find { CMT.status eq TxStatus.TXN_COMPLETE }.count() }
+            )
+        }
+    }
+
+    @Nested
     inner class MigrationEvents {
         @Test
         fun `event is not a migrate, tx hash does not exist, does not persist, does not process`() {
             val txHash = randomTxHash()
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
-                burns = listOf(
-                    Burn(
+                txHashes = listOf(txHash),
+                transfers = listOf(
+                    Transfer(
                         denom = "dummyDenom",
                         amount = DEFAULT_AMOUNT.toString(),
-                        memberId = TEST_ADDRESS,
                         height = 1L,
-                        txHash = txHash
+                        txHash = txHash,
+                        sender = "sender",
+                        recipient = "recipient"
                     )
                 ),
-                mints = listOf(),
-                redemptions = listOf(),
-                transfers = listOf(),
                 migrations = listOf()
             )
-
-            verify(pbcServiceMock, never()).getTransaction(any())
 
             transaction {
                 Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 0)
@@ -323,20 +357,13 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             insertMigration(txHash)
             val migrationEvent = getMigrationEvent(txHash)
-            val txResponseSuccess = getDefaultTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
 
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf(migrationEvent)
             )
-
-            verify(pbcServiceMock, never()).getTransaction(any())
 
             transaction {
                 Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 1)
@@ -348,45 +375,15 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val migrationEvent = getMigrationEvent(txHash)
 
-            val txResponseSuccess = getDefaultTransactionResponse(txHash)
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
-
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf(migrationEvent)
             )
 
-            verify(pbcServiceMock).getTransaction(txHash)
-
             transaction {
                 Assertions.assertEquals(MigrationRecord.find { (MT.txHash eq txHash) and MT.sent.isNull() }.count(), 1)
-            }
-        }
-
-        @Test
-        fun `tx failed, don't persist migration`() {
-            val txHash = randomTxHash()
-            val migration = getMigrationEvent(txHash)
-            val txResponseFail = getErrorTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseFail)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
-                migrations = listOf(migration)
-            )
-
-            verify(pbcServiceMock).getTransaction(txHash)
-            transaction {
-                Assertions.assertEquals(MigrationRecord.find { MT.txHash eq txHash }.count(), 0)
             }
         }
     }
@@ -396,27 +393,21 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         @Test
         fun `event is not a transfer, tx hash, does not exist, does not persist, does not process`() {
             val txHash = randomTxHash()
+
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
-                burns = listOf(
-                    Burn(
-                        denom = "dummyDenom",
-                        amount = DEFAULT_AMOUNT.toString(),
-                        memberId = TEST_ADDRESS,
-                        height = 1L,
-                        txHash = txHash
-                    )
-                ),
-                mints = listOf(),
-                redemptions = listOf(),
+                txHashes = listOf(txHash),
                 transfers = listOf(),
-                migrations = listOf()
+                migrations = listOf(
+                    Migration(
+                        height = 1L,
+                        txHash = txHash,
+                        codeId = "2"
+                    )
+                )
             )
 
-            verify(pbcServiceMock, never()).getTransaction(any())
-
             transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
                 Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
             }
         }
@@ -424,26 +415,17 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         @Test
         fun `transfer hash exists, does not persist, does not process`() {
             val txHash = randomTxHash()
-            val transfer = insertMarkerTransfer(txHash, denom = serviceProperties.dccDenom)
-            insertTxStatus(transfer.id.value, txHash, TxType.TRANSFER_CONTRACT, TxStatus.COMPLETE)
+            insertMarkerTransfer(txHash, denom = serviceProperties.dccDenom)
             val transferEvent = getTransferEvent(txHash, denom = serviceProperties.dccDenom)
-            val txResponseSuccess = getDefaultTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
 
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(transferEvent),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(any())
-
             transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 1)
                 Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 1)
             }
         }
@@ -455,17 +437,12 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(any())
-
             transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
                 Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
             }
         }
@@ -477,17 +454,12 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock, never()).getTransaction(any())
-
             transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
                 Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
             }
         }
@@ -497,184 +469,20 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
             val transfer = getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
 
-            val txResponseSuccess = getDefaultTransactionResponse(txHash)
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseSuccess)
-
             eventStreamConsumer.handleEvents(
                 blockHeight = 50,
+                txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
                 migrations = listOf()
             )
 
-            verify(pbcServiceMock).getTransaction(txHash)
-
             transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
                 Assertions.assertEquals(
                     MarkerTransferRecord.find {
-                        (MTT.txHash eq txHash) and (MTT.status eq MarkerTransferStatus.INSERTED)
+                        (MTT.txHash eq txHash) and (MTT.status eq TxStatus.TXN_COMPLETE)
                     }.count(),
                     1
                 )
-            }
-        }
-
-        @Test
-        fun `tx failed, don't persist transfer`() {
-            val txHash = randomTxHash()
-            val transfer =
-                getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
-            val txResponseFail = getErrorTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(any())).thenReturn(txResponseFail)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(transfer),
-                mints = listOf(),
-                burns = listOf(),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock).getTransaction(txHash)
-            transaction {
-                Assertions.assertEquals(TxStatusRecord.find { TST.txHash eq txHash }.count(), 0)
-                Assertions.assertEquals(MarkerTransferRecord.find { MTT.txHash eq txHash }.count(), 0)
-            }
-        }
-    }
-
-    @Nested
-    inner class AllOtherEvents {
-        @Test
-        fun `tx status exists and is complete already`() {
-            val txHash = randomTxHash()
-            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.COMPLETE)
-            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(burn),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock, never()).getTransaction(txHash)
-
-            transaction {
-                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-                Assertions.assertNotNull(newStatus)
-                Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
-            }
-        }
-
-        @Test
-        fun `tx status exists as error, should not update status`() {
-            val txHash = randomTxHash()
-            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.ERROR)
-            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(burn),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock, never()).getTransaction(txHash)
-
-            transaction {
-                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-                Assertions.assertNotNull(newStatus)
-                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
-            }
-        }
-
-        @Test
-        fun `tx status exists, blockchain response does not exist, should update to error`() {
-            val txHash = randomTxHash()
-            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-
-            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(null)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(burn),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock).getTransaction(txHash)
-
-            transaction {
-                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-                Assertions.assertNotNull(newStatus)
-                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
-            }
-        }
-
-        @Test
-        fun `tx status exists, blockchain response is error, should update to error`() {
-            val txHash = randomTxHash()
-            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-            val txResponse = getErrorTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(burn),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock).getTransaction(txHash)
-
-            transaction {
-                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-                Assertions.assertNotNull(newStatus)
-                Assertions.assertEquals(newStatus!!.status, TxStatus.ERROR)
-            }
-        }
-
-        @Test
-        fun `tx status exists, blockchain response is not error, should update to complete`() {
-            val txHash = randomTxHash()
-            insertTxStatus(UUID.randomUUID(), txHash, TxType.BURN_CONTRACT, TxStatus.PENDING)
-            val burn = getBurnEvent(txHash, serviceProperties.dccDenom)
-            val txResponse = getDefaultTransactionResponse(txHash)
-
-            whenever(pbcServiceMock.getTransaction(txHash)).thenReturn(txResponse)
-
-            eventStreamConsumer.handleEvents(
-                blockHeight = 50,
-                transfers = listOf(),
-                mints = listOf(),
-                burns = listOf(burn),
-                redemptions = listOf(),
-                migrations = listOf()
-            )
-
-            verify(pbcServiceMock).getTransaction(txHash)
-
-            transaction {
-                val newStatus = TxStatusRecord.find { TST.txHash eq txHash }.firstOrNull()
-                Assertions.assertNotNull(newStatus)
-                Assertions.assertEquals(newStatus!!.status, TxStatus.COMPLETE)
             }
         }
     }

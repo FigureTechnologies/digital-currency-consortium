@@ -4,12 +4,13 @@ import cosmos.base.v1beta1.CoinOuterClass.Coin
 import io.provenance.digitalcurrency.consortium.api.GrantRequest
 import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
+import io.provenance.digitalcurrency.consortium.api.RedeemBurnCoinRequest
 import io.provenance.digitalcurrency.consortium.api.RegisterAddressRequest
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReq.Companion.DEFAULT_GAS_DENOM
 import io.provenance.digitalcurrency.consortium.service.BalanceReportService
-import io.provenance.digitalcurrency.consortium.service.DigitalCurrencyService
+import io.provenance.digitalcurrency.consortium.service.BankService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -28,17 +29,17 @@ import java.util.UUID
 import javax.validation.Valid
 
 @Validated
-@RestController("DigitalCurrencyController")
+@RestController("BankController")
 @RequestMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    value = "Digital Currency Controller",
+    value = "Bank Controller",
     description = "Endpoints for the bank middleware to call to initiate smart contract executions.",
     produces = MediaType.APPLICATION_JSON_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
-class DigitalCurrencyController(
+class BankController(
     private val balanceReportService: BalanceReportService,
-    private val digitalCurrencyService: DigitalCurrencyService,
+    private val bankService: BankService,
     private val pbcService: PbcService
 ) {
 
@@ -59,7 +60,7 @@ class DigitalCurrencyController(
         @RequestBody request: RegisterAddressRequest
     ): ResponseEntity<UUID> {
         val (bankAccountUuid, address) = request
-        digitalCurrencyService.registerAddress(bankAccountUuid, address)
+        bankService.registerAddress(bankAccountUuid, address)
         return ResponseEntity.ok(bankAccountUuid)
     }
 
@@ -71,7 +72,7 @@ class DigitalCurrencyController(
         """
     )
     fun removeAddress(@PathVariable bankAccountUuid: UUID): ResponseEntity<UUID> {
-        digitalCurrencyService.removeAddress(bankAccountUuid)
+        bankService.removeAddress(bankAccountUuid)
         return ResponseEntity.ok(bankAccountUuid)
     }
 
@@ -88,7 +89,24 @@ class DigitalCurrencyController(
         @RequestBody request: MintCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, amount) = request
-        digitalCurrencyService.mintCoin(uuid, bankAccountUuid, amount)
+        bankService.mintCoin(uuid, bankAccountUuid, amount)
+        return ResponseEntity.ok(uuid)
+    }
+
+    @PostMapping(REDEEM_BURN_V1)
+    @ApiOperation(
+        value = "Redeem and burn dcc/reserve token",
+        notes = """
+            Request that the middleware redeem and burn dcc and reserve token.
+            """
+    )
+    fun redeemBurn(
+        @Valid
+        @ApiParam(value = "MintCoinRequest")
+        @RequestBody request: RedeemBurnCoinRequest
+    ): ResponseEntity<UUID> {
+        val (uuid, amount) = request
+        bankService.redeemBurnCoin(uuid, amount)
         return ResponseEntity.ok(uuid)
     }
 
@@ -123,7 +141,9 @@ class DigitalCurrencyController(
     ): ResponseEntity<String> {
         log.info("Trying to grant authz: $request")
         val (coinRequests, expiration) = request
-        val coins = coinRequests.map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
+        val coins = coinRequests
+            .map { Coin.newBuilder().setDenom(it.denom).setAmount(it.amount.toString()).build() }
+            .sortedBy { it.denom }
         pbcService.grantAuthz(coins, expiration)
         return ResponseEntity.ok("Granted Authz Set")
     }
