@@ -1,0 +1,554 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Middleware for banks to use digital currency smart contracts.",
+    "version": "1",
+    "title": "Digital Currency Consortium Middleware",
+    "contact": {
+      "name": "Provenance",
+      "url": "provenance.io",
+      "email": "info@provenance.io"
+    }
+  },
+  "host": "localhost:8080",
+  "tags": [
+    {
+      "name": "Governance API",
+      "description": "Endpoints for the bank middleware to call for governance actions."
+    },
+    {
+      "name": "Registration API",
+      "description": "Endpoints for the bank middleware to call for AML/KYC account registration."
+    },
+    {
+      "name": "Reporting API",
+      "description": "Endpoints for the bank middleware to call for reporting and data queries."
+    },
+    {
+      "name": "USDF API",
+      "description": "Endpoints for the bank middleware to call to execute USDF-based actions."
+    }
+  ],
+  "paths": {
+    "/digital-currency-consortium/api/v1/balances": {
+      "post": {
+        "tags": [
+          "Reporting API"
+        ],
+        "summary": "Kickoff a daily balance report",
+        "operationId": "createBalanceReportUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/balances/gas": {
+      "get": {
+        "tags": [
+          "Reporting API"
+        ],
+        "summary": "Get the balance of gas for an address",
+        "operationId": "getGasBalanceUsingGET",
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/grants": {
+      "post": {
+        "tags": [
+          "Governance API"
+        ],
+        "summary": "Grant authz allowance so smart contract has permission to move restricted coins out of member bank address",
+        "operationId": "grantAuthUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GrantRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/members": {
+      "post": {
+        "tags": [
+          "Governance API"
+        ],
+        "summary": "Proposal to join the consortium as a member bank",
+        "operationId": "joinConsortiumUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "request",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/JoinConsortiumRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/mints": {
+      "post": {
+        "tags": [
+          "USDF API"
+        ],
+        "summary": "Mint coin to a registered address",
+        "description": "\n            Request that the middleware mint coin corresponding to a fiat deposit from a customer.\n            ",
+        "operationId": "mintCoinUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "MintCoinRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/MintCoinRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/proposals/accepts": {
+      "post": {
+        "tags": [
+          "Governance API"
+        ],
+        "summary": "Accept joining the consortium as a member bank",
+        "operationId": "acceptProposalUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/redeem-burns": {
+      "post": {
+        "tags": [
+          "USDF API"
+        ],
+        "summary": "Redeem and burn dcc/reserve token",
+        "description": "\n            Request that the middleware redeem and burn dcc and reserve token.\n            ",
+        "operationId": "redeemBurnUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "MintCoinRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RedeemBurnCoinRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/registrations": {
+      "post": {
+        "tags": [
+          "Registration API"
+        ],
+        "summary": "Register an address associated with an existing bank account",
+        "description": "\n            Send the middleware a blockchain address and the unique id associated with it. The unique id will be \n            used during coin mint (fiat deposits from the customer) and coin redemption (fiat deposits to the customer)\n            requests.\n        ",
+        "operationId": "registerAddressUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "RegisterAddressRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RegisterAddressRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/digital-currency-consortium/api/v1/registrations/{bankAccountUuid}": {
+      "delete": {
+        "tags": [
+          "Registration API"
+        ],
+        "summary": "Remove an address association",
+        "description": "\n            Send the bank account uuid as a path variable. This will remove the attribute from the address.\n        ",
+        "operationId": "removeAddressUsingDELETE",
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "name": "bankAccountUuid",
+            "in": "path",
+            "description": "bankAccountUuid",
+            "required": true,
+            "type": "string",
+            "format": "uuid"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "GrantCoinRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "denom"
+      ],
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The amount of coin to associate with the grant authz.",
+          "minimum": 1,
+          "exclusiveMinimum": false
+        },
+        "denom": {
+          "type": "string",
+          "description": "The coin denom to associate with the grant authz."
+        }
+      },
+      "title": "GrantCoinRequest",
+      "description": "Request to the middleware to grant authz to the smart contract by member bank to move restricted coin."
+    },
+    "GrantRequest": {
+      "type": "object",
+      "required": [
+        "coins"
+      ],
+      "properties": {
+        "coins": {
+          "type": "array",
+          "description": "The coins to associate with the grant.",
+          "items": {
+            "$ref": "#/definitions/GrantCoinRequest"
+          }
+        },
+        "expiration": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The expiration timestamp of the grant authz. Defaults to 1/1/2031 if not provided."
+        }
+      },
+      "title": "GrantRequest",
+      "description": "Request to the middleware to grant authz a list of coins to move restricted coin."
+    },
+    "JoinConsortiumRequest": {
+      "type": "object",
+      "required": [
+        "maxSupplyUsd",
+        "name"
+      ],
+      "properties": {
+        "maxSupplyUsd": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "title": "JoinConsortiumRequest"
+    },
+    "MintCoinRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "bankAccountUUID",
+        "uuid"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount of fiat in USD to mint to the customer's address.",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "bankAccountUUID": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The uuid of the bank account that the bank passed to the middleware during the address registration."
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "A unique uuid for this request."
+        }
+      },
+      "title": "MintCoinRequest",
+      "description": "Request to the middleware to mint coin to the user's address associated with their bank account"
+    },
+    "RedeemBurnCoinRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "uuid"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount of fiat in USD to mint to the customer's address.",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "A unique uuid for this request."
+        }
+      },
+      "title": "RedeemBurnCoinRequest",
+      "description": "\n        Request to the middleware to redeem and burn dcc token and corresponding bank token. \n        Must have sufficient dcc coin at bank address and reserve token escrowed.\n    "
+    },
+    "RegisterAddressRequest": {
+      "type": "object",
+      "required": [
+        "bankAccountUuid",
+        "blockchainAddress"
+      ],
+      "properties": {
+        "bankAccountUuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "A unique uuid generated and persisted by the bank. This will be used for subsequent coin mints (fiat deposits from the customer) and redemptions (fiat deposits to the customer)."
+        },
+        "blockchainAddress": {
+          "type": "string",
+          "description": "The blockchain address associated with the wallet for this bank account."
+        }
+      },
+      "title": "RegisterAddressRequest",
+      "description": "Register a blockchain address associated with an existing bank account. This address will be used for minting/burning coin."
+    }
+  },
+  "basePath": "/digital-currency-consortium"
+}
