@@ -16,9 +16,10 @@ import org.springframework.web.bind.annotation.RestController
 
 @Validated
 @RestController
-@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE])
+@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE])
 @Api(
     value = "Reporting Controller",
+    tags = ["Reporting API"],
     description = "Endpoints for the bank middleware to call for reporting and data queries.",
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE

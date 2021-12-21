@@ -19,9 +19,10 @@ import javax.validation.Valid
 
 @Validated
 @RestController
-@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE])
+@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE])
 @Api(
     value = "Governance Controller",
+    tags = ["Governance API"],
     description = "Endpoints for the bank middleware to call for governance actions.",
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE

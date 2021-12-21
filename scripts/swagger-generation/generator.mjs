@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 import fs from 'fs';
 
-const HOST = ''; // TODO - set a realistic testnet host
+const HOST = 'localhost:8080'; // TODO - set a realistic testnet host
 const BASE_PATH = '/digital-currency-consortium';
 
 const OUTPUT_FILE = 'dcc-spec.json';

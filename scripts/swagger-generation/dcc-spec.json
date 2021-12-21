@@ -10,30 +10,30 @@
       "email": "info@provenance.io"
     }
   },
-  "host": "",
+  "host": "localhost:8080",
   "tags": [
     {
-      "name": "governance-controller",
+      "name": "Governance API",
       "description": "Endpoints for the bank middleware to call for governance actions."
     },
     {
-      "name": "registration-controller",
-      "description": "Endpoints for the bank middleware for AML/KYC account registration."
+      "name": "Registration API",
+      "description": "Endpoints for the bank middleware to call for AML/KYC account registration."
     },
     {
-      "name": "reporting-controller",
+      "name": "Reporting API",
       "description": "Endpoints for the bank middleware to call for reporting and data queries."
     },
     {
-      "name": "usdf-controller",
-      "description": "Endpoints for the bank middleware to call to execution USDF-based actions."
+      "name": "USDF API",
+      "description": "Endpoints for the bank middleware to call to execute USDF-based actions."
     }
   ],
   "paths": {
     "/digital-currency-consortium/api/v1/balances": {
       "post": {
         "tags": [
-          "reporting-controller"
+          "Reporting API"
         ],
         "summary": "Kickoff a daily balance report",
         "operationId": "createBalanceReportUsingPOST",
@@ -41,6 +41,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "responses": {
@@ -68,11 +69,12 @@
     "/digital-currency-consortium/api/v1/balances/gas": {
       "get": {
         "tags": [
-          "reporting-controller"
+          "Reporting API"
         ],
         "summary": "Get the balance of gas for an address",
         "operationId": "getGasBalanceUsingGET",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "responses": {
@@ -97,7 +99,7 @@
     "/digital-currency-consortium/api/v1/grants": {
       "post": {
         "tags": [
-          "governance-controller"
+          "Governance API"
         ],
         "summary": "Grant authz allowance so smart contract has permission to move restricted coins out of member bank address",
         "operationId": "grantAuthUsingPOST",
@@ -105,6 +107,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [
@@ -143,7 +146,7 @@
     "/digital-currency-consortium/api/v1/members": {
       "post": {
         "tags": [
-          "governance-controller"
+          "Governance API"
         ],
         "summary": "Proposal to join the consortium as a member bank",
         "operationId": "joinConsortiumUsingPOST",
@@ -151,6 +154,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [
@@ -189,7 +193,7 @@
     "/digital-currency-consortium/api/v1/mints": {
       "post": {
         "tags": [
-          "usdf-controller"
+          "USDF API"
         ],
         "summary": "Mint coin to a registered address",
         "description": "\n            Request that the middleware mint coin corresponding to a fiat deposit from a customer.\n            ",
@@ -198,6 +202,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [
@@ -237,7 +242,7 @@
     "/digital-currency-consortium/api/v1/proposals/accepts": {
       "post": {
         "tags": [
-          "governance-controller"
+          "Governance API"
         ],
         "summary": "Accept joining the consortium as a member bank",
         "operationId": "acceptProposalUsingPOST",
@@ -245,6 +250,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "responses": {
@@ -272,7 +278,7 @@
     "/digital-currency-consortium/api/v1/redeem-burns": {
       "post": {
         "tags": [
-          "usdf-controller"
+          "USDF API"
         ],
         "summary": "Redeem and burn dcc/reserve token",
         "description": "\n            Request that the middleware redeem and burn dcc and reserve token.\n            ",
@@ -281,6 +287,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [
@@ -320,7 +327,7 @@
     "/digital-currency-consortium/api/v1/registrations": {
       "post": {
         "tags": [
-          "registration-controller"
+          "Registration API"
         ],
         "summary": "Register an address associated with an existing bank account",
         "description": "\n            Send the middleware a blockchain address and the unique id associated with it. The unique id will be \n            used during coin mint (fiat deposits from the customer) and coin redemption (fiat deposits to the customer)\n            requests.\n        ",
@@ -329,6 +336,7 @@
           "application/json"
         ],
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [
@@ -368,12 +376,13 @@
     "/digital-currency-consortium/api/v1/registrations/{bankAccountUuid}": {
       "delete": {
         "tags": [
-          "registration-controller"
+          "Registration API"
         ],
         "summary": "Remove an address association",
         "description": "\n            Send the bank account uuid as a path variable. This will remove the attribute from the address.\n        ",
         "operationId": "removeAddressUsingDELETE",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "parameters": [

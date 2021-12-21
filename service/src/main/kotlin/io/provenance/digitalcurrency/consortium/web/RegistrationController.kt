@@ -20,10 +20,11 @@ import javax.validation.Valid
 
 @Validated
 @RestController
-@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE])
+@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE])
 @Api(
     value = "Registration Controller",
-    description = "Endpoints for the bank middleware for AML/KYC account registration.",
+    tags = ["Registration API"],
+    description = "Endpoints for the bank middleware to call for AML/KYC account registration.",
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )

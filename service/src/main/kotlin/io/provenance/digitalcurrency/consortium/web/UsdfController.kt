@@ -18,11 +18,12 @@ import java.util.UUID
 import javax.validation.Valid
 
 @Validated
-@RestController("UsdfController")
-@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE])
+@RestController
+@RequestMapping(produces = [MediaType.TEXT_PLAIN_VALUE, MediaType.APPLICATION_JSON_VALUE])
 @Api(
-    value = "Usdf Controller",
-    description = "Endpoints for the bank middleware to call to execution USDF-based actions.",
+    value = "USDF Controller",
+    tags = ["USDF API"],
+    description = "Endpoints for the bank middleware to call to execute USDF-based actions.",
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
