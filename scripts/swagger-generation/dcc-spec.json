@@ -294,7 +294,7 @@
           {
             "in": "body",
             "name": "request",
-            "description": "MintCoinRequest",
+            "description": "RedeemBurnRequest",
             "required": true,
             "schema": {
               "$ref": "#/definitions/RedeemBurnCoinRequest"

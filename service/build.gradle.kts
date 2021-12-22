@@ -15,7 +15,7 @@ configurations {
         exclude(group = "log4j")
         resolutionStrategy.eachDependency {
             if (requested.group == "org.apache.logging.log4j") {
-                useVersion("2.16.0")
+                useVersion("2.17.0")
                 because("CVE-2021-44228")
             }
         }
