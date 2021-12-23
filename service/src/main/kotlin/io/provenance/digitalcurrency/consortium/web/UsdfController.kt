@@ -58,7 +58,7 @@ class UsdfController(private val bankService: BankService) {
     )
     fun redeemBurn(
         @Valid
-        @ApiParam(value = "MintCoinRequest")
+        @ApiParam(value = "RedeemBurnRequest")
         @RequestBody request: RedeemBurnCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, amount) = request
