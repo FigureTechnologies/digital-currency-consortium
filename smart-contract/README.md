@@ -1054,7 +1054,8 @@ provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz
     "voters": [
       "tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa",
       "tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"
-    ]
+    ],
+    "admin_vote": null
   }
 }
 ```

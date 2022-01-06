@@ -220,7 +220,7 @@ fn try_vote(
     }
 
     // Ensure message sender has not already voted.
-    if proposal.voters.contains(&info.sender) {
+    if info.sender != state.admin && proposal.voters.contains(&info.sender) {
         return Err(contract_err("member has already voted"));
     }
 
