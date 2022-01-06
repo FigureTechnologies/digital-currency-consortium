@@ -6,6 +6,7 @@ use cosmwasm_storage::{
     bucket, bucket_read, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
     Singleton,
 };
+use crate::msg::VoteChoice;
 
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static JOIN_PROPOSAL_KEY: &[u8] = b"proposal";
@@ -51,6 +52,8 @@ pub struct JoinProposal {
     pub voters: Vec<Addr>,
     // The name of the proposed member (optional).
     pub name: Option<String>,
+    // Admin vote, which supersedes yes/no by members.
+    pub admin_vote: Option<VoteChoice>,
 }
 
 /// Member state.
