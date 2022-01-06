@@ -224,7 +224,7 @@ fn try_vote(
         return Err(contract_err("member has already voted"));
     }
 
-    if info.sender == state.admin && proposal.admin_vote != None {
+    if info.sender == state.admin && proposal.admin_vote.is_some() {
         return Err(contract_err("admin has already voted"))
     }
 
