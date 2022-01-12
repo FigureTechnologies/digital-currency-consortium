@@ -204,7 +204,6 @@ class RpcEventStream(
         }
 
         val results = rpcClient.fetchBlockResults(height)
-
         return results.txsResults?.flatMapIndexed { index, tx ->
             val txHash = block.block.data.txs[index].hash()
             tx.events
@@ -221,8 +220,8 @@ class RpcEventStream(
         } ?: emptyList()
     }
 
-    private fun Event.shouldStream(txHash: String): Boolean {
-        return txHash.isNotBlank() &&
+    private fun Event.shouldStream(txHash: String): Boolean =
+        txHash.isNotBlank() &&
             (
                 eventTypes.contains(type) || // check for simple event type match first
                     eventTypes.isEmpty() || // no filtering requested
@@ -234,7 +233,6 @@ class RpcEventStream(
                     }
                 } != null
                 )
-    }
 
     private fun String.hash(): String = sha256(BaseEncoding.base64().decode(this)).toHexString()
 

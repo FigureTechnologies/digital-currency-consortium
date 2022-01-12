@@ -29,7 +29,7 @@ open class MigrationEntity : UUIDEntityClass<MigrationRecord>(MT) {
         this.created = created
     }
 
-    fun findByTxHash(txHash: String) = find { MT.txHash eq txHash }.firstOrNull()
+    fun findByTxHash(txHash: String) = find { MT.txHash eq txHash }
 
     fun findPending() = find { MT.sent.isNull() }
 

@@ -1,7 +1,8 @@
 package io.provenance.digitalcurrency.consortium.config
 
+import com.tinder.scarlet.Scarlet
+import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.stream.EventStreamFactory
-import org.mockito.kotlin.mock
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -9,5 +10,6 @@ import org.springframework.context.annotation.Configuration
 class AppConfigTest {
 
     @Bean
-    fun eventStreamFactory(): EventStreamFactory = mock()
+    fun eventStreamFactory(rpcClient: RpcClient, eventStreamBuilder: Scarlet.Builder) =
+        EventStreamFactory(rpcClient, eventStreamBuilder)
 }

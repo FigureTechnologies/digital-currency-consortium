@@ -22,8 +22,8 @@ class BalanceReportMonitor(
 
     private val log = logger()
 
-    private val pollingDelayMillis: Long = balanceReportProperties.pollingDelayMs.toLong()
-    private val pageSize = balanceReportProperties.pageSize.toInt()
+    private val pollingDelayMillis: Long = balanceReportProperties.pollingDelayMs
+    private val pageSize = balanceReportProperties.pageSize
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {

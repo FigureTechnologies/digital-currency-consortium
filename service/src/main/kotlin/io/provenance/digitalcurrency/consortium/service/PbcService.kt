@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.protobuf.ByteString
+import com.google.protobuf.GeneratedMessageV3
 import cosmos.authz.v1beta1.Authz.Grant
 import cosmos.authz.v1beta1.Tx.MsgGrant
 import cosmos.base.v1beta1.CoinOuterClass.Coin
@@ -11,9 +11,6 @@ import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
-import io.provenance.attribute.v1.AttributeType
-import io.provenance.attribute.v1.MsgAddAttributeRequest
-import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -24,15 +21,8 @@ import io.provenance.digitalcurrency.consortium.extension.toByteString
 import io.provenance.digitalcurrency.consortium.extension.toProtoTimestamp
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
-import io.provenance.digitalcurrency.consortium.messages.BurnRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteAcceptRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteBurnRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteJoinRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteMintRequest
-import io.provenance.digitalcurrency.consortium.messages.ExecuteRedeemRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
-import io.provenance.digitalcurrency.consortium.messages.MintRequest
-import io.provenance.digitalcurrency.consortium.messages.RedeemRequest
 import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
 import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
 import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
@@ -47,18 +37,23 @@ class PbcService(
     private val grpcClientService: GrpcClientService,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
-    private val bankClientProperties: BankClientProperties,
+    bankClientProperties: BankClientProperties,
     serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
     private val keyRing: KeyRing =
-        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet()).keyRing(0)
+        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet).keyRing(0)
     private val managerKey: KeyI = keyRing.key(0, serviceProperties.managerKeyHarden)
     final val managerAddress: String by lazy { managerKey.address() }
+    final val reserveDenom = bankClientProperties.denom
 
     init {
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
+
+    fun getMarkerEscrowBalance(escrowDenom: String = reserveDenom) =
+        // id is marker denom, denom is escrow denom
+        grpcClientService.new().markers.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
         grpcClientService.new().accounts.getAccountCoins(address)
@@ -70,7 +65,7 @@ class PbcService(
         try {
             grpcClientService.new().transactions.getTx(txHash)
         } catch (e: StatusRuntimeException) {
-            if (e.status.code == Code.NOT_FOUND) null else throw e
+            if (listOf(Code.UNKNOWN, Code.NOT_FOUND).contains(e.status.code)) null else throw e
         }
 
     fun getAttributes(address: String): List<Attribute> =
@@ -79,97 +74,18 @@ class PbcService(
     fun getAttributeByTagName(address: String, tag: String): Attribute? =
         getAttributes(address).find { it.name == tag }
 
-    fun addAttribute(address: String, tag: String, payload: ByteString) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = MsgAddAttributeRequest.newBuilder()
-                .setOwner(managerAddress)
-                .setAccount(address)
-                .setAttributeType(AttributeType.ATTRIBUTE_TYPE_BYTES)
-                .setName(tag)
-                .setValue(payload)
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Add attribute failed")
-
-    fun deleteAttribute(address: String, tag: String) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = MsgDeleteAttributeRequest.newBuilder()
-                .setOwner(managerAddress)
-                .setAccount(address)
-                .setName(tag)
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Delete attribute failed")
-
-    fun mintAndSwap(amount: BigInteger, address: String) =
+    fun broadcastBatch(messages: List<GeneratedMessageV3>, timeoutHeight: Long) =
         grpcClientService.new().estimateAndBroadcastTx(
             signers = listOf(
                 BaseReqSigner(
                     key = managerKey
                 )
             ),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteMintRequest(
-                            mint = MintRequest(
-                                amount = amount.toString(),
-                                address = address
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Mint/swap failed")
-
-    fun redeem(amount: BigInteger) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteRedeemRequest(
-                            redeem = RedeemRequest(
-                                amount = amount.toString(),
-                                reserveDenom = bankClientProperties.denom
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Redeem failed")
-
-    fun burn(amount: BigInteger) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteBurnRequest(
-                            burn = BurnRequest(
-                                amount = amount.toString()
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody()
-        ).throwIfFailed("Burn failed")
+            txBody = messages
+                .map { it.toAny() }
+                .toTxBody(timeoutHeight),
+            gasAdjustment = 1.3,
+        ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
         grpcClientService.new().estimateAndBroadcastTx(
@@ -179,9 +95,9 @@ class PbcService(
                 .setContract(provenanceProperties.contractAddress)
                 .setMsg(
                     mapper.writeValueAsString(
-                        ExecuteJoinRequest(
+                        ExecuteRequest(
                             join = JoinRequest(
-                                denom = bankClientProperties.denom,
+                                denom = reserveDenom,
                                 maxSupply = maxSupply.toString(),
                                 name = name
                             )
@@ -201,7 +117,7 @@ class PbcService(
                 .setContract(provenanceProperties.contractAddress)
                 .setMsg(
                     mapper.writeValueAsString(
-                        ExecuteAcceptRequest(
+                        ExecuteRequest(
                             accept = AcceptRequest()
                         )
                     ).toByteString()
@@ -230,6 +146,7 @@ class PbcService(
                 .build()
                 .toAny()
                 .toTxBody(),
-            mode = BROADCAST_MODE_BLOCK
+            mode = BROADCAST_MODE_BLOCK,
+            gasAdjustment = 1.5
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 }
