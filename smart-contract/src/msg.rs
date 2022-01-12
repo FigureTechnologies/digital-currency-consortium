@@ -14,8 +14,6 @@ pub struct InitMsg {
     pub vote_duration: Uint128,
     // KYC attributes required (any of) to hold dcc tokens.
     pub kyc_attrs: Vec<String>,
-    // Let the admin weight be configurable for testing.
-    pub admin_weight: Option<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

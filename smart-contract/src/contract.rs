@@ -51,7 +51,7 @@ pub fn instantiate(
         dcc_denom: msg.dcc_denom.clone(),
         vote_duration: msg.vote_duration,
         kyc_attrs,
-        admin_weight: msg.admin_weight.unwrap_or_else(|| Uint128::new(1)),
+        admin_weight: Uint128::zero(),
     };
     config(deps.storage).save(&state)?;
 
@@ -167,6 +167,7 @@ fn try_join(
             yes: Uint128::zero(),
             voters: vec![],
             name,
+            admin_vote: None,
         },
     )?;
 
@@ -219,32 +220,36 @@ fn try_vote(
     }
 
     // Ensure message sender has not already voted.
-    if proposal.voters.contains(&info.sender) {
+    if info.sender != state.admin && proposal.voters.contains(&info.sender) {
         return Err(contract_err("member has already voted"));
     }
 
-    // Esure member joined before the proposal was created and determine weight.
-    let weight = if let Some(m) = member {
+    if info.sender == state.admin && proposal.admin_vote.is_some() {
+        return Err(contract_err("admin has already voted"))
+    }
+
+    if let Some(m) = member {
+        // Ensure member joined before the proposal was created and determine weight.
         if m.joined >= proposal.created {
             return Err(ContractError::Unauthorized {});
         }
-        m.weight
+
+        // Add weight to 'yes' or 'no' total in join request.
+        match choice {
+            VoteChoice::Yes => {
+                proposal.yes += m.weight;
+            }
+            VoteChoice::No => {
+                proposal.no += m.weight;
+            }
+        };
+
+        // Add message sender to join request 'voted' vector.
+        proposal.voters.push(info.sender);
     } else {
-        state.admin_weight
+        // Add admin vote separate from member votes as result.
+        proposal.admin_vote = Some(choice);
     };
-
-    // Add weight to 'yes' or 'no' total in join request.
-    match choice {
-        VoteChoice::Yes => {
-            proposal.yes += weight;
-        }
-        VoteChoice::No => {
-            proposal.no += weight;
-        }
-    };
-
-    // Add message sender to join request 'voted' vector.
-    proposal.voters.push(info.sender);
 
     // Save join request state.
     proposals.save(key, &proposal)?;
@@ -277,23 +282,34 @@ fn try_accept(
     let key = info.sender.as_bytes();
     let proposal = join_proposals_read(deps.storage).load(key)?;
 
-    // Ensure quorum percentage has been reached for 'yes' votes.
-    let mut total_weight: u128 = get_members(deps.as_ref())?
-        .iter()
-        .filter(|m| m.joined < proposal.created) // members from before the proposal was created.
-        .map(|m| m.weight.u128())
-        .sum();
-    total_weight += state.admin_weight.u128();
+    match proposal.admin_vote {
+        Some(VoteChoice::No) => {
+            return Err(contract_err("admin voted no"));
+        }
+        Some(VoteChoice::Yes) => {} // Admin override, no need to check quorum
+        None => {
+            // Ensure quorum percentage has been reached for 'yes' votes.
+            let total_weight: u128 = get_members(deps.as_ref())?
+                .iter()
+                .filter(|m| m.joined < proposal.created) // members from before the proposal was created.
+                .map(|m| m.weight.u128())
+                .sum();
+            let pct = if total_weight > 0 {
+                Decimal::from_ratio(proposal.yes, total_weight)
+            } else {
+                Decimal::zero()
+            };
 
-    let pct = Decimal::from_ratio(proposal.yes, total_weight);
-    deps.api.debug(&format!(
-        "pct: {} | quorum {}",
-        pct.to_string(),
-        state.quorum_pct.to_string()
-    ));
+            deps.api.debug(&format!(
+                "pct: {} | quorum {}",
+                pct.to_string(),
+                state.quorum_pct.to_string()
+            ));
 
-    if pct < state.quorum_pct {
-        return Err(contract_err("no membership quorum"));
+            if pct < state.quorum_pct {
+                return Err(contract_err("no membership quorum"));
+            }
+        }
     }
 
     // Block membership if duplicate votes are detected in the join proposal.
@@ -1041,7 +1057,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1074,7 +1089,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1124,7 +1138,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1209,7 +1222,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1250,7 +1262,7 @@ mod tests {
     }
 
     #[test]
-    fn vote_yes() {
+    fn vote_yes_admin() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1264,7 +1276,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1299,13 +1310,113 @@ mod tests {
         let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote weight was added to the 'yes' total.
-        assert_eq!(proposal.yes, Uint128::new(1));
+        assert_eq!(proposal.yes, Uint128::zero());
         assert_eq!(proposal.no, Uint128::zero());
-        assert_eq!(proposal.voters, vec![Addr::unchecked("admin")]);
+        assert_eq!(proposal.voters.len(), 0);
+        assert_eq!(proposal.admin_vote, Some(VoteChoice::Yes));
     }
 
     #[test]
-    fn vote_no() {
+    fn vote_yes_member() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(1000),
+                kyc_attrs: vec![],
+            },
+        )
+        .unwrap();
+
+        // Create join proposal for bank1
+        let mut env = mock_env();
+        env.block.height += 1; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank1.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Vote yes as admin for bank1
+        let mut env = mock_env();
+        env.block.height += 2; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank1".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept membership as bank1
+        let mut env = mock_env();
+        env.block.height += 3; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Create join proposal for bank2
+        let mut env = mock_env();
+        env.block.height += 4; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank2", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(2_000_000),
+                denom: "bank2.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Try to vote yes as bank1 for the bank2 proposal
+        let mut env = mock_env();
+        env.block.height += 5; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Vote {
+                id: "bank2".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        let addr = Addr::unchecked("bank2");
+        let key: &[u8] = addr.as_bytes();
+        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+
+        // Assert the admin vote weight was added to the 'yes' total.
+        assert_eq!(proposal.yes, Uint128::new(10_000));
+        assert_eq!(proposal.no, Uint128::zero());
+        assert_eq!(proposal.voters, vec![Addr::unchecked("bank1")]);
+        assert_eq!(proposal.admin_vote, None);
+    }
+
+    #[test]
+    fn vote_no_admin() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1319,7 +1430,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1353,10 +1463,110 @@ mod tests {
         let key: &[u8] = addr.as_bytes();
         let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
 
-        // Assert the admin vote weight was added to the 'no' total.
+        // Assert the admin vote sets the admin vote choice.
         assert_eq!(proposal.yes, Uint128::zero());
-        assert_eq!(proposal.no, Uint128::new(1));
-        assert_eq!(proposal.voters, vec![Addr::unchecked("admin")]);
+        assert_eq!(proposal.no, Uint128::zero());
+        assert_eq!(proposal.voters.len(), 0);
+        assert_eq!(proposal.admin_vote, Some(VoteChoice::No));
+    }
+
+    #[test]
+    fn vote_no_member() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(1000),
+                kyc_attrs: vec![],
+            },
+        )
+            .unwrap();
+
+        // Create join proposal for bank1
+        let mut env = mock_env();
+        env.block.height += 1; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank1.coin".into(),
+                name: None,
+            },
+        )
+            .unwrap();
+
+        // Vote yes as admin for bank1
+        let mut env = mock_env();
+        env.block.height += 2; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank1".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+            .unwrap();
+
+        // Accept membership as bank1
+        let mut env = mock_env();
+        env.block.height += 3; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+            .unwrap();
+
+        // Create join proposal for bank2
+        let mut env = mock_env();
+        env.block.height += 4; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank2", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(2_000_000),
+                denom: "bank2.coin".into(),
+                name: None,
+            },
+        )
+            .unwrap();
+
+        // Try to vote yes as bank1 for the bank2 proposal
+        let mut env = mock_env();
+        env.block.height += 5; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Vote {
+                id: "bank2".into(),
+                choice: VoteChoice::No,
+            },
+        )
+            .unwrap();
+
+        let addr = Addr::unchecked("bank2");
+        let key: &[u8] = addr.as_bytes();
+        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+
+        // Assert the admin vote weight was added to the 'yes' total.
+        assert_eq!(proposal.yes, Uint128::zero());
+        assert_eq!(proposal.no, Uint128::new(10_000));
+        assert_eq!(proposal.voters, vec![Addr::unchecked("bank1")]);
+        assert_eq!(proposal.admin_vote, None);
     }
 
     #[test]
@@ -1374,7 +1584,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(1),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1467,7 +1676,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(1000),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1563,7 +1771,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1607,7 +1814,7 @@ mod tests {
     }
 
     #[test]
-    fn vote_twice_error() {
+    fn vote_twice_admin_error() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1621,7 +1828,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(1),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1666,6 +1872,115 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "admin has already voted")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn vote_twice_member_error() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(1000),
+                kyc_attrs: vec![],
+            },
+        )
+        .unwrap();
+
+        // Create join proposal for bank1
+        let mut env = mock_env();
+        env.block.height += 1; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank1.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Vote yes as admin for bank1
+        let mut env = mock_env();
+        env.block.height += 2; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank1".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept membership as bank1
+        let mut env = mock_env();
+        env.block.height += 3; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Create join proposal for bank2
+        let mut env = mock_env();
+        env.block.height += 4; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank2", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(2_000_000),
+                denom: "bank2.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Try to vote yes as bank1 for the bank2 proposal
+        let mut env = mock_env();
+        env.block.height += 5; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Vote {
+                id: "bank2".into(),
+                choice: VoteChoice::No,
+            },
+        )
+        .unwrap();
+
+        // Try to vote a second time.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank1", &[]),
+            ExecuteMsg::Vote {
+                id: "bank2".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+            .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "member has already voted")
             }
             _ => panic!("unexpected execute error"),
@@ -1687,7 +2002,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1742,6 +2056,118 @@ mod tests {
     }
 
     #[test]
+    fn accept_member_test() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                dcc_denom: "dcc.coin".into(),
+                quorum_pct: Decimal::percent(67),
+                vote_duration: Uint128::new(1000),
+                kyc_attrs: vec![],
+            },
+        )
+        .unwrap();
+
+        // Create join proposal for bank1
+        let mut env = mock_env();
+        env.block.height += 1; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(1_000_000),
+                denom: "bank1.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Vote yes as admin for bank1
+        let mut env = mock_env();
+        env.block.height += 2; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("admin", &[]),
+            ExecuteMsg::Vote {
+                id: "bank1".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept membership as bank1
+        let mut env = mock_env();
+        env.block.height += 3; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Create join proposal for bank2
+        let mut env = mock_env();
+        env.block.height += 4; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank2", &[]),
+            ExecuteMsg::Join {
+                max_supply: Uint128::new(2_000_000),
+                denom: "bank2.coin".into(),
+                name: None,
+            },
+        )
+        .unwrap();
+
+        // Try to vote yes as bank1 for the bank2 proposal
+        let mut env = mock_env();
+        env.block.height += 5; // next block
+        execute(
+            deps.as_mut(),
+            env,
+            mock_info("bank1", &[]),
+            ExecuteMsg::Vote {
+                id: "bank2".into(),
+                choice: VoteChoice::Yes,
+            },
+        )
+        .unwrap();
+
+        // Accept join proposal
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank2", &[]),
+            ExecuteMsg::Accept { mint_amount: None },
+        )
+        .unwrap();
+
+        // Ensure messages were created.
+        // TODO: validate marker messages (finalize, activate)...
+        assert_eq!(2, res.messages.len());
+
+        let addr = Addr::unchecked("bank2");
+        let key: &[u8] = addr.as_bytes();
+        let member = members_read(&deps.storage).load(key).unwrap();
+
+        assert_eq!(member.id, addr);
+        assert_eq!(member.denom, "bank2.coin");
+        assert_eq!(member.supply, Uint128::zero());
+        assert_eq!(member.max_supply, Uint128::new(2_000_000));
+        assert_eq!(member.weight, Uint128::new(20_000));
+    }
+
+    #[test]
     fn accept_with_mint_test() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
@@ -1756,7 +2182,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1827,7 +2252,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1911,7 +2335,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -1970,7 +2393,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2075,7 +2497,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2154,7 +2575,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2250,7 +2670,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2329,7 +2748,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2410,7 +2828,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2491,7 +2908,6 @@ mod tests {
                 dcc_denom: "dcc.coin".into(),
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
-                admin_weight: None,
                 kyc_attrs: vec![],
             },
         )
@@ -2628,7 +3044,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2715,7 +3130,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2807,7 +3221,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -2948,7 +3361,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3030,7 +3442,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3201,7 +3612,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3282,7 +3692,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3452,7 +3861,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3554,7 +3962,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(10),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3717,7 +4124,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3757,7 +4163,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(100),
                 kyc_attrs: vec![],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3862,7 +4267,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(100),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();
@@ -3902,7 +4306,6 @@ mod tests {
                 quorum_pct: Decimal::percent(67),
                 vote_duration: Uint128::new(100),
                 kyc_attrs: vec!["bank.kyc".into()],
-                admin_weight: None,
             },
         )
         .unwrap();

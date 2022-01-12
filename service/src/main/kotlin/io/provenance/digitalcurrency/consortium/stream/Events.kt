@@ -6,7 +6,6 @@ private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
 private const val ATTRIBUTE_FROM = "from_address"
-private const val ATTRIBUTE_RESERVE_DENOM = "reserve_denom"
 private const val ATTRIBUTE_WITHDRAW_DENOM = "withdraw_denom"
 private const val ATTRIBUTE_WITHDRAW_ADDRESS = "withdraw_address"
 private const val ATTRIBUTE_MEMBER_ID = "member_id"
@@ -16,11 +15,11 @@ private const val ATTRIBUTE_RECIPIENT = "recipient"
 
 private const val MINT_ACTION = "mint"
 private const val TRANSFER_ACTION = "transfer"
-private const val REDEEM_ACTION = "redeem"
-private const val BURN_ACTION = "burn"
 
 const val WASM_EVENT = "wasm"
 const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
+const val ATTRIBUTE_ADD_EVENT = "provenance.attribute.v1.EventAttributeAdd"
+const val ATTRIBUTE_DELETE_EVENT = "provenance.attribute.v1.EventAttributeDelete"
 const val MIGRATE_EVENT = "migrate"
 
 fun List<Attribute>.splitAttributes(): List<List<Attribute>> =
@@ -103,64 +102,6 @@ private fun StreamEvent.toMint(): Mint =
         txHash = txHash
     )
 
-fun EventBatch.burns(contractAddress: String): Burns =
-    events
-        .filter { event ->
-            val action = event.getAttribute(ATTRIBUTE_ACTION)
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT &&
-                action == BURN_ACTION &&
-                contractAddress == contractAddressAttr
-        }.map { event -> event.toBurn() }
-
-typealias Burns = List<Burn>
-
-data class Burn(
-    val amount: String,
-    val denom: String,
-    val memberId: String,
-    val height: Long,
-    val txHash: String
-)
-
-private fun StreamEvent.toBurn(): Burn =
-    Burn(
-        amount = getAttribute(ATTRIBUTE_AMOUNT),
-        denom = getAttribute(ATTRIBUTE_DENOM),
-        memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
-        height = height,
-        txHash = txHash
-    )
-
-fun EventBatch.redemptions(contractAddress: String): Redemptions =
-    events
-        .filter { event ->
-            val action = event.getAttribute(ATTRIBUTE_ACTION)
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT &&
-                action == REDEEM_ACTION &&
-                contractAddress == contractAddressAttr
-        }.map { event -> event.toRedemption() }
-
-typealias Redemptions = List<Redemption>
-
-data class Redemption(
-    val amount: String,
-    val reserveDenom: String,
-    val memberId: String,
-    val height: Long,
-    val txHash: String
-)
-
-private fun StreamEvent.toRedemption(): Redemption =
-    Redemption(
-        amount = getAttribute(ATTRIBUTE_AMOUNT),
-        reserveDenom = getAttribute(ATTRIBUTE_RESERVE_DENOM),
-        memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
-        height = height,
-        txHash = txHash
-    )
-
 fun EventBatch.transfers(contractAddress: String): Transfers =
     events
         .filter { event ->
@@ -214,3 +155,5 @@ private fun StreamEvent.toMigration(): Migration =
         height = height,
         txHash = txHash
     )
+
+fun EventBatch.txHashes() = events.map { it.txHash }.distinct()

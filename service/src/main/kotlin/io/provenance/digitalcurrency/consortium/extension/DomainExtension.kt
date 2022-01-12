@@ -1,11 +1,17 @@
 package io.provenance.digitalcurrency.consortium.extension
 
+import com.google.protobuf.ByteString
+import io.provenance.attribute.v1.AttributeType
+import io.provenance.attribute.v1.MsgAddAttributeRequest
+import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedemptionRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
+import io.provenance.digitalcurrency.consortium.messages.AmountRequest
+import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
+import io.provenance.digitalcurrency.consortium.messages.MintRequest
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -34,31 +40,44 @@ fun MarkerTransferRecord.mdc() = listOf(
     "from" to fromAddress
 ).toTypedArray()
 
-fun CoinRedemptionRecord.mdc() = listOf(
+fun CoinRedeemBurnRecord.mdc() = listOf(
     "uuid" to id.value,
     "type" to "Redeem",
     "status" to status,
-    "coin amount" to coinAmount,
-    "to address" to addressRegistration.address
+    "coin amount" to coinAmount
 ).toTypedArray()
 
-fun CoinBurnRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "type" to "Burn",
-    "status" to status,
-    "coin amount" to coinAmount,
-    "redemption" to coinRedemption?.id?.value
-).toTypedArray()
+fun CoinMintRecord.getExecuteContractMessage() =
+    ExecuteRequest(
+        mint = MintRequest(
+            amount = coinAmount.toString(),
+            address = addressRegistration.address
+        )
+    )
 
-fun AddressRegistrationRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "address" to address,
-    "status" to status,
-    "txhash" to txHash
-).toTypedArray()
+fun CoinRedeemBurnRecord.getExecuteContractMessage() =
+    ExecuteRequest(
+        redeemAndBurn = AmountRequest(
+            amount = coinAmount.toString(),
+        )
+    )
 
-fun AddressDeregistrationRecord.mdc() = listOf(
-    "uuid" to id.value,
-    "status" to status,
-    "txhash" to txHash
-).toTypedArray()
+fun AddressRegistrationRecord.getAddAttributeMessage(
+    managerAddress: String,
+    tag: String
+) = MsgAddAttributeRequest.newBuilder()
+    .setOwner(managerAddress)
+    .setAccount(address)
+    .setAttributeType(AttributeType.ATTRIBUTE_TYPE_BYTES)
+    .setName(tag)
+    .setValue(ByteString.copyFrom(bankAccountUuid.toByteArray()))
+    .build()
+
+fun AddressDeregistrationRecord.getDeleteAttributeMessage(
+    managerAddress: String,
+    tag: String
+) = MsgDeleteAttributeRequest.newBuilder()
+    .setOwner(managerAddress)
+    .setAccount(addressRegistration.address)
+    .setName(tag)
+    .build()

@@ -13,6 +13,12 @@ plugins {
 configurations {
     all {
         exclude(group = "log4j")
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.apache.logging.log4j") {
+                useVersion("2.17.0")
+                because("CVE-2021-44228")
+            }
+        }
     }
 }
 
@@ -92,6 +98,7 @@ dependencies {
         it(Libraries.TestContainersPostgres)
         it(Libraries.TestContainers)
         it(Libraries.TestContainersJunitJupiter)
+        it(Libraries.TestCoroutines)
     }
 
     testRuntimeOnly(Libraries.JunitJupiterEngine)

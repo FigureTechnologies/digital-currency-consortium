@@ -24,8 +24,8 @@ class CoinMovementMonitor(
     private val log = logger()
 
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
-    private val epochHeight = eventStreamProperties.epoch.toLong()
-    private val pollingDelayMillis: Long = coinMovementProperties.pollingDelayMs.toLong()
+    private val epochHeight = eventStreamProperties.epoch
+    private val pollingDelayMillis: Long = coinMovementProperties.pollingDelayMs
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {

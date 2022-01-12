@@ -34,8 +34,8 @@ class MigrationQueue(
         start()
     }
 
-    override val numWorkers: Int = coroutineProperties.numWorkers.toInt()
-    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs.toLong()
+    override val numWorkers: Int = coroutineProperties.numWorkers
+    override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs
 
     override suspend fun loadMessages(): List<MigrationDirective> =
         transaction {

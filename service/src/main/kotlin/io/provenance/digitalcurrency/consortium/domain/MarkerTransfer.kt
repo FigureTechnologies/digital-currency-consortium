@@ -2,61 +2,49 @@ package io.provenance.digitalcurrency.consortium.domain
 
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import org.jetbrains.exposed.dao.id.EntityID
-import java.time.OffsetDateTime
+import org.jetbrains.exposed.sql.and
 import java.util.UUID
 
 typealias MTT = MarkerTransferTable
 
-object MarkerTransferTable : BaseRequestTable(name = "marker_transfer") {
+object MarkerTransferTable : BaseCoinRequestTable(name = "marker_transfer") {
     val fromAddress = text("from_address")
     val toAddress = text("to_address")
     val denom = text("denom")
     val height = long("height")
-    val txHash = text("tx_hash")
-    val status = enumerationByName("status", 10, MarkerTransferStatus::class)
 }
 
-open class MarkerTransferEntityClass : BaseRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
-    fun insert(fromAddress: String, denom: String, amount: String, toAddress: String, height: Long, txHash: String) =
-        new(UUID.randomUUID()) {
-            this.fromAddress = fromAddress
-            this.toAddress = toAddress
-            this.coinAmount = amount.toLong()
-            fiatAmount = amount.toBigInteger().toUSDAmount()
-            this.denom = denom
-            this.height = height
-            this.txHash = txHash
-            this.status = MarkerTransferStatus.INSERTED
-            this.created = OffsetDateTime.now()
-            this.updated = OffsetDateTime.now()
+open class MarkerTransferEntityClass : BaseCoinRequestEntityClass<MTT, MarkerTransferRecord>(MTT) {
+    fun insert(
+        fromAddress: String,
+        denom: String,
+        amount: String,
+        toAddress: String,
+        height: Long,
+        txHash: String,
+        txStatus: TxStatus
+    ) =
+        super.insert(UUID.randomUUID(), amount.toBigInteger().toUSDAmount()).also {
+            it.fromAddress = fromAddress
+            it.toAddress = toAddress
+            it.denom = denom
+            it.height = height
+            it.txHash = txHash
+            it.status = txStatus
         }
 
-    fun updateStatus(uuid: UUID, newStatus: MarkerTransferStatus) =
-        findById(uuid)!!.let {
-            it.status = newStatus
-            it.updated = OffsetDateTime.now()
-        }
+    fun findTxnCompleted() = find { MTT.status eq TxStatus.TXN_COMPLETE }
 
-    fun findPending() = find { MTT.status eq MarkerTransferStatus.INSERTED }
+    fun findTxnCompletedForUpdate(uuid: UUID) = find { (MTT.id eq uuid) and (MTT.status eq TxStatus.TXN_COMPLETE) }.forUpdate()
 
-    fun findForUpdate(uuid: UUID) = find { MTT.id eq uuid }.forUpdate()
-
-    fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }.firstOrNull()
+    fun findByTxHash(txHash: String) = find { MTT.txHash eq txHash }
 }
 
-class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseRequestRecord(MTT, uuid) {
+class MarkerTransferRecord(uuid: EntityID<UUID>) : BaseCoinRequestRecord(MTT, uuid) {
     companion object : MarkerTransferEntityClass()
 
     var fromAddress by MTT.fromAddress
     var toAddress by MTT.toAddress
     var denom by MTT.denom
     var height by MTT.height
-    var txHash by MTT.txHash
-    var status by MTT.status
-}
-
-enum class MarkerTransferStatus {
-    INSERTED,
-    COMPLETE,
-    EXCEPTION
 }
