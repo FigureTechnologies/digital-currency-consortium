@@ -47,7 +47,7 @@ class TxBatchHandler(
                 when (type) {
                     TxRequestType.MINT -> transaction {
                         CoinMintRecord.findById(id)!!
-                            .takeIf { it.addressRegistration.isActive() }
+                            .takeIf { it.address == pbcService.managerAddress || it.addressRegistration!!.isActive() }
                             ?.let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
                             ?: run {
                                 log.error("Coin mint $id skipped due to inactive address registration")

@@ -51,7 +51,7 @@ fun CoinMintRecord.getExecuteContractMessage() =
     ExecuteRequest(
         mint = MintRequest(
             amount = coinAmount.toString(),
-            address = addressRegistration.address
+            address = address
         )
     )
 
