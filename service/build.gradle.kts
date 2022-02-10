@@ -39,6 +39,7 @@ dependencies {
         it(Libraries.JacksonHubspot)
 
         it(Libraries.PbcProto)
+        it(Libraries.PbcClient)
         it(Libraries.GoogleProto)
         it(Libraries.GoogleProtoJavaUtil)
 

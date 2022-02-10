@@ -11,6 +11,13 @@ import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
+import io.provenance.client.PbClient
+import io.provenance.client.grpc.BaseReqSigner
+import io.provenance.client.grpc.extensions.getAccountCoins
+import io.provenance.client.grpc.extensions.getAllAttributes
+import io.provenance.client.grpc.extensions.getMarkerEscrow
+import io.provenance.client.grpc.extensions.getTx
+import io.provenance.client.wallet.WalletSigner
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -23,28 +30,46 @@ import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
-import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReqSigner
-import io.provenance.digitalcurrency.consortium.wallet.account.InMemoryKeyHolder
-import io.provenance.digitalcurrency.consortium.wallet.account.KeyI
-import io.provenance.digitalcurrency.consortium.wallet.account.KeyRing
 import io.provenance.marker.v1.MarkerTransferAuthorization
 import org.springframework.stereotype.Service
 import java.math.BigInteger
 import java.time.OffsetDateTime
+import javax.annotation.PreDestroy
 
 @Service
 class PbcService(
-    private val grpcClientService: GrpcClientService,
+    private val pbClient: PbClient,
     private val provenanceProperties: ProvenanceProperties,
     private val mapper: ObjectMapper,
     bankClientProperties: BankClientProperties,
     serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
-    private val keyRing: KeyRing =
-        InMemoryKeyHolder.fromMnemonic(serviceProperties.managerKey, provenanceProperties.mainNet).keyRing(0)
-    private val managerKey: KeyI = keyRing.key(0, serviceProperties.managerKeyHarden)
-    final val managerAddress: String by lazy { managerKey.address() }
+
+    enum class NetworkType(
+        val prefix: String,
+        val path: String
+    ) {
+        TESTNET_HARDENED("tp", "m/44'/1'/0'/0/0'"),
+        TESTNET("tp", "m/44'/1'/0'/0/0"),
+        MAINNET_HARDENED("pb", "m/505'/1'/0'/0/0'"),
+        MAINNET("pb", "m/505'/1'/0'/0/0")
+    }
+
+    private val managerSigner =
+        when {
+            provenanceProperties.mainNet && serviceProperties.managerKeyHarden -> NetworkType.MAINNET_HARDENED
+            provenanceProperties.mainNet -> NetworkType.MAINNET
+            serviceProperties.managerKeyHarden -> NetworkType.TESTNET_HARDENED
+            else -> NetworkType.TESTNET
+        }.let { networkType ->
+            WalletSigner(
+                prefix = networkType.prefix,
+                path = networkType.path,
+                mnemonic = serviceProperties.managerKey
+            )
+        }
+    final val managerAddress: String by lazy { managerSigner.address() }
     final val reserveDenom = bankClientProperties.denom
 
     init {
@@ -53,34 +78,30 @@ class PbcService(
 
     fun getMarkerEscrowBalance(escrowDenom: String = reserveDenom) =
         // id is marker denom, denom is escrow denom
-        grpcClientService.new().markers.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
+        pbClient.markerClient.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
-        grpcClientService.new().accounts.getAccountCoins(address)
+        pbClient.bankClient.getAccountCoins(address)
             .firstOrNull { it.denom == denom }
             ?.amount
             ?: "0"
 
     fun getTransaction(txHash: String): GetTxResponse? =
         try {
-            grpcClientService.new().transactions.getTx(txHash)
+            pbClient.cosmosService.getTx(txHash)
         } catch (e: StatusRuntimeException) {
             if (listOf(Code.UNKNOWN, Code.NOT_FOUND).contains(e.status.code)) null else throw e
         }
 
     fun getAttributes(address: String): List<Attribute> =
-        grpcClientService.new().attributes.getAllAttributes(address)
+        pbClient.attributeClient.getAllAttributes(address)
 
     fun getAttributeByTagName(address: String, tag: String): Attribute? =
         getAttributes(address).find { it.name == tag }
 
     fun broadcastBatch(messages: List<GeneratedMessageV3>, timeoutHeight: Long) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(
-                BaseReqSigner(
-                    key = managerKey
-                )
-            ),
+        pbClient.estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerSigner)),
             txBody = messages
                 .map { it.toAny() }
                 .toTxBody(timeoutHeight),
@@ -88,8 +109,8 @@ class PbcService(
         ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
+        pbClient.estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerSigner)),
             txBody = Tx.MsgExecuteContract.newBuilder()
                 .setSender(managerAddress)
                 .setContract(provenanceProperties.contractAddress)
@@ -110,8 +131,8 @@ class PbcService(
         ).throwIfFailed("Join failed")
 
     fun accept() =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
+        pbClient.estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerSigner)),
             txBody = Tx.MsgExecuteContract.newBuilder()
                 .setSender(managerAddress)
                 .setContract(provenanceProperties.contractAddress)
@@ -128,8 +149,8 @@ class PbcService(
         ).throwIfFailed("Accept failed")
 
     fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
-        grpcClientService.new().estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerKey)),
+        pbClient.estimateAndBroadcastTx(
+            signers = listOf(BaseReqSigner(managerSigner)),
             txBody = MsgGrant.newBuilder()
                 .setGranter(managerAddress)
                 .setGrantee(provenanceProperties.contractAddress)
@@ -149,4 +170,9 @@ class PbcService(
             mode = BROADCAST_MODE_BLOCK,
             gasAdjustment = 1.5
         ).throwIfFailed("Marker transfer authorization grant authz failed")
+
+    @PreDestroy
+    fun destroy() {
+        pbClient.close()
+    }
 }

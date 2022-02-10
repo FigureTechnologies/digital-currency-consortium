@@ -30,6 +30,7 @@ object Versions {
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.7.0-0.0.2"
+    const val PbcClient = "1.0.2rc6"
 
     const val BouncyCastle = "1.63"
     const val Exposed = "0.33.1"
@@ -72,6 +73,7 @@ object Libraries {
     const val GoogleProtoJavaUtil = "com.google.protobuf:protobuf-java-util:${Versions.Protobuf}"
     const val Protobuf = "com.google.protobuf:protobuf-java:${PluginVersions.Protobuf}"
     const val PbcProto = "io.provenance.protobuf:pb-proto-java:${Versions.PbcProto}"
+    const val PbcClient = "io.provenance.client:pb-grpc-client-kotlin:${Versions.PbcClient}"
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
