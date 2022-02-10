@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import io.provenance.client.grpc.DEFAULT_GAS_DENOM
 import io.provenance.digitalcurrency.consortium.config.logger
-import io.provenance.digitalcurrency.consortium.pbclient.api.grpc.BaseReq.Companion.DEFAULT_GAS_DENOM
 import io.provenance.digitalcurrency.consortium.service.BalanceReportService
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api

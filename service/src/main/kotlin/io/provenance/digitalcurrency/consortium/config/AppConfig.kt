@@ -12,9 +12,9 @@ import com.tinder.scarlet.Scarlet
 import com.tinder.scarlet.messageadapter.moshi.MoshiMessageAdapter
 import com.tinder.scarlet.streamadapter.rxjava2.RxJava2StreamAdapterFactory
 import com.tinder.scarlet.websocket.okhttp.newWebSocketFactory
+import io.provenance.client.PbClient
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
-import io.provenance.digitalcurrency.consortium.pbclient.GrpcClientOpts
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.stream.EventStreamFactory
 import okhttp3.OkHttpClient
@@ -83,8 +83,8 @@ class AppConfig : WebMvcConfigurer {
         RpcClient.Builder(eventStreamProperties.rpcUri, mapper).build()
 
     @Bean
-    fun grpcClientOpts(provenanceProperties: ProvenanceProperties): GrpcClientOpts =
-        GrpcClientOpts(provenanceProperties.chainId, provenanceProperties.uri())
+    fun pbClient(provenanceProperties: ProvenanceProperties): PbClient =
+        PbClient(provenanceProperties.chainId, provenanceProperties.uri())
 
     @Bean
     fun bankClient(mapper: ObjectMapper, bankClientProperties: BankClientProperties): BankClient =
