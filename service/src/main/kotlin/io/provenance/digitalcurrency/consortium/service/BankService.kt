@@ -7,6 +7,8 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
+import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -56,8 +58,8 @@ class BankService(
     fun mintCoin(uuid: UUID, bankAccountUuid: UUID?, amount: BigDecimal) =
         transaction {
             log.info("Minting coin for $uuid to bank account $bankAccountUuid for amount $amount")
-            check(CoinMintRecord.findById(uuid) == null) {
-                "Coin mint request for uuid $uuid already exists for bank account $bankAccountUuid and $amount"
+            check(TxRequestViewRecord.findById(uuid) == null) {
+                "Tx request for uuid $uuid already exists for bank account $bankAccountUuid and $amount"
             }
 
             if (bankAccountUuid == null) {
@@ -72,25 +74,57 @@ class BankService(
         }
 
     fun redeemBurnCoin(uuid: UUID, amount: BigDecimal) =
-        synchronized(CoinRedeemBurnRecord::class.java) {
+        synchronized(TxRequestViewRecord::class.java) {
             transaction {
                 log.info("Redeem burning coin for $uuid for amount $amount")
-                check(CoinRedeemBurnRecord.findById(uuid) == null) { "Coin redeem burn request for uuid $uuid already exists" }
+                check(TxRequestViewRecord.findById(uuid) == null) { "Tx request for uuid $uuid already exists" }
 
                 val coinAmount = amount.toCoinAmount()
                 // Account for any pending records in progress by netting out from balance lookups
-                val pendingAmount = CoinRedeemBurnRecord.findPending()
-                    .fold(0L) { acc, record -> acc + record.coinAmount }
-                    .toBigInteger()
-
+                val pendingAmount = CoinRedeemBurnRecord.findPendingAmount()
                 val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
-                    .toBigInteger() - pendingAmount
+                    .toBigInteger() - pendingAmount - CoinTransferRecord.findPendingAmount()
                 check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
 
+                // Make sure the bank has sufficient escrowed bank token
                 val markerEscrowBalance = pbcService.getMarkerEscrowBalance().toBigInteger() - pendingAmount
                 check(coinAmount <= markerEscrowBalance) { "Insufficient bank reserve coin escrowed $markerEscrowBalance" }
 
                 CoinRedeemBurnRecord.insert(uuid, amount)
+            }
+        }
+
+    fun transferCoin(uuid: UUID, bankAccountUuid: UUID?, blockchainAddress: String?, amount: BigDecimal) =
+        synchronized(TxRequestViewRecord::class.java) {
+            transaction {
+                log.info("Transferring coin for $uuid to bank account $bankAccountUuid or address $blockchainAddress for amount $amount")
+                check(TxRequestViewRecord.findById(uuid) == null) { "Tx request for uuid $uuid already exists" }
+
+                val coinAmount = amount.toCoinAmount()
+                // Account for any pending records in progress by netting out from balance lookups
+                val pendingAmount = CoinRedeemBurnRecord.findPendingAmount() + CoinTransferRecord.findPendingAmount()
+                val dccBalance = pbcService.getCoinBalance(denom = serviceProperties.dccDenom)
+                    .toBigInteger() - pendingAmount
+                check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
+
+                val registration = when {
+                    bankAccountUuid != null -> checkNotNull(AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)) {
+                        "No registration found for bank account $bankAccountUuid for transfer $uuid"
+                    }
+                    blockchainAddress != null -> AddressRegistrationRecord.findLatestByAddress(blockchainAddress)
+                    else -> throw IllegalStateException("Blockchain address cannot be null when bank account uuid is not set")
+                }
+
+                when {
+                    registration != null -> {
+                        check(registration.isActive()) { "Cannot transfer to removed bank account $bankAccountUuid" }
+                        CoinTransferRecord.insert(uuid, registration, amount)
+                    }
+                    // Sending to another member bank
+                    blockchainAddress != null && pbcService.getMembers().members.any { it.id == blockchainAddress } ->
+                        CoinTransferRecord.insert(uuid, blockchainAddress, amount)
+                    else -> throw IllegalStateException("No valid address found for transfer $uuid this should not happen")
+                }
             }
         }
 }

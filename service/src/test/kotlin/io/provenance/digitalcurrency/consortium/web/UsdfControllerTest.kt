@@ -87,7 +87,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
 
-            val expected = "{\"errors\":[\"IllegalStateException: Coin mint request for uuid $uuid already exists for bank account $uuid and $amount\"]}"
+            val expected = "{\"errors\":[\"IllegalStateException: Tx request for uuid $uuid already exists for bank account $uuid and $amount\"]}"
 
             assertEquals(expected, responseError.body.toString())
         }

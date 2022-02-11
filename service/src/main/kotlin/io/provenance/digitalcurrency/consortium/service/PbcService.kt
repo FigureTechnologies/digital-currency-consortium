@@ -7,6 +7,7 @@ import cosmos.authz.v1beta1.Tx.MsgGrant
 import cosmos.base.v1beta1.CoinOuterClass.Coin
 import cosmos.tx.v1beta1.ServiceOuterClass.BroadcastMode.BROADCAST_MODE_BLOCK
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
+import cosmwasm.wasm.v1.QueryOuterClass.QuerySmartContractStateRequest
 import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
@@ -17,6 +18,7 @@ import io.provenance.client.grpc.extensions.getAccountCoins
 import io.provenance.client.grpc.extensions.getAllAttributes
 import io.provenance.client.grpc.extensions.getMarkerEscrow
 import io.provenance.client.grpc.extensions.getTx
+import io.provenance.client.grpc.extensions.queryWasm
 import io.provenance.client.wallet.WalletSigner
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
@@ -28,8 +30,13 @@ import io.provenance.digitalcurrency.consortium.extension.toByteString
 import io.provenance.digitalcurrency.consortium.extension.toProtoTimestamp
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
 import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
+import io.provenance.digitalcurrency.consortium.messages.EmptyObject
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.JoinRequest
+import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
+import io.provenance.digitalcurrency.consortium.messages.QueryRequest
+import io.provenance.digitalcurrency.consortium.messages.toByteString
+import io.provenance.digitalcurrency.consortium.messages.toValueResponse
 import io.provenance.marker.v1.MarkerTransferAuthorization
 import org.springframework.stereotype.Service
 import java.math.BigInteger
@@ -170,6 +177,16 @@ class PbcService(
             mode = BROADCAST_MODE_BLOCK,
             gasAdjustment = 1.5
         ).throwIfFailed("Marker transfer authorization grant authz failed")
+
+    fun getMembers(): MemberListResponse =
+        pbClient.wasmClient
+            .queryWasm(
+                QuerySmartContractStateRequest.newBuilder()
+                    .setAddress(provenanceProperties.contractAddress)
+                    .setQueryData(QueryRequest(getMembers = EmptyObject()).toByteString())
+                    .build()
+            )
+            .toValueResponse(MemberListResponse::class)
 
     @PreDestroy
     fun destroy() {

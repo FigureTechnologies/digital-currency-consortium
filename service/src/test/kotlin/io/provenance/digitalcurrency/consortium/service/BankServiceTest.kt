@@ -3,12 +3,18 @@ package io.provenance.digitalcurrency.consortium.service
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
+import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
+import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
+import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
+import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions
@@ -198,13 +204,13 @@ class BankServiceTest : BaseIntegrationTest() {
 
             whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
             whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("50000") // $500
-            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("50000") // $500
+            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("25000") // $250
 
             bankService = BankService(bankClientProperties, pbcServiceMock, serviceProperties)
 
             transaction {
                 CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
-                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("250"))
+                CoinTransferRecord.insert(UUID.randomUUID(), TEST_ADDRESS, BigDecimal("250"))
             }
         }
 
@@ -212,6 +218,8 @@ class BankServiceTest : BaseIntegrationTest() {
         fun `redeem burning coin with sufficient balance stores a redeem burn record`() {
             val uuid = UUID.randomUUID()
 
+            // $500 usdf balance - $100 existing - $250 transfer = $150 available
+            // $250 escrow balance - $100 existing = $150 available
             bankService.redeemBurnCoin(uuid, BigDecimal("150"))
 
             transaction {
@@ -239,24 +247,214 @@ class BankServiceTest : BaseIntegrationTest() {
 
             whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("49999") // $499.99
 
+            // $499.99 usdf balance - $100 existing - $250 transfer = $149.99 available
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
                 bankService.redeemBurnCoin(uuid, BigDecimal("150"))
             }
 
             Assertions.assertTrue(exception.message!!.contains("Insufficient dcc coin"), "Should error with insufficient dcc")
+
+            // works fine with adjusted amount
+            bankService.redeemBurnCoin(uuid, BigDecimal("149.99"))
         }
 
         @Test
         fun `redeem burning coin with insufficient reserve escrowed coin will exception`() {
             val uuid = UUID.randomUUID()
 
-            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("49999") // 499.99
+            // $500 usdf balance - $100 existing - $250 transfer = $150 available
+            // $249.99 escrow balance - $100 existing = $149.99 available
+            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("24999") // $249.99
 
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
                 bankService.redeemBurnCoin(uuid, BigDecimal("150"))
             }
 
             Assertions.assertTrue(exception.message!!.contains("Insufficient bank reserve coin escrowed"), "Should error with insufficient reserve")
+
+            // works fine with adjusted amount
+            bankService.redeemBurnCoin(uuid, BigDecimal("149.99"))
+        }
+    }
+
+    @Nested
+    inner class TransferCoin {
+
+        @Autowired
+        lateinit var pbcServiceMock: PbcService
+
+        @Autowired
+        private lateinit var bankClientProperties: BankClientProperties
+
+        @Autowired
+        private lateinit var serviceProperties: ServiceProperties
+
+        private lateinit var bankService: BankService
+
+        private val bankAccountUuid = UUID.randomUUID()
+
+        @BeforeEach
+        fun before() {
+            reset(pbcServiceMock)
+
+            whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
+            whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("50000") // $500
+            whenever(pbcServiceMock.getMembers()).thenReturn(
+                MemberListResponse(
+                    members = listOf(
+                        MemberResponse(
+                            id = TEST_OTHER_MEMBER_ADDRESS,
+                            supply = 10000,
+                            maxSupply = 10000000,
+                            denom = "otherbank.omni.dcc",
+                            joined = 12345,
+                            weight = 10000000,
+                            name = "Other Bank"
+                        )
+                    )
+                )
+            )
+
+            bankService = BankService(bankClientProperties, pbcServiceMock, serviceProperties)
+
+            transaction {
+                insertRegisteredAddress(bankAccountUuid, TEST_ADDRESS, TXN_COMPLETE)
+                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
+                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("50"))
+                CoinTransferRecord.insert(UUID.randomUUID(), TEST_ADDRESS, BigDecimal("50"))
+            }
+        }
+
+        @Test
+        fun `transferring coin to a registered blockchain address stores a coin transfer record`() {
+            val uuid = UUID.randomUUID()
+
+            // $500 available - $100 burn - $50 burn - $50 tranfser = $300 available
+            bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_ADDRESS, BigDecimal("300"))
+
+            transaction {
+                val coinTransferRecord = CoinTransferRecord.findById(uuid)
+                Assertions.assertNotNull(coinTransferRecord, "Coin transfer exists")
+                Assertions.assertTrue(BigDecimal("300").compareTo(coinTransferRecord!!.fiatAmount) == 0, "Amount is correct")
+                Assertions.assertEquals(TxStatus.QUEUED, coinTransferRecord.status, "Tx request is queued")
+                Assertions.assertEquals(TEST_ADDRESS, coinTransferRecord.address, "To address is correct")
+            }
+        }
+
+        @Test
+        fun `transferring coin to a registered bank account stores a coin transfer record`() {
+            val uuid = UUID.randomUUID()
+
+            // $500 available - $100 burn - $50 burn - $50 tranfser = $300 available
+            bankService.transferCoin(uuid, bankAccountUuid = bankAccountUuid, blockchainAddress = null, BigDecimal("300"))
+
+            transaction {
+                val coinTransferRecord = CoinTransferRecord.findById(uuid)
+                Assertions.assertNotNull(coinTransferRecord, "Coin transfer exists")
+                Assertions.assertTrue(BigDecimal("300").compareTo(coinTransferRecord!!.fiatAmount) == 0, "Amount is correct")
+                Assertions.assertEquals(TxStatus.QUEUED, coinTransferRecord.status, "Tx request is queued")
+                Assertions.assertEquals(TEST_ADDRESS, coinTransferRecord.address, "To address is correct")
+            }
+        }
+
+        @Test
+        fun `transferring coin with duplicate uuid will exception`() {
+            val uuid = transaction { CoinTransferRecord.all().first().id.value }
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_ADDRESS, BigDecimal("1"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("already exists"), "Should error with already exists")
+        }
+
+        @Test
+        fun `transferring coin with insufficient dcc coin will exception`() {
+            val uuid = UUID.randomUUID()
+
+            whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("49999") // $499.99
+
+            // $499.99 available - $100 burn - $50 burn - $50 tranfser = $299.99 available
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_ADDRESS, BigDecimal("300"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("Insufficient dcc coin"), "Should error with insufficient dcc")
+
+            // works fine with adjusted amount
+            bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_ADDRESS, BigDecimal("299.99"))
+        }
+
+        @Test
+        fun `transferring coin with deleted bank account registration will exception`() {
+            val uuid = UUID.randomUUID()
+
+            transaction {
+                AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)!!.also {
+                    it.deleted = AddressDeregistrationRecord.insert(it).created
+                }
+            }
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = bankAccountUuid, blockchainAddress = null, BigDecimal("300"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("Cannot transfer to removed bank account"), "Should error with deleted")
+        }
+
+        @Test
+        fun `transferring coin with deleted blockchain address will exception`() {
+            val uuid = UUID.randomUUID()
+
+            transaction {
+                AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)!!.also {
+                    it.deleted = AddressDeregistrationRecord.insert(it).created
+                }
+            }
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_ADDRESS, BigDecimal("300"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("Cannot transfer to removed bank account"), "Should error with deleted")
+        }
+
+        @Test
+        fun `transferring coin with no address input will exception`() {
+            val uuid = UUID.randomUUID()
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = null, BigDecimal("300"))
+            }
+
+            Assertions.assertEquals("Blockchain address cannot be null when bank account uuid is not set", exception.message, "Should error with not set")
+        }
+
+        @Test
+        fun `transferring coin to a another member bank address stores a coin transfer record`() {
+            val uuid = UUID.randomUUID()
+
+            // $500 available - $100 burn - $50 burn - $50 tranfser = $300 available
+            bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_OTHER_MEMBER_ADDRESS, BigDecimal("300"))
+
+            transaction {
+                val coinTransferRecord = CoinTransferRecord.findById(uuid)
+                Assertions.assertNotNull(coinTransferRecord, "Coin transfer exists")
+                Assertions.assertTrue(BigDecimal("300").compareTo(coinTransferRecord!!.fiatAmount) == 0, "Amount is correct")
+                Assertions.assertEquals(TxStatus.QUEUED, coinTransferRecord.status, "Tx request is queued")
+                Assertions.assertEquals(TEST_OTHER_MEMBER_ADDRESS, coinTransferRecord.address, "To address is correct")
+            }
+        }
+
+        @Test
+        fun `transferring coin with invalid address will exception`() {
+            val uuid = UUID.randomUUID()
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = "invalid-address", BigDecimal("300"))
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("No valid address found for transfer"), "Should error with no valid address")
         }
     }
 }
