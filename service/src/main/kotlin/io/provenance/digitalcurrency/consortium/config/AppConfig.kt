@@ -12,7 +12,7 @@ import com.tinder.scarlet.Scarlet
 import com.tinder.scarlet.messageadapter.moshi.MoshiMessageAdapter
 import com.tinder.scarlet.streamadapter.rxjava2.RxJava2StreamAdapterFactory
 import com.tinder.scarlet.websocket.okhttp.newWebSocketFactory
-import io.provenance.client.PbClient
+import io.provenance.client.grpc.PbClient
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient

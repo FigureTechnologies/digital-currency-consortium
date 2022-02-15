@@ -2,9 +2,9 @@ package io.provenance.digitalcurrency.consortium.stream
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import cosmwasm.wasm.v1.Tx.MsgExecuteContract
-import io.provenance.client.PbClient
 import io.provenance.client.grpc.BaseReqSigner
-import io.provenance.client.wallet.WalletSigner
+import io.provenance.client.grpc.PbClient
+import io.provenance.client.wallet.fromMnemonic
 import io.provenance.digitalcurrency.consortium.extension.throwIfFailed
 import io.provenance.digitalcurrency.consortium.extension.toAny
 import io.provenance.digitalcurrency.consortium.extension.toByteString
@@ -22,7 +22,7 @@ class BroadcastTest {
     private val contractAddress = "tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv"
     private val user1Address = "tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p"
     private val bank3Address = "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3"
-    private val user3Signer = WalletSigner(
+    private val user3Signer = fromMnemonic(
         prefix = NetworkType.TESTNET.prefix,
         path = NetworkType.TESTNET.path,
         mnemonic = "oyster borrow survey cake puzzle trash train isolate spy this average bacon spare health toast girl regular muffin calm rain forget throw exit ring"
