@@ -77,19 +77,21 @@ abstract class DatabaseTest {
 
     fun insertMarkerTransfer(
         txHash: String,
-        toAddress: String = TEST_ADDRESS,
+        fromAddress: String = TEST_ADDRESS,
+        toAddress: String = TEST_MEMBER_ADDRESS,
+        status: TxStatus = TxStatus.QUEUED,
         denom: String
     ): MarkerTransferRecord =
         transaction {
             MarkerTransferRecord.new(UUID.randomUUID()) {
-                this.fromAddress = TEST_ADDRESS
+                this.fromAddress = fromAddress
                 this.toAddress = toAddress
                 this.denom = denom
                 this.coinAmount = DEFAULT_AMOUNT.toLong()
                 this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
                 this.height = 50L
                 this.txHash = txHash
-                this.status = TxStatus.QUEUED
+                this.status = status
                 this.created = OffsetDateTime.now()
                 this.updated = OffsetDateTime.now()
             }
