@@ -106,7 +106,7 @@ class PbcService(
             txBody = messages
                 .map { it.toAny() }
                 .toTxBody(timeoutHeight),
-            gasAdjustment = 1.3f,
+            gasAdjustment = 1.3,
         ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
@@ -169,7 +169,7 @@ class PbcService(
                 .toAny()
                 .toTxBody(),
             mode = BROADCAST_MODE_BLOCK,
-            gasAdjustment = 1.5f
+            gasAdjustment = 1.5
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 
     @PreDestroy

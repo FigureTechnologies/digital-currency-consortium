@@ -30,7 +30,7 @@ object Versions {
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.8.0-rc7"
-    const val PbcClient = "1.0.3"
+    const val PbcClient = "1.0.4"
 
     const val BouncyCastle = "1.63"
     const val Exposed = "0.33.1"
