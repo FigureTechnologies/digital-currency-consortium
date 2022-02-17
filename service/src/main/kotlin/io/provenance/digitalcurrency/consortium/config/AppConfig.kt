@@ -12,6 +12,8 @@ import com.tinder.scarlet.Scarlet
 import com.tinder.scarlet.messageadapter.moshi.MoshiMessageAdapter
 import com.tinder.scarlet.streamadapter.rxjava2.RxJava2StreamAdapterFactory
 import com.tinder.scarlet.websocket.okhttp.newWebSocketFactory
+import io.provenance.client.grpc.GasEstimationMethod.COSMOS_SIMULATION
+import io.provenance.client.grpc.GasEstimationMethod.MSG_FEE_CALCULATION
 import io.provenance.client.grpc.PbClient
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
@@ -84,7 +86,12 @@ class AppConfig : WebMvcConfigurer {
 
     @Bean
     fun pbClient(provenanceProperties: ProvenanceProperties): PbClient =
-        PbClient(provenanceProperties.chainId, provenanceProperties.uri())
+        PbClient(
+            provenanceProperties.chainId,
+            provenanceProperties.uri(),
+            // TODO - switch to always use MSG_FEE_CALCULATION after mainnet is upgraded to 1.8
+            if (provenanceProperties.mainNet) COSMOS_SIMULATION else MSG_FEE_CALCULATION
+        )
 
     @Bean
     fun bankClient(mapper: ObjectMapper, bankClientProperties: BankClientProperties): BankClient =

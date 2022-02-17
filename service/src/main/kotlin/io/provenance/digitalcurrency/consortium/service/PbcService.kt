@@ -106,7 +106,7 @@ class PbcService(
             txBody = messages
                 .map { it.toAny() }
                 .toTxBody(timeoutHeight),
-            gasAdjustment = 1.3,
+            gasAdjustment = provenanceProperties.gasAdjustment,
         ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
@@ -128,7 +128,8 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
         ).throwIfFailed("Join failed")
 
     fun accept() =
@@ -146,7 +147,8 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
         ).throwIfFailed("Accept failed")
 
     fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
@@ -169,7 +171,7 @@ class PbcService(
                 .toAny()
                 .toTxBody(),
             mode = BROADCAST_MODE_BLOCK,
-            gasAdjustment = 1.5
+            gasAdjustment = provenanceProperties.gasAdjustment * 1.1
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 
     @PreDestroy

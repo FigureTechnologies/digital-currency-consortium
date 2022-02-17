@@ -62,6 +62,7 @@ class BankService(
 
             val registration = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
             checkNotNull(registration) { "No registration found for bank account $bankAccountUuid for coin mint $uuid" }
+            check(registration.isActive()) { "Registration for bank account $bankAccountUuid is not active" }
 
             CoinMintRecord.insert(
                 uuid = uuid,

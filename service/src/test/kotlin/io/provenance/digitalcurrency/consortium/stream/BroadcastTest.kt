@@ -3,6 +3,7 @@ package io.provenance.digitalcurrency.consortium.stream
 import com.fasterxml.jackson.databind.ObjectMapper
 import cosmwasm.wasm.v1.Tx.MsgExecuteContract
 import io.provenance.client.grpc.BaseReqSigner
+import io.provenance.client.grpc.GasEstimationMethod.MSG_FEE_CALCULATION
 import io.provenance.client.grpc.PbClient
 import io.provenance.client.wallet.fromMnemonic
 import io.provenance.digitalcurrency.consortium.extension.throwIfFailed
@@ -19,7 +20,7 @@ import java.net.URI
 @Disabled
 class BroadcastTest {
 
-    private val contractAddress = "tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv"
+    private val contractAddress = "tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8"
     private val user1Address = "tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p"
     private val bank3Address = "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3"
     private val user3Signer = fromMnemonic(
@@ -31,7 +32,8 @@ class BroadcastTest {
     private val mapper = ObjectMapper()
     private val grpcClient = PbClient(
         chainId = "chain-local",
-        channelUri = URI("http://localhost:9090")
+        channelUri = URI("http://localhost:9090"),
+        gasEstimationMethod = MSG_FEE_CALCULATION
     )
 
     @Test
