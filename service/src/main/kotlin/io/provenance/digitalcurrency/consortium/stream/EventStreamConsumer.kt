@@ -166,6 +166,7 @@ class EventStreamConsumer(
 
                 // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
                 if (toAddressBankUuid != null) {
+                    // TODO - handle mint directly to member bank
                     MintWrapper(event, toAddressBankUuid)
                 } else {
                     null
