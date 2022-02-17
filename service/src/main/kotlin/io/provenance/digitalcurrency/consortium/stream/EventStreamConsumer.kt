@@ -6,12 +6,13 @@ import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
-import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
+import io.provenance.digitalcurrency.consortium.domain.DEPOSIT
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
+import io.provenance.digitalcurrency.consortium.domain.REDEEM_BURN
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -101,8 +102,9 @@ class EventStreamConsumer(
                     batch.height,
                     mints = batch.mints(provenanceProperties.contractAddress),
                     // TODO - these are really redemption requests, probably need to distinguish between redemption transfers and burns
-                    burns = batch.transfers(provenanceProperties.contractAddress),
-                    transfers = batch.markerTransfers(),
+                    transfers = batch.transfers(provenanceProperties.contractAddress),
+                    redeemBurns = batch.redeemBurns(provenanceProperties.contractAddress),
+                    markerTransfers = batch.markerTransfers(),
                 )
 
                 transaction { EventStreamRecord.update(coinMovementEventStreamId, batch.height) }
@@ -120,9 +122,13 @@ class EventStreamConsumer(
         val toAddressBankUuid: UUID,
     )
 
-    data class BurnWrapper(
-        val burn: Transfer,
+    data class DepositWrapper(
+        val transfer: Transfer,
         val fromAddressBankUuid: UUID,
+    )
+
+    data class RedeemBurnWrapper(
+        val redeemBurn: RedeemBurn,
     )
 
     data class TransferWrapper(
@@ -139,7 +145,13 @@ class EventStreamConsumer(
         transaction { AddressRegistrationRecord.findLatestByAddress(it)?.bankAccountUuid }
     }
 
-    fun handleCoinMovementEvents(blockHeight: Long, mints: Mints, burns: Transfers, transfers: MarkerTransfers) {
+    fun handleCoinMovementEvents(
+        blockHeight: Long,
+        mints: Mints,
+        transfers: Transfers,
+        redeemBurns: RedeemBurns,
+        markerTransfers: MarkerTransfers
+    ) {
         // TODO (steve) is there a grpc endpoint for this?
         val block = rpcClient.fetchBlock(blockHeight).block
 
@@ -160,10 +172,10 @@ class EventStreamConsumer(
                 }
             }
 
-        // SC Transfer events denote the "off ramp" for a bank user to redeem coin when the recipient is the bank address
-        val filteredBurns = burns.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
+        // SC Transfer events denote the "off ramp" for a bank user to deposit fiat (redeem coin for fiat) when the recipient is the bank address
+        val filteredDeposits = transfers.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
             .mapNotNull { event ->
-                log.debug("Burn - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
+                log.debug("Deposit - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 val fromAddressBankUuid = event.sender.addressToBankUuid()
                 // val fromAddressBankUuid =
@@ -171,14 +183,27 @@ class EventStreamConsumer(
 
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
-                    BurnWrapper(event, fromAddressBankUuid)
+                    // TODO - handle bank settlement deposits
+                    DepositWrapper(event, fromAddressBankUuid)
+                } else {
+                    null
+                }
+            }
+
+        // SC Redeem and Burn events denote the removal of DCC and reserve token from circulation
+        val filteredRedeemBurns = redeemBurns.filter { it.memberId.isNotEmpty() }
+            .mapNotNull { event ->
+                log.debug("Redeem burn - tx: ${event.txHash} member: ${event.memberId} amount: ${event.amount} denom: ${event.denom} reserve denom: ${event.reserveDenom}")
+
+                if (event.memberId == pbcService.managerAddress) {
+                    RedeemBurnWrapper(event)
                 } else {
                     null
                 }
             }
 
         // general coin transfers outside of the SC are tracked require the EventMarkerTransfer event
-        val filteredTransfers = transfers.filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
+        val filteredTransfers = markerTransfers.filter { it.fromAddress.isNotEmpty() && it.toAddress.isNotEmpty() }
             .filter { it.denom == serviceProperties.dccDenom }
             .mapNotNull { event ->
                 log.debug("MarkerTransfer - tx: ${event.txHash} from: ${event.fromAddress} to: ${event.toAddress} amount: ${event.amount} denom: ${event.denom}")
@@ -216,18 +241,33 @@ class EventStreamConsumer(
                 )
             }
 
-            filteredBurns.forEach { wrapper ->
+            filteredDeposits.forEach { wrapper ->
                 CoinMovementRecord.insert(
-                    txHash = wrapper.burn.txHash.uniqueHash(index++),
-                    fromAddress = wrapper.burn.sender,
+                    txHash = wrapper.transfer.txHash.uniqueHash(index++),
+                    fromAddress = wrapper.transfer.sender,
                     fromAddressBankUuid = wrapper.fromAddressBankUuid,
-                    toAddress = wrapper.burn.recipient,
+                    toAddress = wrapper.transfer.recipient,
                     toAddressBankUuid = null,
-                    blockHeight = wrapper.burn.height,
+                    blockHeight = wrapper.transfer.height,
                     blockTime = OffsetDateTime.parse(block.header.time),
-                    amount = wrapper.burn.amount,
-                    denom = wrapper.burn.denom,
-                    type = BURN,
+                    amount = wrapper.transfer.amount,
+                    denom = wrapper.transfer.denom,
+                    type = DEPOSIT,
+                )
+            }
+
+            filteredRedeemBurns.forEach { wrapper ->
+                CoinMovementRecord.insert(
+                    txHash = wrapper.redeemBurn.txHash.uniqueHash(index++),
+                    fromAddress = wrapper.redeemBurn.memberId,
+                    fromAddressBankUuid = null,
+                    toAddress = wrapper.redeemBurn.memberId,
+                    toAddressBankUuid = null,
+                    blockHeight = wrapper.redeemBurn.height,
+                    blockTime = OffsetDateTime.parse(block.header.time),
+                    amount = wrapper.redeemBurn.amount,
+                    denom = wrapper.redeemBurn.denom,
+                    type = REDEEM_BURN,
                 )
             }
 
