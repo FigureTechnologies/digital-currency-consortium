@@ -77,6 +77,7 @@ out/
 ######################
 /log/
 /target/
+checksums_intermediate.txt
 
 ######################
 # Gradle
