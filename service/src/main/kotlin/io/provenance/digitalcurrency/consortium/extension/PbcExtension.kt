@@ -26,3 +26,5 @@ fun ServiceOuterClass.BroadcastTxResponse.throwIfFailed(msg: String): ServiceOut
     }
     return this
 }
+
+const val DEFAULT_GAS_DENOM = "nhash"

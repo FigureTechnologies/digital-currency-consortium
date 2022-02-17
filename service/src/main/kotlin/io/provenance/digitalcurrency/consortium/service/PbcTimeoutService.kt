@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.service
 
-import io.provenance.client.PbClient
-import io.provenance.client.grpc.extensions.getCurrentBlockHeight
+import io.provenance.client.grpc.PbClient
+import io.provenance.client.protobuf.extensions.getCurrentBlockHeight
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 

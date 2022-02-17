@@ -306,7 +306,7 @@ Grant for bank 1
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local,50000000bank1.coin \
     --from bank1 \
@@ -323,7 +323,7 @@ Grant for bank 2
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local,50000000bank2.coin \
     --from bank2 \
@@ -340,7 +340,7 @@ Grant for user 1
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local \
     --from user1 \
@@ -357,7 +357,7 @@ Grant for user 2
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local \
     --from user2 \
@@ -381,7 +381,7 @@ First, create a proposal to join the consortium as `bank1`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"join":{"denom":"bank1.coin","max_supply":"50000000","name":"Bank 1"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -396,7 +396,7 @@ provenanced tx wasm execute \
 Query the join proposals to get the proposal id to vote on
 
 ```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
    '{"get_join_proposals": {}}' \
    --ascii \
    -o json \
@@ -407,7 +407,7 @@ Vote 'yes' as the admin user.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"vote":{"id":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa","choice":"yes"}}' \
     --from node0 \
     --keyring-backend test \
@@ -423,7 +423,7 @@ Accept membership as `bank1` (without minting any bank tokens).
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"accept":{}}' \
     --from bank1 \
     --keyring-backend test \
@@ -443,7 +443,7 @@ Create a proposal to join the consortium as `bank2`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"join":{"denom":"bank2.coin","max_supply":"50000000","name":"Bank 2"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -459,7 +459,7 @@ Vote 'yes' as the existing member, `bank1`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"vote":{"id":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47","choice":"yes"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -475,7 +475,7 @@ Accept membership as `bank2`
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"accept":{}}' \
     --from bank2 \
     --keyring-backend test \
@@ -490,7 +490,7 @@ provenanced tx wasm execute \
 Query to get the members' state.
 
 ```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
    '{"get_members": {}}' \
    --ascii \
    -o json \
@@ -504,7 +504,7 @@ The required tokens can be minted and withdrawn directly to the `user1` account.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"mint":{"amount":"10000","address":"tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -565,7 +565,7 @@ NOTE: This is possible because both users have kyc attributes supported by the c
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
     --from user1 \
     --keyring-backend test \
@@ -612,7 +612,7 @@ the tokens to `bank2`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"}}' \
     --from user2 \
     --keyring-backend test \
@@ -659,7 +659,7 @@ TODO: provide instructions on bank-to-bank settlement or holding `usdf.local` ba
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"mint":{"amount":"5000","address":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -689,7 +689,7 @@ Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"redeem":{"amount":"5000"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -738,7 +738,7 @@ Let's say `user2` now wants $25 worth of tokens back from `bank2`. The bank can 
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"swap":{"amount":"2500","denom":"bank2.coin","address":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -782,7 +782,7 @@ to `bank1`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa"}}' \
     --from user1 \
     --keyring-backend test \
@@ -798,7 +798,7 @@ They redeem for `bank1.coin` against the smart contract.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"redeem":{"amount":"5000","reserve_denom":"bank1.coin"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -815,7 +815,7 @@ The reserve tokens are now held in the `bank1` member account. After delivering 
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"burn":{"amount":"5000"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -873,7 +873,7 @@ To redeem and burn $25
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"redeem_and_burn":{"amount":"2500"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -922,7 +922,7 @@ To add an attribute
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"add_kyc":{"name":"bank3.kyc.pb"}}' \
     --from node0 \
     --keyring-backend test \
@@ -938,7 +938,7 @@ To remove the attribute
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"remove_kyc":{"name":"bank3.kyc.pb"}}' \
     --from node0 \
     --keyring-backend test \
@@ -990,7 +990,7 @@ They then add a proposal to join.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"join":{"denom":"bank3.coin","max_supply":"100000000"}}' \
     --from bank3 \
     --keyring-backend test \
@@ -1007,7 +1007,7 @@ any chance of `bank3` being able to join.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"vote":{"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3","choice":"no"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -1021,7 +1021,7 @@ provenanced tx wasm execute \
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"vote":{"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3","choice":"no"}}' \
     --from bank2 \
     --keyring-backend test \
@@ -1036,7 +1036,7 @@ provenanced tx wasm execute \
 The proposal can be queried to see the 'no' votes.
 
 ```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
    '{"get_join_proposal": {"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3"}}' \
    --ascii \
    -o json \
@@ -1064,7 +1064,7 @@ The rejected proposal can then be cancelled by `bank3`
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"cancel":{}}' \
     --from bank3 \
     --keyring-backend test \
@@ -1083,7 +1083,7 @@ the step in the [Store the Consortium Wasm](#-store-the-consortium-wasm) section
 
 ```bash
 provenanced tx wasm migrate \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     2 \
     '{}' \
     --from node0 \
