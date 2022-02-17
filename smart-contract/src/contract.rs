@@ -1,11 +1,11 @@
 use cosmwasm_std::{
-    to_binary, Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Order, QueryResponse, Response,
-    StdError, Uint128,
+    entry_point, to_binary, Addr, Decimal, Deps, DepsMut, Env, MessageInfo, Order, QueryResponse,
+    Response, StdError, Uint128,
 };
 use provwasm_std::{
     activate_marker, burn_marker_supply, cancel_marker, create_marker, destroy_marker,
     finalize_marker, grant_marker_access, mint_marker_supply, transfer_marker_coins,
-    withdraw_coins, MarkerAccess, MarkerType, ProvenanceMsg, ProvenanceQuerier,
+    withdraw_coins, MarkerAccess, MarkerType, ProvenanceMsg, ProvenanceQuerier, ProvenanceQuery,
 };
 
 use crate::error::ContractError;
@@ -22,8 +22,9 @@ use crate::state::{
 pub static MIN_DENOM_LEN: usize = 8;
 
 /// Create the initial configuration state and propose the dcc marker.
+#[entry_point]
 pub fn instantiate(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
     msg: InitMsg,
@@ -85,14 +86,15 @@ pub fn instantiate(
 }
 
 // Determine whether the marker with the given denom exists.
-fn marker_exists(deps: Deps, denom: &str) -> bool {
+fn marker_exists(deps: Deps<ProvenanceQuery>, denom: &str) -> bool {
     let querier = ProvenanceQuerier::new(&deps.querier);
     querier.get_marker_by_denom(denom).is_ok()
 }
 
 /// Execute the contract
+#[entry_point]
 pub fn execute(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
@@ -126,7 +128,7 @@ pub fn execute(
 
 // Add a proposal to join the consortium that must be voted on by existing members.
 fn try_join(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
     denom: String,
@@ -186,7 +188,7 @@ fn try_join(
 
 // Vote 'yes' or 'no' on a proposal to join the consortium.
 fn try_vote(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
     id: String,
@@ -225,7 +227,7 @@ fn try_vote(
     }
 
     if info.sender == state.admin && proposal.admin_vote.is_some() {
-        return Err(contract_err("admin has already voted"))
+        return Err(contract_err("admin has already voted"));
     }
 
     if let Some(m) = member {
@@ -265,7 +267,7 @@ fn try_vote(
 // does not have to wait for the voting window to close before accepting - they only need a quroum
 // of 'yes' votes.
 fn try_accept(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
     mint_amount: Option<Uint128>,
@@ -300,11 +302,8 @@ fn try_accept(
                 Decimal::zero()
             };
 
-            deps.api.debug(&format!(
-                "pct: {} | quorum {}",
-                pct.to_string(),
-                state.quorum_pct.to_string()
-            ));
+            deps.api
+                .debug(&format!("pct: {} | quorum {}", pct, state.quorum_pct));
 
             if pct < state.quorum_pct {
                 return Err(contract_err("no membership quorum"));
@@ -370,7 +369,10 @@ fn try_accept(
 }
 
 // Proposers can choose to cancel as long as they haven't already accepted.
-fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg>, ContractError> {
+fn try_cancel(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during cancel"));
@@ -400,14 +402,16 @@ fn try_cancel(deps: DepsMut, info: MessageInfo) -> Result<Response<ProvenanceMsg
 
 // Redeem dcc tokens for member reserve tokens.
 fn try_redeem(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
     reserve_denom: Option<String>,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Ensure no funds were sent.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during dcc redemption"));
+        return Err(contract_err(
+            "no funds should be sent during dcc redemption",
+        ));
     }
 
     // Validate params
@@ -477,13 +481,15 @@ fn try_redeem(
 }
 
 fn try_redeem_and_burn(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Ensure no funds were sent.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during dcc redemption"));
+        return Err(contract_err(
+            "no funds should be sent during dcc redemption",
+        ));
     }
 
     // Validate params
@@ -548,7 +554,7 @@ fn try_redeem_and_burn(
 
 // Swap member reserve tokens for dcc tokens.
 fn try_swap(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
     denom: String,
@@ -626,7 +632,7 @@ fn try_swap(
 // Transfer dcc from sender to recipient. Both accounts must either be member accounts, or
 // have the required kyc attributes.
 fn try_transfer(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
     recipient: String,
@@ -683,7 +689,7 @@ fn try_transfer(
 // Increase the reserve supply of a member.
 // If an address is provided, mint dcc tokens and withdraw there.
 fn try_mint(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
     address: Option<String>,
@@ -765,7 +771,7 @@ fn try_mint(
 
 // Decrease reserve token supply.
 fn try_burn(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
@@ -818,7 +824,7 @@ fn try_burn(
 
 // Add a new kyc attribute.
 fn try_add_kyc(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     name: String,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
@@ -853,7 +859,7 @@ fn try_add_kyc(
 
 // Remove an existing kyc attribute.
 fn try_remove_kyc(
-    deps: DepsMut,
+    deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     name: String,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
@@ -892,7 +898,11 @@ fn contract_err(s: &str) -> ContractError {
 }
 
 // Return an error if the given address doesn't have any of the required attributes.
-fn ensure_attributes(deps: Deps, addr: Addr, attrs: Vec<String>) -> Result<(), ContractError> {
+fn ensure_attributes(
+    deps: Deps<ProvenanceQuery>,
+    addr: Addr,
+    attrs: Vec<String>,
+) -> Result<(), ContractError> {
     // Skip the check if no attributes are required.
     if attrs.is_empty() {
         return Ok(());
@@ -918,7 +928,12 @@ fn calculate_weight(max_supply: u128) -> u128 {
 }
 
 /// Query contract state
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, ContractError> {
+#[entry_point]
+pub fn query(
+    deps: Deps<ProvenanceQuery>,
+    _env: Env,
+    msg: QueryMsg,
+) -> Result<QueryResponse, ContractError> {
     match msg {
         QueryMsg::GetJoinProposals {} => try_get_join_proposals(deps),
         QueryMsg::GetMembers {} => try_get_members(deps),
@@ -929,21 +944,24 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<QueryResponse, Cont
 }
 
 // Query all join proposals.
-fn try_get_join_proposals(deps: Deps) -> Result<QueryResponse, ContractError> {
+fn try_get_join_proposals(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
     Ok(to_binary(&JoinProposals {
         proposals: get_join_proposals(deps)?,
     })?)
 }
 
 // Query all members.
-fn try_get_members(deps: Deps) -> Result<QueryResponse, ContractError> {
+fn try_get_members(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
     Ok(to_binary(&Members {
         members: get_members(deps)?,
     })?)
 }
 
 // Query join proposal by ID.
-fn try_get_join_proposal(deps: Deps, id: String) -> Result<QueryResponse, ContractError> {
+fn try_get_join_proposal(
+    deps: Deps<ProvenanceQuery>,
+    id: String,
+) -> Result<QueryResponse, ContractError> {
     let address = deps.api.addr_validate(&id)?;
     let key = address.as_bytes();
     let proposal = join_proposals_read(deps.storage).load(key)?;
@@ -952,7 +970,7 @@ fn try_get_join_proposal(deps: Deps, id: String) -> Result<QueryResponse, Contra
 }
 
 // Query member by ID.
-fn try_get_member(deps: Deps, id: String) -> Result<QueryResponse, ContractError> {
+fn try_get_member(deps: Deps<ProvenanceQuery>, id: String) -> Result<QueryResponse, ContractError> {
     let address = deps.api.addr_validate(&id)?;
     let key = address.as_bytes();
     let member = members_read(deps.storage).load(key)?;
@@ -961,14 +979,14 @@ fn try_get_member(deps: Deps, id: String) -> Result<QueryResponse, ContractError
 }
 
 // Query swap-able member balances.
-fn try_get_balances(deps: Deps) -> Result<QueryResponse, ContractError> {
+fn try_get_balances(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
     let balances = get_balances(deps)?;
     let bin = to_binary(&balances)?;
     Ok(bin)
 }
 
 // Read all members from bucket storage.
-fn get_members(deps: Deps) -> Result<Vec<Member>, ContractError> {
+fn get_members(deps: Deps<ProvenanceQuery>) -> Result<Vec<Member>, ContractError> {
     members_read(deps.storage)
         .range(None, None, Order::Ascending)
         .map(|item| {
@@ -979,7 +997,7 @@ fn get_members(deps: Deps) -> Result<Vec<Member>, ContractError> {
 }
 
 // Read all join proposals from bucket storage.
-fn get_join_proposals(deps: Deps) -> Result<Vec<JoinProposal>, ContractError> {
+fn get_join_proposals(deps: Deps<ProvenanceQuery>) -> Result<Vec<JoinProposal>, ContractError> {
     join_proposals_read(deps.storage)
         .range(None, None, Order::Ascending)
         .map(|item| {
@@ -990,7 +1008,7 @@ fn get_join_proposals(deps: Deps) -> Result<Vec<JoinProposal>, ContractError> {
 }
 
 // Get reserve balances in escrow (swap-able) for all members.
-fn get_balances(deps: Deps) -> Result<Balances, ContractError> {
+fn get_balances(deps: Deps<ProvenanceQuery>) -> Result<Balances, ContractError> {
     let mut balances: Vec<Balance> = Vec::new();
     let querier = ProvenanceQuerier::new(&deps.querier);
     for member in get_members(deps)? {
@@ -1010,7 +1028,12 @@ fn get_balances(deps: Deps) -> Result<Balances, ContractError> {
 }
 
 /// Called when migrating a contract instance to a new code ID.
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+#[entry_point]
+pub fn migrate(
+    _deps: DepsMut<ProvenanceQuery>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> Result<Response, ContractError> {
     // Do nothing
     Ok(Response::default())
 }
@@ -1487,7 +1510,7 @@ mod tests {
                 kyc_attrs: vec![],
             },
         )
-            .unwrap();
+        .unwrap();
 
         // Create join proposal for bank1
         let mut env = mock_env();
@@ -1502,7 +1525,7 @@ mod tests {
                 name: None,
             },
         )
-            .unwrap();
+        .unwrap();
 
         // Vote yes as admin for bank1
         let mut env = mock_env();
@@ -1516,7 +1539,7 @@ mod tests {
                 choice: VoteChoice::Yes,
             },
         )
-            .unwrap();
+        .unwrap();
 
         // Accept membership as bank1
         let mut env = mock_env();
@@ -1527,7 +1550,7 @@ mod tests {
             mock_info("bank1", &[]),
             ExecuteMsg::Accept { mint_amount: None },
         )
-            .unwrap();
+        .unwrap();
 
         // Create join proposal for bank2
         let mut env = mock_env();
@@ -1542,7 +1565,7 @@ mod tests {
                 name: None,
             },
         )
-            .unwrap();
+        .unwrap();
 
         // Try to vote yes as bank1 for the bank2 proposal
         let mut env = mock_env();
@@ -1556,7 +1579,7 @@ mod tests {
                 choice: VoteChoice::No,
             },
         )
-            .unwrap();
+        .unwrap();
 
         let addr = Addr::unchecked("bank2");
         let key: &[u8] = addr.as_bytes();
@@ -1976,7 +1999,7 @@ mod tests {
                 choice: VoteChoice::Yes,
             },
         )
-            .unwrap_err();
+        .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {

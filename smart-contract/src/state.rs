@@ -1,12 +1,12 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::msg::VoteChoice;
 use cosmwasm_std::{Addr, Decimal, Storage, Uint128};
 use cosmwasm_storage::{
     bucket, bucket_read, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
     Singleton,
 };
-use crate::msg::VoteChoice;
 
 pub static CONFIG_KEY: &[u8] = b"config";
 pub static JOIN_PROPOSAL_KEY: &[u8] = b"proposal";

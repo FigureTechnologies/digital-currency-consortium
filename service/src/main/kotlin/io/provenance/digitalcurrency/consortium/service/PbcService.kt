@@ -12,14 +12,14 @@ import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
-import io.provenance.client.PbClient
 import io.provenance.client.grpc.BaseReqSigner
-import io.provenance.client.grpc.extensions.getAccountCoins
-import io.provenance.client.grpc.extensions.getAllAttributes
-import io.provenance.client.grpc.extensions.getMarkerEscrow
-import io.provenance.client.grpc.extensions.getTx
-import io.provenance.client.grpc.extensions.queryWasm
-import io.provenance.client.wallet.WalletSigner
+import io.provenance.client.grpc.PbClient
+import io.provenance.client.protobuf.extensions.getAccountCoins
+import io.provenance.client.protobuf.extensions.getAllAttributes
+import io.provenance.client.protobuf.extensions.getMarkerEscrow
+import io.provenance.client.protobuf.extensions.getTx
+import io.provenance.client.protobuf.extensions.queryWasm
+import io.provenance.client.wallet.fromMnemonic
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -70,10 +70,11 @@ class PbcService(
             serviceProperties.managerKeyHarden -> NetworkType.TESTNET_HARDENED
             else -> NetworkType.TESTNET
         }.let { networkType ->
-            WalletSigner(
+            fromMnemonic(
                 prefix = networkType.prefix,
                 path = networkType.path,
-                mnemonic = serviceProperties.managerKey
+                mnemonic = serviceProperties.managerKey,
+                isMainNet = provenanceProperties.mainNet
             )
         }
     final val managerAddress: String by lazy { managerSigner.address() }
@@ -112,7 +113,7 @@ class PbcService(
             txBody = messages
                 .map { it.toAny() }
                 .toTxBody(timeoutHeight),
-            gasAdjustment = 1.3,
+            gasAdjustment = provenanceProperties.gasAdjustment,
         ).throwIfFailed("Batch broadcast failed")
 
     fun join(name: String, maxSupply: BigInteger) =
@@ -134,7 +135,8 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
         ).throwIfFailed("Join failed")
 
     fun accept() =
@@ -152,7 +154,8 @@ class PbcService(
                 )
                 .build()
                 .toAny()
-                .toTxBody()
+                .toTxBody(),
+            mode = BROADCAST_MODE_BLOCK
         ).throwIfFailed("Accept failed")
 
     fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
@@ -175,7 +178,7 @@ class PbcService(
                 .toAny()
                 .toTxBody(),
             mode = BROADCAST_MODE_BLOCK,
-            gasAdjustment = 1.5
+            gasAdjustment = provenanceProperties.gasAdjustment * 1.1
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 
     fun getMembers(): MemberListResponse =
