@@ -66,7 +66,7 @@ class UsdfController(private val bankService: BankService) {
     @PostMapping(TRANSFER_V1)
     fun transfer(
         @Valid
-        @ApiParam(value = "RedeemBurnRequest")
+        @ApiParam(value = "TransferRequest")
         @RequestBody request: TransferRequest
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, blockchainAddress, amount) = request

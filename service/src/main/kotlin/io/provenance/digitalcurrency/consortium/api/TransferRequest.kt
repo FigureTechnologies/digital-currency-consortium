@@ -14,13 +14,14 @@ import javax.validation.constraints.NotNull
 /**
  * Request to the middleware to transfer coin to a registered bank account or address.
  *
- * @param uuid Unique UUID for this request
- * @param bankAccountUUID The bank account UUID passed to the middleware in the address registration
- * @param amount The amount in USD to mint to the address.
+ * @param uuid Unique UUID for this request.
+ * @param bankAccountUuid The uuid of the bank account that the bank passed to the middleware during the address registration to transfer to.
+ * @param blockchainAddress The blockchain address to transfer to.
+ * @param amount The amount of fiat in USD to transfer to.
  */
 @ApiModel(
     value = "TransferRequest",
-    description = "Request to the middleware to mint coin to the user's address associated with their bank account"
+    description = "Request to the middleware to transfer "
 )
 data class TransferRequest(
 
@@ -34,7 +35,7 @@ data class TransferRequest(
         value = "The uuid of the bank account that the bank passed to the middleware during the address registration to transfer to.",
         required = false
     )
-    val bankAccountUUID: UUID?,
+    val bankAccountUuid: UUID?,
 
     @ApiModelProperty(
         value = "The blockchain address to transfer to.",
@@ -43,7 +44,7 @@ data class TransferRequest(
     val blockchainAddress: String?,
 
     @ApiModelProperty(
-        value = "The amount of fiat in USD to mint to the customer's address.",
+        value = "The amount of fiat in USD to transfer to.",
         required = true,
         allowableValues = "Greater than 0"
     )
@@ -56,10 +57,10 @@ data class TransferRequest(
     @JsonIgnore
     @ApiIgnore
     @AssertTrue(message = "Bank account or blockchain address must be set")
-    fun hasToAddress() = bankAccountUUID != null || blockchainAddress != null
+    fun hasToAddress() = bankAccountUuid != null || blockchainAddress != null
 
     @JsonIgnore
     @ApiIgnore
     @AssertTrue(message = "Only bank account or blockchain address can be set")
-    fun hasOneToAddress() = !(bankAccountUUID != null && blockchainAddress != null)
+    fun hasOneToAddress() = !(bankAccountUuid != null && blockchainAddress != null)
 }
