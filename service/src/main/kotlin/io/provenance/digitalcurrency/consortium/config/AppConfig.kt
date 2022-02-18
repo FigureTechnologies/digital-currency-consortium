@@ -82,7 +82,7 @@ class AppConfig : WebMvcConfigurer {
 
     @Bean
     fun rpcClient(mapper: ObjectMapper, eventStreamProperties: EventStreamProperties): RpcClient =
-        RpcClient.Builder(eventStreamProperties.rpcUri, mapper).build()
+        RpcClient.Builder(eventStreamProperties.rpcUri, mapper, eventStreamProperties.logLevel).build()
 
     @Bean
     fun pbClient(provenanceProperties: ProvenanceProperties): PbClient =
