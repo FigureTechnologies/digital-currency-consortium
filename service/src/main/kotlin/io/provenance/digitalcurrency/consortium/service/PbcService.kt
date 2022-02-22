@@ -86,6 +86,9 @@ class PbcService(
 
     fun getMarkerEscrowBalance(escrowDenom: String = reserveDenom) =
         // id is marker denom, denom is escrow denom
+        getMarkerEscrowBalance(reserveDenom, escrowDenom)
+
+    fun getMarkerEscrowBalance(reserveDenom: String, escrowDenom: String) =
         pbClient.markerClient.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
