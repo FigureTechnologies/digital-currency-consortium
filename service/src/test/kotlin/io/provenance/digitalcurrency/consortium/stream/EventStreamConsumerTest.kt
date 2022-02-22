@@ -106,7 +106,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             bankDenom = bankClientProperties.denom
         )
 
-        private val deposit = getTransferEvent(
+        private val redeem = getTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
             denom = serviceProperties.dccDenom
         )
@@ -139,7 +139,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn.copy(memberId = "someotherbank")),
                 markerTransfers = listOf(transfer),
             )
@@ -148,7 +148,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         }
 
         @Test
-        fun `coinMovement - mints, deposits, redeem+burns and transfers for bank parties are persisted`() {
+        fun `coinMovement - mints, redeems, redeem+burns and transfers for bank parties are persisted`() {
             val blockTime = OffsetDateTime.now()
             val blockResponse = BlockResponse(
                 block = Block(
@@ -166,7 +166,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn),
                 markerTransfers = listOf(transfer),
             )
@@ -193,7 +193,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn),
                 markerTransfers = listOf(transfer),
             )
@@ -203,21 +203,21 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn),
                 markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn),
                 markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                transfers = listOf(deposit),
+                transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn),
                 markerTransfers = listOf(transfer),
             )

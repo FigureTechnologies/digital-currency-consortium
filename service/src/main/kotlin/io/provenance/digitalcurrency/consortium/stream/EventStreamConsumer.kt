@@ -122,7 +122,7 @@ class EventStreamConsumer(
         val toAddressBankUuid: UUID,
     )
 
-    data class DepositWrapper(
+    data class RedeemWrapper(
         val transfer: Transfer,
         val fromAddressBankUuid: UUID,
     )
@@ -173,10 +173,10 @@ class EventStreamConsumer(
                 }
             }
 
-        // SC Transfer events denote the "off ramp" for a bank user to deposit fiat (redeem coin for fiat) when the recipient is the bank address
-        val filteredDeposits = transfers.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
+        // SC Transfer events denote the "off ramp" for a bank user to redeem coin for fiat when the recipient is the bank address
+        val filteredRedeems = transfers.filter { it.sender.isNotEmpty() && it.recipient.isNotEmpty() }
             .mapNotNull { event ->
-                log.debug("Deposit - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
+                log.debug("Redeem - tx: ${event.txHash} sender: ${event.sender} recipient: ${event.recipient} amount: ${event.amount} denom: ${event.denom}")
 
                 val fromAddressBankUuid = event.sender.addressToBankUuid()
                 // val fromAddressBankUuid =
@@ -185,7 +185,7 @@ class EventStreamConsumer(
                 // persist a record of this transaction if either the from or the to address has this bank's attribute
                 if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
                     // TODO - handle bank settlement deposits
-                    DepositWrapper(event, fromAddressBankUuid)
+                    RedeemWrapper(event, fromAddressBankUuid)
                 } else {
                     null
                 }
@@ -242,7 +242,7 @@ class EventStreamConsumer(
                 )
             }
 
-            filteredDeposits.forEach { wrapper ->
+            filteredRedeems.forEach { wrapper ->
                 CoinMovementRecord.insert(
                     txHash = wrapper.transfer.txHash.uniqueHash(index++),
                     fromAddress = wrapper.transfer.sender,
