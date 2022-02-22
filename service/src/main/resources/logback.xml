@@ -5,6 +5,8 @@
     </encoder>
   </appender>
 
+  <logger name="feign.Logger" level="DEBUG" />
+
   <logger name="Exposed" level="INFO">
     <appender-ref ref="STDOUT" />
   </logger>

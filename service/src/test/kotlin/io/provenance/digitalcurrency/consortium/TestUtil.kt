@@ -3,6 +3,7 @@ package io.provenance.digitalcurrency.consortium
 import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
 import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
+import io.provenance.digitalcurrency.consortium.stream.RedeemBurn
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
 import kotlin.random.Random
@@ -32,6 +33,16 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         recipient = toAddress,
         height = 50,
         txHash = txHash
+    )
+
+fun getRedeemBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER_ADDRESS, denom: String, reserveDenom: String) =
+    RedeemBurn(
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = denom,
+        memberId = memberId,
+        reserveDenom = reserveDenom,
+        height = 50,
+        txHash = txHash,
     )
 
 fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
