@@ -2,9 +2,11 @@ package io.provenance.digitalcurrency.consortium.pbclient
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import feign.Feign
+import feign.Logger.Level
 import feign.RequestLine
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
+import feign.slf4j.Slf4jLogger
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.AbciInfoMetaResponse
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.AbciInfoResponse
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockRequest
@@ -31,11 +33,14 @@ interface RpcClient {
 
     class Builder(
         private val url: String,
-        private val objectMapper: ObjectMapper
+        private val objectMapper: ObjectMapper,
+        private val logLevel: String
     ) {
         fun build(): RpcClient = Feign.builder()
             .encoder(JacksonEncoder(objectMapper))
             .decoder(JacksonDecoder(objectMapper))
+            .logger(Slf4jLogger())
+            .logLevel(Level.valueOf(logLevel.trim().uppercase()))
             .target(RpcClient::class.java, url)
     }
 }
