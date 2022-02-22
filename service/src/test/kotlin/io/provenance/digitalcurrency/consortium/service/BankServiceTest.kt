@@ -303,6 +303,15 @@ class BankServiceTest : BaseIntegrationTest() {
                 MemberListResponse(
                     members = listOf(
                         MemberResponse(
+                            id = TEST_MEMBER_ADDRESS,
+                            supply = 5000,
+                            maxSupply = 10000000,
+                            denom = "bank.omni.dcc",
+                            joined = 11000,
+                            weight = 10000000,
+                            name = "Bank"
+                        ),
+                        MemberResponse(
                             id = TEST_OTHER_MEMBER_ADDRESS,
                             supply = 10000,
                             maxSupply = 10000000,
