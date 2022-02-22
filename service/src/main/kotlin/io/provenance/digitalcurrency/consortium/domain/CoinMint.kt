@@ -8,7 +8,8 @@ import java.util.UUID
 typealias CMT = CoinMintTable
 
 object CoinMintTable : BaseCoinRequestTable(name = "coin_mint") {
-    val addressRegistration = reference("address_registration_uuid", AddressRegistrationTable)
+    val address = text("address")
+    val addressRegistration = optReference("address_registration_uuid", AddressRegistrationTable)
 }
 
 open class CoinMintEntityClass : BaseCoinRequestEntityClass<CMT, CoinMintRecord>(CMT) {
@@ -16,8 +17,16 @@ open class CoinMintEntityClass : BaseCoinRequestEntityClass<CMT, CoinMintRecord>
         uuid: UUID,
         addressRegistration: AddressRegistrationRecord,
         fiatAmount: BigDecimal
-    ) = super.insert(uuid, fiatAmount).apply {
+    ) = insert(uuid, addressRegistration.address, fiatAmount).apply {
         this.addressRegistration = addressRegistration
+    }
+
+    fun insert(
+        uuid: UUID,
+        address: String,
+        fiatAmount: BigDecimal
+    ) = super.insert(uuid, fiatAmount).apply {
+        this.address = address
     }
 
     fun findTxnCompleted() = find { CMT.status eq TxStatus.TXN_COMPLETE }
@@ -28,5 +37,6 @@ open class CoinMintEntityClass : BaseCoinRequestEntityClass<CMT, CoinMintRecord>
 class CoinMintRecord(uuid: EntityID<UUID>) : BaseCoinRequestRecord(CMT, uuid) {
     companion object : CoinMintEntityClass()
 
-    var addressRegistration by AddressRegistrationRecord referencedOn CMT.addressRegistration
+    var address by CMT.address
+    var addressRegistration by AddressRegistrationRecord optionalReferencedOn CMT.addressRegistration
 }

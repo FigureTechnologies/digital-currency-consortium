@@ -2,6 +2,7 @@ package io.provenance.digitalcurrency.consortium.service
 
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
+import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
@@ -86,6 +87,27 @@ class BankServiceTest : BaseIntegrationTest() {
 
     @Nested
     inner class MintCoin {
+
+        @Autowired
+        lateinit var pbcServiceMock: PbcService
+
+        @Autowired
+        private lateinit var bankClientProperties: BankClientProperties
+
+        @Autowired
+        private lateinit var serviceProperties: ServiceProperties
+
+        private lateinit var bankService: BankService
+
+        @BeforeEach
+        fun before() {
+            reset(pbcServiceMock)
+
+            whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
+
+            bankService = BankService(bankClientProperties, pbcServiceMock, serviceProperties)
+        }
+
         @Test
         fun `minting coin with accurate registration stores a coin mint record`() {
             val uuid = UUID.randomUUID()
@@ -98,7 +120,21 @@ class BankServiceTest : BaseIntegrationTest() {
             transaction {
                 val coinMint = CoinMintRecord.findById(uuid)
                 Assertions.assertNotNull(coinMint, "Coin mint exists")
-                Assertions.assertEquals(registration.id.value, coinMint!!.addressRegistration.id.value, "Registration is the same")
+                Assertions.assertEquals(TEST_ADDRESS, registration.address, "Coin mint address is registered address")
+                Assertions.assertEquals(registration.id.value, coinMint!!.addressRegistration!!.id.value, "Registration is the same")
+            }
+        }
+
+        @Test
+        fun `minting coin with no registration stores a coin mint record for member bank address`() {
+            val uuid = UUID.randomUUID()
+            bankService.mintCoin(uuid, null, BigDecimal.ONE)
+
+            transaction {
+                val coinMint = CoinMintRecord.findById(uuid)
+                Assertions.assertNotNull(coinMint, "Coin mint exists")
+                Assertions.assertNull(coinMint!!.addressRegistration, "No address registration")
+                Assertions.assertEquals(TEST_MEMBER_ADDRESS, coinMint.address, "Coin mint address is the member address")
             }
         }
 
@@ -114,9 +150,24 @@ class BankServiceTest : BaseIntegrationTest() {
         }
 
         @Test
+        fun `minting coin with deleted registration will exception`() {
+            val uuid = UUID.randomUUID()
+            val registration = transaction {
+                insertRegisteredAddress(uuid, TEST_ADDRESS, status = TxStatus.TXN_COMPLETE, txHash = randomTxHash())
+                    .also { it.deleted = insertDeregisteredAddress(it).created }
+            }
+
+            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
+                bankService.mintCoin(uuid, registration.bankAccountUuid, BigDecimal.ONE)
+            }
+
+            Assertions.assertTrue(exception.message!!.contains("Cannot mint to removed bank account"), "Should error with deleted registration")
+        }
+
+        @Test
         fun `minting coin with existing uuid will exception`() {
             val (uuid, bankAccountUuid) = transaction {
-                insertCoinMint(UUID.randomUUID(), TEST_ADDRESS).let { it.id.value to it.addressRegistration.id.value }
+                insertCoinMint(UUID.randomUUID(), TEST_ADDRESS).let { it.id.value to it.addressRegistration!!.id.value }
             }
 
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
@@ -145,7 +196,7 @@ class BankServiceTest : BaseIntegrationTest() {
         fun before() {
             reset(pbcServiceMock)
 
-            whenever(pbcServiceMock.managerAddress).thenReturn(TEST_ADDRESS)
+            whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
             whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("50000") // $500
             whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("50000") // $500
 

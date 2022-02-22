@@ -53,22 +53,22 @@ class BankService(
         }
     }
 
-    fun mintCoin(uuid: UUID, bankAccountUuid: UUID, amount: BigDecimal) =
+    fun mintCoin(uuid: UUID, bankAccountUuid: UUID?, amount: BigDecimal) =
         transaction {
             log.info("Minting coin for $uuid to bank account $bankAccountUuid for amount $amount")
             check(CoinMintRecord.findById(uuid) == null) {
                 "Coin mint request for uuid $uuid already exists for bank account $bankAccountUuid and $amount"
             }
 
-            val registration = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
-            checkNotNull(registration) { "No registration found for bank account $bankAccountUuid for coin mint $uuid" }
-            check(registration.isActive()) { "Registration for bank account $bankAccountUuid is not active" }
+            if (bankAccountUuid == null) {
+                CoinMintRecord.insert(uuid = uuid, address = pbcService.managerAddress, fiatAmount = amount)
+            } else {
+                val registration = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
+                checkNotNull(registration) { "No registration found for bank account $bankAccountUuid for coin mint $uuid" }
+                check(registration.isActive()) { "Cannot mint to removed bank account $bankAccountUuid" }
 
-            CoinMintRecord.insert(
-                uuid = uuid,
-                addressRegistration = registration,
-                fiatAmount = amount
-            )
+                CoinMintRecord.insert(uuid = uuid, addressRegistration = registration, fiatAmount = amount)
+            }
         }
 
     fun redeemBurnCoin(uuid: UUID, amount: BigDecimal) =
