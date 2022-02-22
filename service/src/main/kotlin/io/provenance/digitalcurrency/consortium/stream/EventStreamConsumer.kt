@@ -119,12 +119,12 @@ class EventStreamConsumer(
 
     data class MintWrapper(
         val mint: Mint,
-        val toAddressBankUuid: UUID,
+        val toAddressBankUuid: UUID?,
     )
 
     data class RedeemWrapper(
         val transfer: Transfer,
-        val fromAddressBankUuid: UUID,
+        val fromAddressBankUuid: UUID?,
     )
 
     data class RedeemBurnWrapper(
@@ -164,9 +164,8 @@ class EventStreamConsumer(
                 // val toAddressBankUuid =
                 //     pbcService.getAttributeByTagName(event.withdrawAddress, bankClientProperties.kycTagName)?.bankUuid()
 
-                // persist a record of this transaction if the to address has this bank's attribute, the from address will be the SC address
-                if (toAddressBankUuid != null) {
-                    // TODO - handle mint directly to member bank
+                // persist a record of this transaction if it was created by this bank's address
+                if (event.memberId == pbcService.managerAddress) {
                     MintWrapper(event, toAddressBankUuid)
                 } else {
                     null
@@ -182,12 +181,14 @@ class EventStreamConsumer(
                 // val fromAddressBankUuid =
                 //     pbcService.getAttributeByTagName(event.sender, bankClientProperties.kycTagName)?.bankUuid()
 
-                // persist a record of this transaction if either the from or the to address has this bank's attribute
-                if (event.recipient == pbcService.managerAddress && fromAddressBankUuid != null) {
-                    // TODO - handle bank settlement deposits
-                    RedeemWrapper(event, fromAddressBankUuid)
-                } else {
-                    null
+                when {
+                    // ignore redeem transfers not sent to this bank's address
+                    event.recipient != pbcService.managerAddress -> null
+                    // persist a record of this transaction if the from has this bank's attribute
+                    fromAddressBankUuid != null -> RedeemWrapper(event, fromAddressBankUuid)
+                    // persist a record of this transaction if the from is another member bank
+                    pbcService.getMembers().members.any { it.id == event.sender } -> RedeemWrapper(event, null)
+                    else -> null
                 }
             }
 
@@ -216,11 +217,14 @@ class EventStreamConsumer(
                 // val toAddressBankUuid =
                 //     pbcService.getAttributeByTagName(event.toAddress, bankClientProperties.kycTagName)?.bankUuid()
 
-                // persist a record of this transaction if either the from or the to address has this bank's attribute
-                if (toAddressBankUuid != null || fromAddressBankUuid != null) {
-                    TransferWrapper(event, toAddressBankUuid, fromAddressBankUuid)
-                } else {
-                    null
+                when {
+                    // persist a record of this transaction if either the from or the to address has this bank's attribute
+                    toAddressBankUuid != null || fromAddressBankUuid != null ->
+                        TransferWrapper(event, toAddressBankUuid, fromAddressBankUuid)
+                    // persist a record of this transaction if the from or the to is this bank's address
+                    event.fromAddress == pbcService.managerAddress || event.toAddress == pbcService.managerAddress ->
+                        TransferWrapper(event, null, null)
+                    else -> null
                 }
             }
 

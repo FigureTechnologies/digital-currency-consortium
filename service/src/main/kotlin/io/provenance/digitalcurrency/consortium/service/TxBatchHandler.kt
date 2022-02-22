@@ -9,6 +9,7 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.extension.getAddAttributeMessage
@@ -55,7 +56,13 @@ class TxBatchHandler(
                             }
                     }
                     TxRequestType.REDEEM_BURN -> transaction {
+                        // TODO - add extra safety for insufficient coin
                         CoinRedeemBurnRecord.findById(id)!!
+                            .let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
+                    }
+                    TxRequestType.TRANSFER -> transaction {
+                        // TODO - add extra safety for insufficient coin
+                        CoinTransferRecord.findById(id)!!
                             .let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
                     }
                     TxRequestType.TAG -> transaction {

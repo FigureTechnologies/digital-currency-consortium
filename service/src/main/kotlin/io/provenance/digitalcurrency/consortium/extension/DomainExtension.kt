@@ -8,10 +8,12 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.messages.AmountRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.MintRequest
+import io.provenance.digitalcurrency.consortium.messages.TransferRequest
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -59,6 +61,14 @@ fun CoinRedeemBurnRecord.getExecuteContractMessage() =
     ExecuteRequest(
         redeemAndBurn = AmountRequest(
             amount = coinAmount.toString(),
+        )
+    )
+
+fun CoinTransferRecord.getExecuteContractMessage() =
+    ExecuteRequest(
+        transfer = TransferRequest(
+            recipient = address,
+            amount = coinAmount.toString()
         )
     )
 

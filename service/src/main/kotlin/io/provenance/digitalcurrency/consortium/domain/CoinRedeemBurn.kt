@@ -12,6 +12,10 @@ open class CoinRedeemBurnEntityClass : BaseCoinRequestEntityClass<CRBT, CoinRede
 
     fun findPending() = find { CRBT.status inList listOf(TxStatus.PENDING, TxStatus.QUEUED) }
 
+    fun findPendingAmount() = findPending()
+        .fold(0L) { acc, record -> acc + record.coinAmount }
+        .toBigInteger()
+
     fun findTxnCompleted() = find { CRBT.status eq TxStatus.TXN_COMPLETE }
 
     fun findTxnCompletedForUpdate(uuid: UUID) = find { (CRBT.id eq uuid) and (CRBT.status eq TxStatus.TXN_COMPLETE) }.forUpdate()

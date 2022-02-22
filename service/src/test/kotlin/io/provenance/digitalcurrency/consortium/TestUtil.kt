@@ -10,6 +10,7 @@ import kotlin.random.Random
 
 const val TEST_ADDRESS = "test-address"
 const val TEST_MEMBER_ADDRESS = "test-member-address"
+const val TEST_OTHER_MEMBER_ADDRESS = "test-other-member-address"
 val DEFAULT_AMOUNT = BigInteger("1000")
 
 private val charPool: List<Char> = ('a'..'z') + ('0'..'9')

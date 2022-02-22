@@ -11,10 +11,12 @@ const val ACCEPT = "/accepts"
 const val BALANCE = "/balances"
 const val GAS = "/gas"
 const val GRANT = "/grants"
+const val TRANSFER = "/transfers"
 
 const val REGISTRATION_V1 = "$API_V1$REGISTRATION"
 const val MINT_V1 = "$API_V1$MINT"
 const val REDEEM_BURN_V1 = "$API_V1$REDEEM_BURN"
+const val TRANSFER_V1 = "$API_V1$TRANSFER"
 
 const val MEMBER_V1 = "$API_V1$MEMBER"
 const val ACCEPTS_V1 = "$API_V1$PROPOSAL$ACCEPT"

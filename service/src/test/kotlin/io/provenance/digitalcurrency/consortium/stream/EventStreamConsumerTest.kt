@@ -6,6 +6,7 @@ import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
+import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
@@ -27,6 +28,8 @@ import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
 import io.provenance.digitalcurrency.consortium.getRedeemBurnEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
+import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
+import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockResponse
@@ -84,6 +87,30 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         reset(rpcClientMock)
 
         whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
+        whenever(pbcServiceMock.getMembers()).thenReturn(
+            MemberListResponse(
+                members = listOf(
+                    MemberResponse(
+                        id = TEST_MEMBER_ADDRESS,
+                        supply = 5000,
+                        maxSupply = 10000000,
+                        denom = "bank.omni.dcc",
+                        joined = 11000,
+                        weight = 10000000,
+                        name = "Bank"
+                    ),
+                    MemberResponse(
+                        id = TEST_OTHER_MEMBER_ADDRESS,
+                        supply = 10000,
+                        maxSupply = 10000000,
+                        denom = "otherbank.omni.dcc",
+                        joined = 12345,
+                        weight = 10000000,
+                        name = "Other Bank"
+                    )
+                )
+            )
+        )
     }
 
     @BeforeAll
@@ -123,7 +150,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         )
 
         @Test
-        fun `coinMovement - events without bank parties are ignored`() {
+        fun `coinMovement - events without bank parties or member id are ignored`() {
             val blockTime = OffsetDateTime.now()
             val blockResponse = BlockResponse(
                 block = Block(
@@ -138,10 +165,10 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
+                mints = listOf(mint.copy(memberId = "someotherbank")),
                 transfers = listOf(redeem),
                 redeemBurns = listOf(redeemBurn.copy(memberId = "someotherbank")),
-                markerTransfers = listOf(transfer),
+                markerTransfers = listOf(transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS, toAddress = "someotherbank")),
             )
 
             Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
@@ -165,13 +192,13 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
-                transfers = listOf(redeem),
+                mints = listOf(mint, mint.copy(withdrawAddress = TEST_MEMBER_ADDRESS)),
+                transfers = listOf(redeem, redeem.copy(sender = TEST_OTHER_MEMBER_ADDRESS)),
                 redeemBurns = listOf(redeemBurn),
-                markerTransfers = listOf(transfer),
+                markerTransfers = listOf(transfer, transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS)),
             )
 
-            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(7, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
