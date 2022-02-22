@@ -57,6 +57,7 @@ class EventStreamProperties(
     val rpcUri: String,
     val epoch: Long,
     val coinMovementEpoch: Long,
+    val logLevel: String,
 )
 
 @ConstructorBinding

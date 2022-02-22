@@ -6,6 +6,7 @@ import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
+import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
@@ -25,7 +26,10 @@ import io.provenance.digitalcurrency.consortium.frameworks.toOutput
 import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
 import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
+import io.provenance.digitalcurrency.consortium.getRedeemBurnEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
+import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
+import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockResponse
@@ -83,6 +87,30 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         reset(rpcClientMock)
 
         whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
+        whenever(pbcServiceMock.getMembers()).thenReturn(
+            MemberListResponse(
+                members = listOf(
+                    MemberResponse(
+                        id = TEST_MEMBER_ADDRESS,
+                        supply = 5000,
+                        maxSupply = 10000000,
+                        denom = "bank.omni.dcc",
+                        joined = 11000,
+                        weight = 10000000,
+                        name = "Bank"
+                    ),
+                    MemberResponse(
+                        id = TEST_OTHER_MEMBER_ADDRESS,
+                        supply = 10000,
+                        maxSupply = 10000000,
+                        denom = "otherbank.omni.dcc",
+                        joined = 12345,
+                        weight = 10000000,
+                        name = "Other Bank"
+                    )
+                )
+            )
+        )
     }
 
     @BeforeAll
@@ -105,9 +133,15 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             bankDenom = bankClientProperties.denom
         )
 
-        private val burn = getTransferEvent(
+        private val redeem = getTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
             denom = serviceProperties.dccDenom
+        )
+
+        private val redeemBurn = getRedeemBurnEvent(
+            memberId = TEST_MEMBER_ADDRESS,
+            denom = serviceProperties.dccDenom,
+            reserveDenom = bankClientProperties.denom
         )
 
         private val transfer = getMarkerTransferEvent(
@@ -116,7 +150,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         )
 
         @Test
-        fun `coinMovement - events without bank parties are ignored`() {
+        fun `coinMovement - events without bank parties or member id are ignored`() {
             val blockTime = OffsetDateTime.now()
             val blockResponse = BlockResponse(
                 block = Block(
@@ -131,16 +165,17 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                mints = listOf(mint.copy(memberId = "someotherbank")),
+                transfers = listOf(redeem),
+                redeemBurns = listOf(redeemBurn.copy(memberId = "someotherbank")),
+                markerTransfers = listOf(transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS, toAddress = "someotherbank")),
             )
 
             Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
-        fun `coinMovement - mints, burns, and transfers for bank parties are persisted`() {
+        fun `coinMovement - mints, redeems, redeem+burns and transfers for bank parties are persisted`() {
             val blockTime = OffsetDateTime.now()
             val blockResponse = BlockResponse(
                 block = Block(
@@ -157,12 +192,13 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
 
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                mints = listOf(mint, mint.copy(withdrawAddress = TEST_MEMBER_ADDRESS)),
+                transfers = listOf(redeem, redeem.copy(sender = TEST_OTHER_MEMBER_ADDRESS)),
+                redeemBurns = listOf(redeemBurn),
+                markerTransfers = listOf(transfer, transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS)),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(7, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
@@ -184,32 +220,36 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                transfers = listOf(redeem),
+                redeemBurns = listOf(redeemBurn),
+                markerTransfers = listOf(transfer),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
 
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                transfers = listOf(redeem),
+                redeemBurns = listOf(redeemBurn),
+                markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                transfers = listOf(redeem),
+                redeemBurns = listOf(redeemBurn),
+                markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                transfers = listOf(redeem),
+                redeemBurns = listOf(redeemBurn),
+                markerTransfers = listOf(transfer),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
@@ -237,14 +277,22 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                         bankDenom = bankClientProperties.denom
                     )
                 ),
-                burns = listOf(
+                transfers = listOf(
                     getTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
                         denom = serviceProperties.dccDenom
                     )
                 ),
-                transfers = listOf(
+                redeemBurns = listOf(
+                    getRedeemBurnEvent(
+                        txHash = "tx1",
+                        memberId = TEST_MEMBER_ADDRESS,
+                        denom = serviceProperties.dccDenom,
+                        reserveDenom = bankClientProperties.denom
+                    )
+                ),
+                markerTransfers = listOf(
                     getMarkerTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
@@ -253,9 +301,9 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 ),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
             Assertions.assertEquals(
-                listOf("tx1-0", "tx1-1", "tx1-2"),
+                listOf("tx1-0", "tx1-1", "tx1-2", "tx1-3"),
                 transaction { CoinMovementRecord.all().toList() }.map { it.txHash() }.sorted(),
             )
         }
