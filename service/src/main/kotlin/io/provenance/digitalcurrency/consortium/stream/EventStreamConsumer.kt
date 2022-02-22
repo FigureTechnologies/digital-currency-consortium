@@ -7,11 +7,11 @@ import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
-import io.provenance.digitalcurrency.consortium.domain.DEPOSIT
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
+import io.provenance.digitalcurrency.consortium.domain.REDEEM
 import io.provenance.digitalcurrency.consortium.domain.REDEEM_BURN
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
@@ -253,7 +253,7 @@ class EventStreamConsumer(
                     blockTime = OffsetDateTime.parse(block.header.time),
                     amount = wrapper.transfer.amount,
                     denom = wrapper.transfer.denom,
-                    type = DEPOSIT,
+                    type = REDEEM,
                 )
             }
 

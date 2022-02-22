@@ -12,7 +12,7 @@ import java.util.UUID
 const val MINT = "MINT"
 const val TRANSFER = "TRANSFER"
 const val REDEEM_BURN = "REDEEM_BURN"
-const val DEPOSIT = "DEPOSIT"
+const val REDEEM = "REDEEM"
 
 abstract class StringEntityClass<out E : Entity<String>>(table: IdTable<String>, entityType: Class<E>? = null) : EntityClass<String, E>(table, entityType)
 
