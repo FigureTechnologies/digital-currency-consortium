@@ -3,18 +3,24 @@ package io.provenance.digitalcurrency.consortium.web
 import cosmos.base.v1beta1.CoinOuterClass.Coin
 import io.provenance.digitalcurrency.consortium.api.GrantRequest
 import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
+import io.provenance.digitalcurrency.consortium.api.MemberResponse
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
+import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
+import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
+import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
 import javax.validation.Valid
 
 @Validated
@@ -27,9 +33,32 @@ import javax.validation.Valid
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
-class GovernanceController(private val pbcService: PbcService) {
+class GovernanceController(private val rpcClient: RpcClient, private val pbcService: PbcService) {
 
     private val log = logger()
+
+    @GetMapping(MEMBER_V1, produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ApiOperation(value = "Get member banks of the consortium")
+    fun getMembers(): ResponseEntity<List<MemberResponse>> {
+        log.info("Retrieving members")
+
+        return pbcService.getMembers()
+            .members
+            .map {
+                MemberResponse(
+                    id = it.id,
+                    name = it.name,
+                    supply = it.supply.toUSDAmount().toPlainString(),
+                    maxSupply = it.maxSupply.toUSDAmount().toPlainString(),
+                    escrowedSupply = pbcService.getMarkerEscrowBalance(it.denom, it.denom).toUSDAmount().toPlainString(),
+                    denom = it.denom,
+                    joined = OffsetDateTime.parse(rpcClient.fetchBlock(it.joined).block.header.time),
+                    weight = it.weight
+                )
+            }
+            .sortedBy { it.joined }
+            .let { ResponseEntity.ok(it) }
+    }
 
     @PostMapping(MEMBER_V1)
     @ApiOperation(value = "Proposal to join the consortium as a member bank")

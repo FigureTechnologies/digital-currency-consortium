@@ -144,6 +144,36 @@
       }
     },
     "/digital-currency-consortium/api/v1/members": {
+      "get": {
+        "tags": [
+          "Governance API"
+        ],
+        "summary": "Get member banks of the consortium",
+        "operationId": "getMembersUsingGET",
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/MemberResponse"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
       "post": {
         "tags": [
           "Governance API"
@@ -414,6 +444,54 @@
           }
         }
       }
+    },
+    "/digital-currency-consortium/api/v1/transfers": {
+      "post": {
+        "tags": [
+          "USDF API"
+        ],
+        "summary": "transfer",
+        "operationId": "transferUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "TransferRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TransferRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
     }
   },
   "definitions": {
@@ -479,11 +557,61 @@
       },
       "title": "JoinConsortiumRequest"
     },
+    "MemberResponse": {
+      "type": "object",
+      "required": [
+        "denom",
+        "escrowedSupply",
+        "id",
+        "joined",
+        "maxSupply",
+        "name",
+        "supply",
+        "weight"
+      ],
+      "properties": {
+        "denom": {
+          "type": "string",
+          "description": "A member bank reserve token denomination."
+        },
+        "escrowedSupply": {
+          "type": "string",
+          "description": "A member bank's fiat available in USD."
+        },
+        "id": {
+          "type": "string",
+          "description": "A member bank address and identifier."
+        },
+        "joined": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp member bank joined consortium."
+        },
+        "maxSupply": {
+          "type": "string",
+          "description": "A member bank maximum bank supply mintable in USD."
+        },
+        "name": {
+          "type": "string",
+          "description": "A member bank name."
+        },
+        "supply": {
+          "type": "string",
+          "description": "A member bank supply of minted reserve token in USD."
+        },
+        "weight": {
+          "type": "integer",
+          "format": "int64",
+          "description": "A member bank's weight for member voting."
+        }
+      },
+      "title": "MemberResponse",
+      "description": "Response for member bank details."
+    },
     "MintCoinRequest": {
       "type": "object",
       "required": [
         "amount",
-        "bankAccountUUID",
         "uuid"
       ],
       "properties": {
@@ -496,7 +624,7 @@
         "bankAccountUUID": {
           "type": "string",
           "format": "uuid",
-          "description": "The uuid of the bank account that the bank passed to the middleware during the address registration."
+          "description": "\n            The uuid of the bank account that the bank passed to the middleware during the address registration. \n            If not specified, will mint directly to member bank address.\n        "
         },
         "uuid": {
           "type": "string",
@@ -548,6 +676,37 @@
       },
       "title": "RegisterAddressRequest",
       "description": "Register a blockchain address associated with an existing bank account. This address will be used for minting/burning coin."
+    },
+    "TransferRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "uuid"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount of fiat in USD to transfer to.",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "bankAccountUuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The uuid of the bank account that the bank passed to the middleware during the address registration to transfer to."
+        },
+        "blockchainAddress": {
+          "type": "string",
+          "description": "The blockchain address to transfer to."
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "A unique uuid for this request."
+        }
+      },
+      "title": "TransferRequest",
+      "description": "Request to the middleware to transfer "
     }
   },
   "basePath": "/digital-currency-consortium"

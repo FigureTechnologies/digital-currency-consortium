@@ -22,6 +22,9 @@ import java.math.RoundingMode
 fun BigInteger.toUSDAmount(): BigDecimal =
     this.toBigDecimal().divide(100.toBigDecimal(), 2, RoundingMode.UNNECESSARY)
 
+fun Long.toUSDAmount(): BigDecimal = toBigInteger().toUSDAmount()
+fun String.toUSDAmount(): BigDecimal = toBigInteger().toUSDAmount()
+
 // convert USD amount to coins (100 coins == $1.00 USD)
 fun BigDecimal.toCoinAmount(): BigInteger =
     (this * 100.toBigDecimal()).toBigInteger()
