@@ -32,18 +32,20 @@ services:
       - EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657
       - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
       - EVENT_STREAM_EPOCH=0
-      # the mnemonic for your bank key
-      - MANAGER_KEY=TODO
-      # the url of your bank middleware
-      - BANK_URI=TODO
-      # the name that you bound for your kyc tage
-      - KYC_TAG_NAME=TODO
-      # the address of the stored/initiated smart contract
-      - CONTRACT_ADDRESS=TODO
-      # the name of the digital currency denom
-      - DCC_DENOM=TODO
-      # your desired bank denom
-      - BANK_DENOM=TODO
+      # TODO the mnemonic for your bank key
+      - MANAGER_KEY=pond rebuild kick kitten taxi region burst people sadness man news young evil lemon decrease vault always daring dignity either van mandate celery taste
+      - MANAGER_KEY_HARDEN=false
+      # TODO the url of your bank middleware
+      - BANK_URI=http://host.docker.internal:8888/service-omnibus-ops
+      - BANK_CONTEXT=/bank
+      # TODO the name that you bound for your kyc tag
+      - KYC_TAG_NAME=bank3.kyc.pb
+      # TODO the address of the stored/initiated smart contract
+      - CONTRACT_ADDRESS=tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8
+      # TODO the name of the digital currency denom
+      - DCC_DENOM=usdf.local
+      # TODO your desired bank denom
+      - BANK_DENOM=bank3.coin
     depends_on:
       - digital-currency-consortium-postgres
     links:
