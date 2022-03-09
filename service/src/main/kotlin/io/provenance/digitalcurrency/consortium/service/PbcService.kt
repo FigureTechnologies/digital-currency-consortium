@@ -52,8 +52,8 @@ class PbcService(
     ) {
         TESTNET_HARDENED("tp", "m/44'/1'/0'/0/0'"),
         TESTNET("tp", "m/44'/1'/0'/0/0"),
-        MAINNET_HARDENED("pb", "m/505'/1'/0'/0/0'"),
-        MAINNET("pb", "m/505'/1'/0'/0/0")
+        MAINNET_HARDENED("pb", "m/44'/505'/0'/0/0'"),
+        MAINNET("pb", "m/44'/505'/0'/0/0")
     }
 
     private val managerSigner =
