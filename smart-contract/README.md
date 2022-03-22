@@ -12,11 +12,11 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.7.5, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.8.0, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.7.5
+cd provenance && git checkout v1.8.0
 make install
 make localnet-start
 ```
@@ -266,7 +266,7 @@ provenanced tx wasm store dcc.wasm \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 1.4 \
     --broadcast-mode block \
     --yes \
     --testnet -o json | jq
