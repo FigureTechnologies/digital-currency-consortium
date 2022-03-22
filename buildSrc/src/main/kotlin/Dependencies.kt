@@ -29,7 +29,7 @@ object Versions {
     const val Grpc = "1.39.0"
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"
-    const val PbcProto = "1.8.0-rc7"
+    const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
 
     const val BouncyCastle = "1.63"
