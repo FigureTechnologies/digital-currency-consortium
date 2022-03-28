@@ -8,6 +8,7 @@ import com.tinder.scarlet.lifecycle.LifecycleRegistry
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.newFixedThreadPool
 import io.provenance.digitalcurrency.consortium.extension.removeShutdownHook
+import io.provenance.digitalcurrency.consortium.extension.retry
 import io.provenance.digitalcurrency.consortium.extension.shutdownHook
 import io.provenance.digitalcurrency.consortium.extension.threadedMap
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
@@ -32,8 +33,8 @@ class RpcEventStream(
     private val rpcClient: RpcClient
 ) {
     companion object {
-        private const val HISTORY_BATCH_SIZE = 10
-        private val executor = newFixedThreadPool(HISTORY_BATCH_SIZE, "event-stream-%d")
+        private const val HISTORY_BATCH_SIZE = 5
+        private val executor = newFixedThreadPool(HISTORY_BATCH_SIZE * 2, "event-stream-%d")
     }
 
     private val log = logger()
@@ -103,7 +104,7 @@ class RpcEventStream(
                     if (end > lastBlockHeight) {
                         end = lastBlockHeight
                     }
-                    queryBatchRange(beg, end)
+                    retry { queryBatchRange(beg, end) }
                 }
             }.filterNotNull().flatten()
 
