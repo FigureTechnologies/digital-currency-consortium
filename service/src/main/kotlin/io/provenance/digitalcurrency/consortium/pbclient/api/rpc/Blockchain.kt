@@ -5,7 +5,7 @@ import io.provenance.digitalcurrency.consortium.stream.BlockHeader
 import io.provenance.digitalcurrency.consortium.stream.RpcRequest
 
 data class BlockchainInfoResponse(
-    val lastHeight: Long,
+    @JsonProperty("last_height") val lastHeight: Long,
     @JsonProperty("block_metas") val blockMetas: List<BlockMeta>
 )
 
