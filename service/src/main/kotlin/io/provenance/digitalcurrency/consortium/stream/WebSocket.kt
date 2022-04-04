@@ -43,7 +43,8 @@ data class StreamEvent(
     val eventType: String,
     val attributes: List<Attribute>,
     val resultIndex: Int,
-    val txHash: String
+    val txHash: String,
+    val code: Int?
 )
 
 class Attribute(
