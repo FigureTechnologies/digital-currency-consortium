@@ -13,10 +13,13 @@ use crate::msg::{
     Balance, Balances, ExecuteMsg, InitMsg, JoinProposals, Members, MigrateMsg, QueryMsg,
     VoteChoice,
 };
-use crate::state::{
-    config, config_read, join_proposals, join_proposals_read, members, members_read, JoinProposal,
-    Member, State,
+// TODO - replace with new state
+use crate::join_proposal::{
+    legacy_join_proposals, legacy_join_proposals_read, migrate_join_proposals, JoinProposal,
 };
+use crate::member::{legacy_members, legacy_members_read, migrate_members, Member};
+use crate::state::{legacy_config, legacy_config_read, migrate_state, State};
+use crate::version_info::migrate_version_info;
 
 // Contract constants
 pub static MIN_DENOM_LEN: usize = 8;
@@ -54,7 +57,7 @@ pub fn instantiate(
         kyc_attrs,
         admin_weight: Uint128::zero(),
     };
-    config(deps.storage).save(&state)?;
+    legacy_config(deps.storage).save(&state)?;
 
     // Create the dcc marker and grant permissions if it doesn't exist.
     let mut res = Response::new();
@@ -147,11 +150,11 @@ fn try_join(
     }
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Check for existing join request
     let key = info.sender.as_bytes();
-    let mut proposals = join_proposals(deps.storage);
+    let mut proposals = legacy_join_proposals(deps.storage);
     if proposals.may_load(key)?.is_some() {
         return Err(contract_err("duplicate proposal"));
     }
@@ -202,10 +205,10 @@ fn try_vote(
     let key = address.as_bytes();
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Read member config
-    let member = members_read(deps.storage).may_load(info.sender.as_bytes())?;
+    let member = legacy_members_read(deps.storage).may_load(info.sender.as_bytes())?;
 
     // Ensure message sender is a consortium member or admin.
     if member.is_none() && info.sender != state.admin {
@@ -213,7 +216,7 @@ fn try_vote(
     }
 
     // Lookup join proposal for address.
-    let mut proposals = join_proposals(deps.storage);
+    let mut proposals = legacy_join_proposals(deps.storage);
     let mut proposal: JoinProposal = proposals.load(key)?;
 
     // Ensure voting window is open.
@@ -278,11 +281,11 @@ fn try_accept(
     }
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Ensure proposal exists
     let key = info.sender.as_bytes();
-    let proposal = join_proposals_read(deps.storage).load(key)?;
+    let proposal = legacy_join_proposals_read(deps.storage).load(key)?;
 
     match proposal.admin_vote {
         Some(VoteChoice::No) => {
@@ -332,7 +335,7 @@ fn try_accept(
     }
 
     // Persist member.
-    members(deps.storage).save(
+    legacy_members(deps.storage).save(
         key,
         &Member {
             id: info.sender.clone(),
@@ -380,15 +383,15 @@ fn try_cancel(
 
     // Ensure message sender has not accepted (ie is not already a member).
     let key = info.sender.as_bytes();
-    if members_read(deps.storage).may_load(key)?.is_some() {
+    if legacy_members_read(deps.storage).may_load(key)?.is_some() {
         return Err(contract_err("membership already accepted"));
     }
 
     // Lookup join proposal for message sender.
-    let proposal = join_proposals_read(deps.storage).load(key)?;
+    let proposal = legacy_join_proposals_read(deps.storage).load(key)?;
 
     // Delete join proposal.
-    let mut proposals = join_proposals(deps.storage);
+    let mut proposals = legacy_join_proposals(deps.storage);
     proposals.remove(key);
 
     // Cancel and destroy the reserve marker.
@@ -420,10 +423,10 @@ fn try_redeem(
     }
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Ensure message sender is a member.
-    let member = members_read(deps.storage).load(info.sender.as_bytes())?;
+    let member = legacy_members_read(deps.storage).load(info.sender.as_bytes())?;
 
     // Ensure reserve_denom is always the bank reserve token.
     // Note: originally we supported a specified reserve denom to support other bank reserve tokens.
@@ -498,10 +501,10 @@ fn try_redeem_and_burn(
     }
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Ensure message sender is a member.
-    let mut member = members_read(deps.storage).load(info.sender.as_bytes())?;
+    let mut member = legacy_members_read(deps.storage).load(info.sender.as_bytes())?;
 
     // Ensure member holds at least the requested amount of dcc tokens.
     let balance = deps.querier.query_balance(&member.id, &state.dcc_denom)?;
@@ -525,7 +528,7 @@ fn try_redeem_and_burn(
     // Update reserve supply and re-calculate weight for member.
     let key = info.sender.as_bytes();
     member.supply = Uint128::new(member.supply.u128() - amount.u128());
-    members(deps.storage).save(key, &member)?;
+    legacy_members(deps.storage).save(key, &member)?;
 
     // Get dcc marker
     let dcc_marker = querier.get_marker_by_denom(&state.dcc_denom)?;
@@ -571,10 +574,10 @@ fn try_swap(
     }
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Ensure message sender is a member.
-    if members_read(deps.storage)
+    if legacy_members_read(deps.storage)
         .may_load(info.sender.as_bytes())?
         .is_none()
     {
@@ -651,7 +654,7 @@ fn try_transfer(
     let recipient = deps.api.addr_validate(&recipient)?;
 
     // Read state
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
 
     // Ensure the sender holds at least the indicated amount of dcc.
     let balance = deps
@@ -662,7 +665,7 @@ fn try_transfer(
     }
 
     // Ensure accounts have the required kyc attrs if they aren't members.
-    let members = members_read(deps.storage);
+    let members = legacy_members_read(deps.storage);
     if members.may_load(recipient.as_bytes())?.is_none() {
         ensure_attributes(deps.as_ref(), recipient.clone(), state.kyc_attrs.clone())?;
     }
@@ -706,7 +709,7 @@ fn try_mint(
 
     // Load membership for message sender.
     let key = info.sender.as_bytes();
-    let mut member = members(deps.storage).load(key)?;
+    let mut member = legacy_members(deps.storage).load(key)?;
 
     // Validate that amount doesn't push supply over max
     if amount + member.supply > member.max_supply {
@@ -715,13 +718,13 @@ fn try_mint(
 
     // Update reserve supply.
     member.supply += amount;
-    members(deps.storage).save(key, &member)?;
+    legacy_members(deps.storage).save(key, &member)?;
 
     // Mint reserve
     let mut res = Response::new().add_message(mint_marker_supply(amount.u128(), &member.denom)?);
 
     // Mint dcc if the withdraw address was provided.
-    let state = config_read(deps.storage).load()?;
+    let state = legacy_config_read(deps.storage).load()?;
     if address.is_some() {
         res = res.add_message(mint_marker_supply(amount.u128(), &state.dcc_denom)?);
     }
@@ -787,7 +790,7 @@ fn try_burn(
 
     // Load membership for message sender.
     let key = info.sender.as_bytes();
-    let mut member = members(deps.storage).load(key)?;
+    let mut member = legacy_members(deps.storage).load(key)?;
 
     // Ensure sender holds at least the provided balance
     let balance = deps
@@ -799,7 +802,7 @@ fn try_burn(
 
     // Update reserve supply and re-calculate weight for member.
     member.supply = Uint128::new(member.supply.u128() - amount.u128());
-    members(deps.storage).save(key, &member)?;
+    legacy_members(deps.storage).save(key, &member)?;
 
     // Get marker address using denom.
     let querier = ProvenanceQuerier::new(&deps.querier);
@@ -837,7 +840,7 @@ fn try_add_kyc(
     }
 
     // Load state and ensure sender is the administrator.
-    let mut state = config(deps.storage).load()?;
+    let mut state = legacy_config(deps.storage).load()?;
     if info.sender != state.admin {
         return Err(ContractError::Unauthorized {});
     }
@@ -849,7 +852,7 @@ fn try_add_kyc(
 
     // Add the kyc attribute and save
     state.kyc_attrs.push(name.clone());
-    config(deps.storage).save(&state)?;
+    legacy_config(deps.storage).save(&state)?;
 
     // Add wasm event attributes
     Ok(Response::new()
@@ -872,7 +875,7 @@ fn try_remove_kyc(
     }
 
     // Load state and ensure sender is the administrator.
-    let mut state = config(deps.storage).load()?;
+    let mut state = legacy_config(deps.storage).load()?;
     if info.sender != state.admin {
         return Err(ContractError::Unauthorized {});
     }
@@ -884,7 +887,7 @@ fn try_remove_kyc(
 
     // Remove the kyc attribute and save
     state.kyc_attrs.retain(|n| *n != name);
-    config(deps.storage).save(&state)?;
+    legacy_config(deps.storage).save(&state)?;
 
     // Add wasm event attributes
     Ok(Response::new()
@@ -964,7 +967,7 @@ fn try_get_join_proposal(
 ) -> Result<QueryResponse, ContractError> {
     let address = deps.api.addr_validate(&id)?;
     let key = address.as_bytes();
-    let proposal = join_proposals_read(deps.storage).load(key)?;
+    let proposal = legacy_join_proposals_read(deps.storage).load(key)?;
     let bin = to_binary(&proposal)?;
     Ok(bin)
 }
@@ -973,7 +976,7 @@ fn try_get_join_proposal(
 fn try_get_member(deps: Deps<ProvenanceQuery>, id: String) -> Result<QueryResponse, ContractError> {
     let address = deps.api.addr_validate(&id)?;
     let key = address.as_bytes();
-    let member = members_read(deps.storage).load(key)?;
+    let member = legacy_members_read(deps.storage).load(key)?;
     let bin = to_binary(&member)?;
     Ok(bin)
 }
@@ -987,7 +990,7 @@ fn try_get_balances(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, Contra
 
 // Read all members from bucket storage.
 fn get_members(deps: Deps<ProvenanceQuery>) -> Result<Vec<Member>, ContractError> {
-    members_read(deps.storage)
+    legacy_members_read(deps.storage)
         .range(None, None, Order::Ascending)
         .map(|item| {
             let (_, member) = item?;
@@ -998,7 +1001,7 @@ fn get_members(deps: Deps<ProvenanceQuery>) -> Result<Vec<Member>, ContractError
 
 // Read all join proposals from bucket storage.
 fn get_join_proposals(deps: Deps<ProvenanceQuery>) -> Result<Vec<JoinProposal>, ContractError> {
-    join_proposals_read(deps.storage)
+    legacy_join_proposals_read(deps.storage)
         .range(None, None, Order::Ascending)
         .map(|item| {
             let (_, proposal) = item?;
@@ -1030,11 +1033,22 @@ fn get_balances(deps: Deps<ProvenanceQuery>) -> Result<Balances, ContractError> 
 /// Called when migrating a contract instance to a new code ID.
 #[entry_point]
 pub fn migrate(
-    _deps: DepsMut<ProvenanceQuery>,
+    mut deps: DepsMut<ProvenanceQuery>,
     _env: Env,
-    _msg: MigrateMsg,
+    msg: MigrateMsg,
 ) -> Result<Response, ContractError> {
-    // Do nothing
+    // migrate state
+    migrate_state(deps.branch(), &msg)?;
+
+    // migrate join proposals
+    migrate_join_proposals(deps.branch(), &msg)?;
+
+    // migrate members
+    migrate_members(deps.branch(), &msg)?;
+
+    // lastly, migrate version_info
+    migrate_version_info(deps.branch())?;
+
     Ok(Response::default())
 }
 
@@ -1089,7 +1103,7 @@ mod tests {
         assert_eq!(5, res.messages.len());
 
         // Read state
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let config_state = legacy_config_read(&deps.storage).load().unwrap();
 
         // Validate state values
         assert_eq!(config_state.dcc_denom, "dcc.coin");
@@ -1135,7 +1149,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let proposal = legacy_join_proposals_read(&deps.storage).load(key).unwrap();
 
         assert_eq!(proposal.denom, "bank.coin");
         assert_eq!(proposal.max_supply, Uint128::new(1_000_000));
@@ -1330,7 +1344,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let proposal = legacy_join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote weight was added to the 'yes' total.
         assert_eq!(proposal.yes, Uint128::zero());
@@ -1429,7 +1443,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank2");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let proposal = legacy_join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote weight was added to the 'yes' total.
         assert_eq!(proposal.yes, Uint128::new(10_000));
@@ -1484,7 +1498,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let proposal = legacy_join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote sets the admin vote choice.
         assert_eq!(proposal.yes, Uint128::zero());
@@ -1583,7 +1597,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank2");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let proposal = legacy_join_proposals_read(&deps.storage).load(key).unwrap();
 
         // Assert the admin vote weight was added to the 'yes' total.
         assert_eq!(proposal.yes, Uint128::zero());
@@ -2069,7 +2083,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
 
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
@@ -2181,7 +2195,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank2");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
 
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank2.coin");
@@ -2251,7 +2265,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
 
         assert_eq!(member.id, addr);
         assert_eq!(member.denom, "bank.coin");
@@ -2891,7 +2905,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
 
         // Ensure supply is zero
         assert_eq!(member.supply, Uint128::zero());
@@ -2913,7 +2927,7 @@ mod tests {
         assert_eq!(2, res.messages.len());
 
         // Ensure supply was updated
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(100));
     }
 
@@ -3107,7 +3121,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
 
         // Ensure supply is zero
         assert_eq!(member.supply, Uint128::zero());
@@ -3129,7 +3143,7 @@ mod tests {
         assert_eq!(3, res.messages.len());
 
         // Ensure supply was updated
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(100));
     }
 
@@ -3225,7 +3239,7 @@ mod tests {
 
         // Ensure supply was reduced as expected.
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(75));
     }
 
@@ -3936,7 +3950,7 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(100));
 
         // Simulate a mint(100) first, so bank has dcc
@@ -3959,7 +3973,7 @@ mod tests {
         assert_eq!(3, res.messages.len());
 
         // Ensure supply was reduced as expected.
-        let member = members_read(&deps.storage).load(key).unwrap();
+        let member = legacy_members_read(&deps.storage).load(key).unwrap();
         assert_eq!(member.supply, Uint128::new(75));
     }
 
@@ -4152,7 +4166,7 @@ mod tests {
         .unwrap();
 
         // Ensure we don't have any kyc attributes.
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let config_state = legacy_config_read(&deps.storage).load().unwrap();
         assert!(config_state.kyc_attrs.is_empty());
 
         // Add a kyc attribute
@@ -4167,7 +4181,7 @@ mod tests {
         .unwrap();
 
         // Ensure we now have have one kyc attribute.
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let config_state = legacy_config_read(&deps.storage).load().unwrap();
         assert_eq!(config_state.kyc_attrs.len(), 1);
     }
 
@@ -4295,7 +4309,7 @@ mod tests {
         .unwrap();
 
         // Ensure we have one kyc attribute.
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let config_state = legacy_config_read(&deps.storage).load().unwrap();
         assert_eq!(config_state.kyc_attrs.len(), 1);
 
         // Remove the kyc attribute
@@ -4310,7 +4324,7 @@ mod tests {
         .unwrap();
 
         // Ensure we now have have zero kyc attributes.
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let config_state = legacy_config_read(&deps.storage).load().unwrap();
         assert!(config_state.kyc_attrs.is_empty());
     }
 

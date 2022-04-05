@@ -2,7 +2,10 @@ use cosmwasm_std::{Addr, Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::{JoinProposal, Member};
+#[allow(deprecated)]
+use crate::join_proposal::JoinProposal;
+#[allow(deprecated)]
+use crate::member::Member;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {

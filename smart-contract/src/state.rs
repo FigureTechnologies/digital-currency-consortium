@@ -1,20 +1,21 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::msg::VoteChoice;
-use cosmwasm_std::{Addr, Decimal, Storage, Uint128};
-use cosmwasm_storage::{
-    bucket, bucket_read, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
-    Singleton,
-};
+use crate::error::ContractError;
+use crate::msg::MigrateMsg;
+use crate::version_info::{version_info_read, VersionInfo};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Storage, Uint128};
+use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
+use provwasm_std::ProvenanceQuery;
+use semver::{Version, VersionReq};
 
+#[allow(deprecated)]
 pub static CONFIG_KEY: &[u8] = b"config";
-pub static JOIN_PROPOSAL_KEY: &[u8] = b"proposal";
-pub static MEMBER_KEY: &[u8] = b"member";
+pub static CONFIG_V2_KEY: &[u8] = b"configv2";
 
-/// Configuration state for the dcc consortium contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+#[deprecated(since = "0.5.0")]
 pub struct State {
     // The contract administrator account.
     pub admin: Addr,
@@ -30,72 +31,107 @@ pub struct State {
     pub admin_weight: Uint128,
 }
 
-/// Join proposal state.
+/// Configuration state for the dcc consortium contract.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct JoinProposal {
-    // The proposal ID (also the proposed member address).
-    pub id: Addr,
-    // The max supply of reserve token.
-    pub max_supply: Uint128,
-    // The denom of the proposed marker.
+pub struct StateV2 {
+    // The contract administrator account.
+    pub admin: Addr,
+    // The token denomination.
     pub denom: String,
-    // The block height the proposal was created at.
-    pub created: Uint128,
-    // The block height the voting window closes.
-    pub expires: Uint128,
-    // The sum of weights of members that voted 'no'.
-    pub no: Uint128,
-    // The sum of the weights of members that voted 'yes'.
-    pub yes: Uint128,
-    // The addresses of members that have voted.
-    pub voters: Vec<Addr>,
-    // The name of the proposed member (optional).
-    pub name: Option<String>,
-    // Admin vote, which supersedes yes/no by members.
-    pub admin_vote: Option<VoteChoice>,
+    // The number of blocks proposal voting windows are open.
+    pub vote_duration: Uint128,
 }
 
-/// Member state.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct Member {
-    // The member ID (also the member address).
-    pub id: Addr,
-    // The current supply of reserve token.
-    pub supply: Uint128,
-    // The max supply of reserve token.
-    pub max_supply: Uint128,
-    // The denom of the member's backing marker.
-    pub denom: String,
-    // The block height membership was accepted.
-    pub joined: Uint128,
-    // The member's voting weight.
-    pub weight: Uint128,
-    // The name of the member (or just the address if not provided in the join proposal).
-    pub name: String,
+#[allow(deprecated)]
+impl From<State> for StateV2 {
+    fn from(state: State) -> Self {
+        StateV2 {
+            admin: state.admin,
+            denom: state.dcc_denom,
+            vote_duration: state.vote_duration,
+        }
+    }
 }
 
-pub fn config(storage: &mut dyn Storage) -> Singleton<State> {
+#[allow(deprecated)]
+pub fn migrate_state(
+    deps: DepsMut<ProvenanceQuery>,
+    _msg: &MigrateMsg,
+) -> Result<(), ContractError> {
+    let store = deps.storage;
+    let version_info = version_info_read(store)
+        .may_load()?
+        .unwrap_or(VersionInfo::default());
+    let current_version = Version::parse(&version_info.version)?;
+    // version support added in 0.5.0, all previous versions migrate to v2 of store data
+    let upgrade_req = VersionReq::parse("<0.5.0")?;
+
+    if upgrade_req.matches(&current_version) {
+        let existing_state = legacy_config(store).load()?;
+        config(store).save(&existing_state.into())?
+    }
+
+    Ok(())
+}
+
+pub fn config(storage: &mut dyn Storage) -> Singleton<StateV2> {
+    singleton(storage, CONFIG_V2_KEY)
+}
+
+pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<StateV2> {
+    singleton_read(storage, CONFIG_V2_KEY)
+}
+
+#[cfg(test)]
+#[allow(deprecated)]
+pub fn legacy_config(storage: &mut dyn Storage) -> Singleton<State> {
     singleton(storage, CONFIG_KEY)
 }
 
-pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<State> {
+#[allow(deprecated)]
+pub fn legacy_config_read(storage: &dyn Storage) -> ReadonlySingleton<State> {
     singleton_read(storage, CONFIG_KEY)
 }
 
-pub fn join_proposals(storage: &mut dyn Storage) -> Bucket<JoinProposal> {
-    bucket(storage, JOIN_PROPOSAL_KEY)
-}
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{Addr, Decimal, Uint128};
+    use provwasm_mocks::mock_dependencies;
 
-pub fn join_proposals_read(storage: &dyn Storage) -> ReadonlyBucket<JoinProposal> {
-    bucket_read(storage, JOIN_PROPOSAL_KEY)
-}
+    use crate::error::ContractError;
+    use crate::msg::MigrateMsg;
+    #[allow(deprecated)]
+    use crate::state::{config_read, legacy_config, migrate_state, State, StateV2};
 
-pub fn members(storage: &mut dyn Storage) -> Bucket<Member> {
-    bucket(storage, MEMBER_KEY)
-}
+    #[test]
+    #[allow(deprecated)]
+    pub fn migrate_legacy_state_to_v2() -> Result<(), ContractError> {
+        let mut deps = mock_dependencies(&[]);
 
-pub fn members_read(storage: &dyn Storage) -> ReadonlyBucket<Member> {
-    bucket_read(storage, MEMBER_KEY)
+        legacy_config(&mut deps.storage).save(&State {
+            admin: Addr::unchecked("id"),
+            quorum_pct: Decimal::percent(67),
+            dcc_denom: "test.dcc".to_string(),
+            vote_duration: Uint128::new(5000),
+            kyc_attrs: vec!["test.kyc.pb".to_string(), "bank.kyc.pb".to_string()],
+            admin_weight: Uint128::zero(),
+        })?;
+
+        migrate_state(deps.as_mut(), &MigrateMsg {})?;
+
+        let config_store = config_read(&deps.storage);
+        let migrated_state = config_store.load()?;
+
+        assert_eq!(
+            migrated_state,
+            StateV2 {
+                admin: Addr::unchecked("id"),
+                denom: "test.dcc".to_string(),
+                vote_duration: Uint128::new(5000)
+            }
+        );
+
+        Ok(())
+    }
 }
