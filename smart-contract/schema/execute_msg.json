@@ -11,21 +11,15 @@
         "join": {
           "type": "object",
           "required": [
-            "denom",
-            "max_supply"
+            "kyc_attr",
+            "name"
           ],
           "properties": {
-            "denom": {
+            "kyc_attr": {
               "type": "string"
             },
-            "max_supply": {
-              "$ref": "#/definitions/Uint128"
-            },
             "name": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           }
         }
@@ -59,111 +53,11 @@
     {
       "type": "object",
       "required": [
-        "accept"
-      ],
-      "properties": {
-        "accept": {
-          "type": "object",
-          "properties": {
-            "mint_amount": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "cancel"
       ],
       "properties": {
         "cancel": {
           "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "redeem"
-      ],
-      "properties": {
-        "redeem": {
-          "type": "object",
-          "required": [
-            "amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "reserve_denom": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "redeem_and_burn"
-      ],
-      "properties": {
-        "redeem_and_burn": {
-          "type": "object",
-          "required": [
-            "amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "swap"
-      ],
-      "properties": {
-        "swap": {
-          "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
-          "properties": {
-            "address": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "denom": {
-              "type": "string"
-            }
-          }
         }
       },
       "additionalProperties": false
@@ -241,36 +135,22 @@
     {
       "type": "object",
       "required": [
-        "add_kyc"
+        "set_kyc"
       ],
       "properties": {
-        "add_kyc": {
+        "set_kyc": {
           "type": "object",
           "required": [
-            "name"
+            "kyc_attr"
           ],
           "properties": {
-            "name": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "remove_kyc"
-      ],
-      "properties": {
-        "remove_kyc": {
-          "type": "object",
-          "required": [
-            "name"
-          ],
-          "properties": {
-            "name": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kyc_attr": {
               "type": "string"
             }
           }

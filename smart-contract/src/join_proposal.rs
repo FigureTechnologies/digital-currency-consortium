@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::{MigrateMsg, VoteChoice};
-use crate::version_info::{version_info_read, VersionInfo};
+use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
 use provwasm_std::ProvenanceQuery;
@@ -53,7 +53,7 @@ pub struct JoinProposalV2 {
     // Admin vote, which supersedes yes/no by members.
     pub admin_vote: Option<VoteChoice>,
     // KYC attributes required for holding dcc tokens.
-    pub kyc_attrs: Vec<String>,
+    pub kyc_attr: Option<String>,
 }
 
 #[allow(deprecated)]
@@ -63,9 +63,9 @@ impl From<JoinProposal> for JoinProposalV2 {
             id: join_proposal.id,
             created: join_proposal.created,
             expires: join_proposal.expires,
-            name: join_proposal.name.unwrap_or(String::default()),
+            name: join_proposal.name.unwrap_or_default(),
             admin_vote: join_proposal.admin_vote,
-            kyc_attrs: Vec::new(),
+            kyc_attr: Option::None,
         }
     }
 }
@@ -76,9 +76,7 @@ pub fn migrate_join_proposals(
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store)
-        .may_load()?
-        .unwrap_or(VersionInfo::default());
+    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
     let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
@@ -168,7 +166,7 @@ mod tests {
                 expires: Uint128::new(50100),
                 name: "bank".to_string(),
                 admin_vote: Option::None,
-                kyc_attrs: Vec::new(),
+                kyc_attr: Option::None,
             }
         );
 

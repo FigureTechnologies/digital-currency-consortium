@@ -3,8 +3,10 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use dcc::msg::{Balances, ExecuteMsg, InitMsg, JoinProposals, Members, QueryMsg};
-use dcc::state::{JoinProposal, Member, State};
+use dcc::join_proposal::JoinProposalV2;
+use dcc::member::MemberV2;
+use dcc::msg::{ExecuteMsg, InitMsg, JoinProposals, Members, QueryMsg};
+use dcc::state::StateV2;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -15,10 +17,9 @@ fn main() {
     export_schema(&schema_for!(InitMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(State), &out_dir);
-    export_schema(&schema_for!(JoinProposal), &out_dir);
+    export_schema(&schema_for!(StateV2), &out_dir);
+    export_schema(&schema_for!(JoinProposalV2), &out_dir);
     export_schema(&schema_for!(JoinProposals), &out_dir);
-    export_schema(&schema_for!(Member), &out_dir);
+    export_schema(&schema_for!(MemberV2), &out_dir);
     export_schema(&schema_for!(Members), &out_dir);
-    export_schema(&schema_for!(Balances), &out_dir);
 }

@@ -1,22 +1,16 @@
-use cosmwasm_std::{Addr, Decimal, Uint128};
+use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[allow(deprecated)]
-use crate::join_proposal::JoinProposal;
-#[allow(deprecated)]
-use crate::member::Member;
+use crate::join_proposal::JoinProposalV2;
+use crate::member::MemberV2;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     // Let the dcc marker denom be configurable.
-    pub dcc_denom: String,
-    // The percentage of 'yes' votes required to join the consortium.
-    pub quorum_pct: Decimal,
+    pub denom: String,
     // The number of blocks proposal voting windows are open.
     pub vote_duration: Uint128,
-    // KYC attributes required (any of) to hold dcc tokens.
-    pub kyc_attrs: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,36 +25,16 @@ pub enum VoteChoice {
 pub enum ExecuteMsg {
     // Create a proposal to join the consortium.
     Join {
-        denom: String,
-        max_supply: Uint128,
-        name: Option<String>,
+        name: String,
+        kyc_attr: String,
     },
     // Vote on a join proposal.
     Vote {
         id: String,
         choice: VoteChoice,
     },
-    // Accept join proposal (fails unless quorum is reached)
-    Accept {
-        mint_amount: Option<Uint128>,
-    },
     // Cancel join proposal
     Cancel {},
-    // Redeem dcc tokens for reserve tokens.
-    Redeem {
-        amount: Uint128,
-        reserve_denom: Option<String>, // If provided, redeem for this reserve denom first.
-    },
-    // Redeem dcc tokens for and burn reserve tokens.
-    RedeemAndBurn {
-        amount: Uint128,
-    },
-    // Swap reserve tokens for dcc tokens.
-    Swap {
-        amount: Uint128,
-        denom: String,
-        address: Option<String>, // If provided, withdraw dcc tokens here pending kyc checks
-    },
     // Transfer dcc.
     Transfer {
         amount: Uint128,
@@ -75,13 +49,10 @@ pub enum ExecuteMsg {
     Burn {
         amount: Uint128,
     },
-    // Add a kyc attribute.
-    AddKyc {
-        name: String,
-    },
-    // Remove a kyc attribute.
-    RemoveKyc {
-        name: String,
+    // Set the kyc attribute for member.
+    SetKyc {
+        id: Option<String>, // If admin, can set the kyc attribute for another member id
+        kyc_attr: String,
     },
 }
 
@@ -96,8 +67,6 @@ pub enum QueryMsg {
     GetJoinProposal { id: String },
     // Query a member by ID.
     GetMember { id: String },
-    // Query available reserve balances for redemption.
-    GetBalances {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -107,25 +76,11 @@ pub struct MigrateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Members {
-    pub members: Vec<Member>,
+    pub members: Vec<MemberV2>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct JoinProposals {
-    pub proposals: Vec<JoinProposal>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct Balance {
-    pub address: Addr,
-    pub denom: String,
-    pub amount: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct Balances {
-    pub balances: Vec<Balance>,
+    pub proposals: Vec<JoinProposalV2>,
 }

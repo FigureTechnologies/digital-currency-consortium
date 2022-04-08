@@ -9,7 +9,7 @@
     "proposals": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/JoinProposal"
+        "$ref": "#/definitions/JoinProposalV2"
       }
     }
   },
@@ -18,18 +18,14 @@
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
       "type": "string"
     },
-    "JoinProposal": {
+    "JoinProposalV2": {
       "description": "Join proposal state.",
       "type": "object",
       "required": [
         "created",
-        "denom",
         "expires",
         "id",
-        "max_supply",
-        "no",
-        "voters",
-        "yes"
+        "name"
       ],
       "properties": {
         "admin_vote": {
@@ -45,35 +41,20 @@
         "created": {
           "$ref": "#/definitions/Uint128"
         },
-        "denom": {
-          "type": "string"
-        },
         "expires": {
           "$ref": "#/definitions/Uint128"
         },
         "id": {
           "$ref": "#/definitions/Addr"
         },
-        "max_supply": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "name": {
+        "kyc_attr": {
           "type": [
             "string",
             "null"
           ]
         },
-        "no": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "voters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Addr"
-          }
-        },
-        "yes": {
-          "$ref": "#/definitions/Uint128"
+        "name": {
+          "type": "string"
         }
       }
     },

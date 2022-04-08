@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::MigrateMsg;
-use crate::version_info::{version_info_read, VersionInfo};
+use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
 use provwasm_std::ProvenanceQuery;
@@ -44,7 +44,7 @@ pub struct MemberV2 {
     // The name of the member (or just the address if not provided in the join proposal).
     pub name: String,
     // KYC attributes required for holding dcc tokens.
-    pub kyc_attrs: Vec<String>,
+    pub kyc_attr: Option<String>,
 }
 
 #[allow(deprecated)]
@@ -54,7 +54,7 @@ impl From<Member> for MemberV2 {
             id: member.id,
             joined: member.joined,
             name: member.name,
-            kyc_attrs: Vec::new(),
+            kyc_attr: Option::None,
         }
     }
 }
@@ -65,9 +65,7 @@ pub fn migrate_members(
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store)
-        .may_load()?
-        .unwrap_or(VersionInfo::default());
+    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
     let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
@@ -90,10 +88,12 @@ pub fn migrate_members(
     Ok(())
 }
 
+#[allow(deprecated)]
 pub fn legacy_members(storage: &mut dyn Storage) -> Bucket<Member> {
     bucket(storage, MEMBER_KEY)
 }
 
+#[allow(deprecated)]
 pub fn legacy_members_read(storage: &dyn Storage) -> ReadonlyBucket<Member> {
     bucket_read(storage, MEMBER_KEY)
 }
@@ -112,6 +112,7 @@ mod tests {
     use provwasm_mocks::mock_dependencies;
 
     use crate::error::ContractError;
+    use crate::member::members_read;
     #[allow(deprecated)]
     use crate::member::{legacy_members, migrate_members, Member, MemberV2};
     use crate::msg::MigrateMsg;
@@ -145,7 +146,7 @@ mod tests {
                 id: Addr::unchecked("id"),
                 joined: Uint128::new(50100),
                 name: "bank".to_string(),
-                kyc_attrs: Vec::new(),
+                kyc_attr: Option::None,
             }
         );
 

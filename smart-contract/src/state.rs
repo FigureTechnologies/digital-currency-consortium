@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::MigrateMsg;
-use crate::version_info::{version_info_read, VersionInfo};
+use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, Decimal, DepsMut, Storage, Uint128};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 use provwasm_std::ProvenanceQuery;
@@ -60,9 +60,7 @@ pub fn migrate_state(
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store)
-        .may_load()?
-        .unwrap_or(VersionInfo::default());
+    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
     let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
@@ -83,7 +81,6 @@ pub fn config_read(storage: &dyn Storage) -> ReadonlySingleton<StateV2> {
     singleton_read(storage, CONFIG_V2_KEY)
 }
 
-#[cfg(test)]
 #[allow(deprecated)]
 pub fn legacy_config(storage: &mut dyn Storage) -> Singleton<State> {
     singleton(storage, CONFIG_KEY)
