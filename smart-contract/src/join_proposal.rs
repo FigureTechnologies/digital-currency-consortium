@@ -127,8 +127,8 @@ mod tests {
     use crate::error::ContractError;
     #[allow(deprecated)]
     use crate::join_proposal::{
-        join_proposals, join_proposals_read, legacy_join_proposals, migrate_join_proposals,
-        JoinProposal, JoinProposalV2,
+        join_proposals_read, legacy_join_proposals, migrate_join_proposals, JoinProposal,
+        JoinProposalV2,
     };
     use crate::msg::MigrateMsg;
 

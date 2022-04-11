@@ -34,7 +34,9 @@ pub enum ExecuteMsg {
         choice: VoteChoice,
     },
     // Cancel join proposal
-    Cancel {},
+    Cancel {
+        id: Option<String>, // If admin, can cancel any join proposal
+    },
     // Transfer dcc.
     Transfer {
         amount: Uint128,

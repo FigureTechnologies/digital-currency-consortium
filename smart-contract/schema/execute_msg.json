@@ -57,7 +57,15 @@
       ],
       "properties": {
         "cancel": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false
