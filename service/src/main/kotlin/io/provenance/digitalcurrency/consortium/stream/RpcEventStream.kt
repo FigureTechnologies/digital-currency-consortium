@@ -215,7 +215,8 @@ class RpcEventStream(
                         eventType = event.type,
                         resultIndex = index,
                         txHash = txHash,
-                        attributes = event.attributes
+                        attributes = event.attributes,
+                        code = tx.code
                     )
                 }
         } ?: emptyList()
