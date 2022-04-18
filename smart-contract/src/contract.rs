@@ -9,11 +9,9 @@ use provwasm_std::{
 };
 
 use crate::error::ContractError;
-use crate::join_proposal::{
-    join_proposals, join_proposals_read, migrate_join_proposals, JoinProposalV2,
-};
+use crate::join_proposal::migrate_join_proposals;
 use crate::member::{members, members_read, migrate_members, MemberV2};
-use crate::msg::{ExecuteMsg, InitMsg, JoinProposals, Members, MigrateMsg, QueryMsg, VoteChoice};
+use crate::msg::{ExecuteMsg, InitMsg, Members, MigrateMsg, QueryMsg};
 use crate::state::{config, config_read, migrate_state, StateV2};
 use crate::version_info::migrate_version_info;
 
@@ -33,15 +31,11 @@ pub fn instantiate(
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during instantiate"));
     }
-    if msg.vote_duration.is_zero() {
-        return Err(contract_err("invalid vote duration"));
-    }
 
     // Create and store config state.
     let state = StateV2 {
         admin: info.sender.clone(),
         denom: msg.denom.clone(),
-        vote_duration: msg.vote_duration,
     };
     config(deps.storage).save(&state)?;
 
@@ -86,9 +80,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     match msg {
-        ExecuteMsg::Join { name, kyc_attr } => try_join(deps, env, info, name, kyc_attr),
-        ExecuteMsg::Vote { id, choice } => try_vote(deps, env, info, id, choice),
-        ExecuteMsg::Cancel { id } => try_cancel(deps, info, id),
+        ExecuteMsg::Join { id, name, kyc_attr } => try_join(deps, env, info, id, name, kyc_attr),
+        ExecuteMsg::Remove { id } => try_remove(deps, info, id),
         ExecuteMsg::Transfer { amount, recipient } => try_transfer(deps, info, amount, recipient),
         ExecuteMsg::Mint { amount, address } => try_mint(deps, info, amount, address),
         ExecuteMsg::Burn { amount } => try_burn(deps, info, amount),
@@ -96,11 +89,12 @@ pub fn execute(
     }
 }
 
-// Add a proposal to join the consortium that must be voted on by existing members.
+// Add a member to the consortium.
 fn try_join(
     deps: DepsMut<ProvenanceQuery>,
     env: Env,
     info: MessageInfo,
+    id: String,
     name: String,
     kyc_attr: String,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
@@ -115,54 +109,6 @@ fn try_join(
         return Err(contract_err("kyc attribute name is empty"));
     }
 
-    // Read state
-    let state = config_read(deps.storage).load()?;
-
-    // Verify kyc attribute does not already exist
-    let kyc_attrs = get_all_attributes(deps.as_ref())?;
-    if kyc_attrs.contains(&kyc_attr) {
-        return Err(contract_err("duplicate kyc attribute"));
-    }
-
-    // Check for existing join request
-    let key = info.sender.as_bytes();
-    let mut proposals = join_proposals(deps.storage);
-    if proposals.may_load(key)?.is_some() {
-        return Err(contract_err("duplicate proposal"));
-    }
-
-    // Persist a join proposal.
-    proposals.save(
-        key,
-        &JoinProposalV2 {
-            id: info.sender.clone(),
-            created: Uint128::from(env.block.height),
-            expires: Uint128::from(env.block.height) + state.vote_duration,
-            name,
-            admin_vote: Option::None,
-            kyc_attr: Option::Some(kyc_attr.clone()),
-        },
-    )?;
-
-    let res = Response::new()
-        .add_attribute("action", "join")
-        .add_attribute("join_kyc_attr", kyc_attr)
-        .add_attribute("join_proposal_id", info.sender.to_string());
-    Ok(res)
-}
-
-// Vote 'yes' or 'no' on a proposal to join the consortium.
-fn try_vote(
-    deps: DepsMut<ProvenanceQuery>,
-    env: Env,
-    info: MessageInfo,
-    id: String,
-    choice: VoteChoice,
-) -> Result<Response<ProvenanceMsg>, ContractError> {
-    // Validate params.
-    if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during vote"));
-    }
     let address = deps.api.addr_validate(&id)?;
     let key = address.as_bytes();
 
@@ -174,87 +120,69 @@ fn try_vote(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Lookup join proposal for address.
-    let mut proposals = join_proposals(deps.storage);
-    let mut proposal: JoinProposalV2 = proposals.load(key)?;
-
-    // Ensure voting window is open.
-    if Uint128::from(env.block.height) >= proposal.expires {
-        return Err(contract_err("voting window has closed"));
+    // Verify kyc attribute does not already exist
+    let kyc_attrs = get_attributes(deps.as_ref())?;
+    if kyc_attrs.contains(&kyc_attr) {
+        return Err(contract_err("duplicate kyc attribute"));
     }
 
-    // Ensure admin has not already voted.
-    if proposal.admin_vote.is_some() {
-        return Err(contract_err("admin has already voted"));
+    // Check for existing member
+    let mut members = members(deps.storage);
+    if members.may_load(key)?.is_some() {
+        return Err(contract_err("duplicate member"));
     }
 
-    proposal.admin_vote = Some(choice.clone());
+    members.save(
+        key,
+        &MemberV2 {
+            id: address.clone(),
+            joined: Uint128::from(env.block.height),
+            name: name.clone(),
+            kyc_attr: Option::Some(kyc_attr.clone()),
+        },
+    )?;
 
-    // Save join request state.
-    proposals.save(key, &proposal)?;
-
-    // Persist member.
-    if choice == VoteChoice::Yes {
-        members(deps.storage).save(
-            key,
-            &MemberV2 {
-                id: address.clone(),
-                joined: Uint128::from(env.block.height),
-                name: proposal.name,
-                kyc_attr: proposal.kyc_attr,
-            },
-        )?;
-    }
-
-    // Add wasm event attributes
     let res = Response::new()
-        .add_attribute("action", "vote")
-        .add_attribute("join_proposal_id", id);
+        .add_attribute("action", "join")
+        .add_attribute("join_kyc_attr", kyc_attr)
+        .add_attribute("join_member_id", address.clone());
     Ok(res)
 }
 
 // Proposers can choose to cancel as long as they aren't a member.
-fn try_cancel(
+fn try_remove(
     deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
-    id: Option<String>,
+    id: String,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
         return Err(contract_err("no funds should be sent during cancel"));
     }
 
-    // Ensure message sender is not already a member.
-    let proposal = match id {
-        Some(addr) => {
-            let address = deps.api.addr_validate(&addr)?;
-            // Load state and ensure sender is the administrator or calling id.
-            let state = config(deps.storage).load()?;
+    let address = deps.api.addr_validate(&id)?;
+    let key = address.as_bytes();
 
-            // Only admin can cancel different join proposals
-            if info.sender != state.admin {
-                return Err(ContractError::Unauthorized {});
-            }
+    // Read state
+    let state = config_read(deps.storage).load()?;
 
-            join_proposals_read(deps.storage).load(address.as_bytes())?
-        }
-        None => join_proposals_read(deps.storage).load(info.sender.as_bytes())?,
-    };
-
-    let key = proposal.id.as_bytes();
-    // Ensure membership does not exist.
-    if members_read(deps.storage).may_load(key)?.is_some() {
-        return Err(contract_err("membership already exists"));
+    // Ensure message sender is admin.
+    if info.sender != state.admin {
+        return Err(ContractError::Unauthorized {});
     }
 
-    // Delete join proposal.
-    let mut proposals = join_proposals(deps.storage);
-    proposals.remove(key);
+    let mut members = members(deps.storage);
+    if members.may_load(key)?.is_none() {
+        return Err(contract_err("member does not exist"));
+    }
 
-    // Cancel and destroy the reserve marker.
+    // TODO - validate when it is okay to remove a member, including impact on any
+    // addresses holding USDF that belong to member.
+    members.remove(key);
+
     let res = Response::new()
-        .add_attribute("action", "cancel")
-        .add_attribute("join_proposal_id", &proposal.id);
+        .add_attribute("action", "remove")
+        .add_attribute("remove_member_id", address.clone());
     Ok(res)
 }
 
@@ -560,18 +488,9 @@ pub fn query(
     msg: QueryMsg,
 ) -> Result<QueryResponse, ContractError> {
     match msg {
-        QueryMsg::GetJoinProposals {} => try_get_join_proposals(deps),
         QueryMsg::GetMembers {} => try_get_members(deps),
-        QueryMsg::GetJoinProposal { id } => try_get_join_proposal(deps, id),
         QueryMsg::GetMember { id } => try_get_member(deps, id),
     }
-}
-
-// Query all join proposals.
-fn try_get_join_proposals(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
-    Ok(to_binary(&JoinProposals {
-        proposals: get_join_proposals(deps)?,
-    })?)
 }
 
 // Query all members.
@@ -579,18 +498,6 @@ fn try_get_members(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, Contrac
     Ok(to_binary(&Members {
         members: get_members(deps)?,
     })?)
-}
-
-// Query join proposal by ID.
-fn try_get_join_proposal(
-    deps: Deps<ProvenanceQuery>,
-    id: String,
-) -> Result<QueryResponse, ContractError> {
-    let address = deps.api.addr_validate(&id)?;
-    let key = address.as_bytes();
-    let proposal = join_proposals_read(deps.storage).load(key)?;
-    let bin = to_binary(&proposal)?;
-    Ok(bin)
 }
 
 // Query member by ID.
@@ -613,34 +520,12 @@ fn get_members(deps: Deps<ProvenanceQuery>) -> Result<Vec<MemberV2>, ContractErr
         .collect()
 }
 
-// Read all join proposals from bucket storage.
-fn get_join_proposals(deps: Deps<ProvenanceQuery>) -> Result<Vec<JoinProposalV2>, ContractError> {
-    join_proposals_read(deps.storage)
-        .range(None, None, Order::Ascending)
-        .map(|item| {
-            let (_, proposal) = item?;
-            Ok(proposal)
-        })
-        .collect()
-}
-
 // Get all kyc attributes for members.
 fn get_attributes(deps: Deps<ProvenanceQuery>) -> Result<Vec<String>, ContractError> {
     Ok(get_members(deps)?
         .into_iter()
         .filter_map(|item| item.kyc_attr)
         .collect())
-}
-
-// Get all kyc attributes for proposals and members.
-fn get_all_attributes(deps: Deps<ProvenanceQuery>) -> Result<Vec<String>, ContractError> {
-    let mut kyc_attrs: Vec<String> = get_join_proposals(deps)?
-        .into_iter()
-        .filter_map(|item| item.kyc_attr)
-        .collect();
-    kyc_attrs.append(get_attributes(deps)?.as_mut());
-
-    Ok(kyc_attrs)
 }
 
 /// Called when migrating a contract instance to a new code ID.
@@ -673,6 +558,8 @@ mod tests {
     #[allow(deprecated)]
     use crate::member::{legacy_members, Member};
     #[allow(deprecated)]
+    use crate::msg::VoteChoice;
+    #[allow(deprecated)]
     use crate::state::{legacy_config, State};
     use crate::version_info::{version_info, version_info_read, VersionInfo, CRATE_NAME};
     use cosmwasm_std::testing::{mock_env, mock_info};
@@ -692,7 +579,6 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(100),
             },
         )
         .unwrap();
@@ -706,7 +592,6 @@ mod tests {
 
         // Validate state values
         assert_eq!(config_state.denom, "dcc.coin");
-        assert_eq!(config_state.vote_duration, Uint128::new(100));
     }
 
     #[test]
@@ -721,17 +606,17 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create a valid join proposal.
+        // Bank join as member.
         execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
@@ -740,13 +625,12 @@ mod tests {
 
         let addr = Addr::unchecked("bank");
         let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
+        let member = members_read(&deps.storage).load(key).unwrap();
 
-        assert_eq!(proposal.created, Uint128::new(12345));
-        assert_eq!(proposal.expires, Uint128::new(12345 + 10));
-        assert_eq!(proposal.admin_vote, Option::None);
-        assert_eq!(proposal.kyc_attr.unwrap(), "bank.kyc.pb");
-        assert_eq!(proposal.name, "bank");
+        assert_eq!(member.id, "bank");
+        assert_eq!(member.joined, Uint128::new(12345));
+        assert_eq!(member.kyc_attr.unwrap(), "bank.kyc.pb");
+        assert_eq!(member.name, "bank");
     }
 
     #[test]
@@ -761,17 +645,17 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Try to create join proposal w/ too short name
+        // Try to create join member w/ too short name
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "ban".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
@@ -786,12 +670,13 @@ mod tests {
             _ => panic!("unexpected execute error"),
         }
 
-        // Try to create join proposal w/ empty kyc attr
+        // Try to create join member w/ empty kyc attr
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: " ".into(),
             },
@@ -806,6 +691,25 @@ mod tests {
             _ => panic!("unexpected execute error"),
         }
 
+        // Try to create join member not admin
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("unexpected execute error"),
+        }
+
         // Try to send funds w/ the join proposal
         let funds = coin(1000, "nhash");
         let err = execute(
@@ -813,6 +717,7 @@ mod tests {
             mock_env(),
             mock_info("bank", &[funds]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
@@ -840,17 +745,17 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create a valid join proposal.
+        // Bank join as member.
         execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank1".into(),
                 kyc_attr: "bank1.kyc.pb".into(),
             },
@@ -861,8 +766,9 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank2", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank2".into(),
                 name: "bank2".into(),
                 kyc_attr: "bank1.kyc.pb".into(),
             },
@@ -879,7 +785,7 @@ mod tests {
     }
 
     #[test]
-    fn join_dup_proposal() {
+    fn join_dup_member_id() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -890,17 +796,17 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create a valid join proposal.
+        // Bank join as member.
         execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
@@ -911,8 +817,9 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank2".into(),
                 kyc_attr: "bank2.kyc.pb".into(),
             },
@@ -922,14 +829,14 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "duplicate proposal")
+                assert_eq!(msg, "duplicate member")
             }
             _ => panic!("unexpected execute error"),
         }
     }
 
     #[test]
-    fn vote_yes() {
+    fn remove_test() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -940,105 +847,42 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
 
-        // Vote yes as 'admin'
+        let key = "bank".as_bytes();
+        let mut member = members_read(&deps.storage).may_load(key).unwrap();
+        assert!(member.is_some());
+
+        // Remove member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
+            ExecuteMsg::Remove { id: "bank".into() },
         )
         .unwrap();
 
-        let addr = Addr::unchecked("bank");
-        let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
-
-        assert_eq!(proposal.admin_vote, Some(VoteChoice::Yes));
-
-        let member = members_read(&deps.storage).load(key).unwrap();
-
-        // Ensure member is saved on
-        assert_eq!(member.id, addr);
-        assert_eq!(member.kyc_attr.unwrap(), "bank.kyc.pb");
-        assert_eq!(member.name, "bank");
-        assert_eq!(member.joined, Uint128::new(12345));
-    }
-
-    #[test]
-    fn vote_no() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote no as 'admin'
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::No,
-            },
-        )
-        .unwrap();
-
-        let addr = Addr::unchecked("bank");
-        let key: &[u8] = addr.as_bytes();
-        let proposal = join_proposals_read(&deps.storage).load(key).unwrap();
-
-        // Assert the admin vote sets the admin vote choice.
-        assert_eq!(proposal.admin_vote, Some(VoteChoice::No));
-
-        // Assert member was not saved.
-        let member = members_read(&deps.storage).may_load(key).unwrap();
+        member = members_read(&deps.storage).may_load(key).unwrap();
         assert!(member.is_none());
     }
 
     #[test]
-    fn vote_invalid_params() {
+    fn remove_param_errors() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1049,369 +893,46 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(1),
             },
         )
         .unwrap();
 
-        // Create join proposal
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[]),
+            mock_info("admin", &[]),
             ExecuteMsg::Join {
+                id: "bank".into(),
                 name: "bank".into(),
                 kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
 
-        // Try to vote with an unauthorized account.
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("unauthorized", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Unauthorized {} => {}
-            _ => panic!("unexpected execute error"),
-        }
-
-        // Try to vote on an invalid proposal ID.
+        // Try to remove a member that doesn't exist.
         let err = execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "".into(),
-                choice: VoteChoice::Yes,
-            },
+            ExecuteMsg::Remove { id: "bank1".into() },
         )
         .unwrap_err();
 
         // Ensure the expected error was returned.
         match err {
-            ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "Invalid input: human address too short")
+            ContractError::Std(StdError::GenericErr { msg }) => {
+                assert_eq!(msg, "member does not exist")
             }
             _ => panic!("unexpected execute error"),
         }
 
-        // Try to send funds w/ the vote
-        let funds = coin(1000, "nhash");
+        // Try to remove a member not as admin.
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("admin", &[funds]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "no funds should be sent during vote")
-            }
-            _ => panic!("unexpected execute error"),
-        }
-    }
-
-    #[test]
-    fn vote_window_closed() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
             mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Move the block height beyond proposal expiration.
-        let mut env = mock_env();
-        env.block.height += 100;
-
-        // Try to vote.
-        let err = execute(
-            deps.as_mut(),
-            env,
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "voting window has closed")
-            }
-            _ => panic!("unexpected execute error"),
-        }
-    }
-
-    #[test]
-    fn vote_twice_error() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(1),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote no
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::No,
-            },
-        )
-        .unwrap();
-
-        // Try to vote a second time.
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "admin has already voted")
-            }
-            _ => panic!("unexpected execute error"),
-        }
-    }
-
-    #[test]
-    fn cancel_test() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote no as 'admin'
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::No,
-            },
-        )
-        .unwrap();
-
-        let key = "bank".as_bytes();
-        let mut join_proposal = join_proposals_read(&deps.storage).may_load(key).unwrap();
-        assert!(join_proposal.is_some());
-
-        // Cancel join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Cancel { id: Option::None },
-        )
-        .unwrap();
-
-        join_proposal = join_proposals_read(&deps.storage).may_load(key).unwrap();
-        assert!(join_proposal.is_none());
-    }
-
-    #[test]
-    fn cancel_admin_test() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        let key = "bank".as_bytes();
-        let mut join_proposal = join_proposals_read(&deps.storage).may_load(key).unwrap();
-        assert!(join_proposal.is_some());
-
-        // Cancel join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Cancel {
-                id: Option::Some("bank".to_string()),
-            },
-        )
-        .unwrap();
-
-        join_proposal = join_proposals_read(&deps.storage).may_load(key).unwrap();
-        assert!(join_proposal.is_none());
-    }
-
-    #[test]
-    fn cancel_param_errors() {
-        // Create mock deps.
-        let mut deps = mock_dependencies(&[]);
-
-        // Init
-        instantiate(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            InitMsg {
-                denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
-            },
-        )
-        .unwrap();
-
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Try to cancel a join proposal that doesn't exist.
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank1", &[]),
-            ExecuteMsg::Cancel { id: Option::None },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Std(StdError::NotFound { .. }) => {}
-            _ => panic!("unexpected execute error"),
-        }
-
-        // Create secondary join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank2", &[]),
-            ExecuteMsg::Join {
-                name: "bank2".into(),
-                kyc_attr: "bank2.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Try to cancel a join proposal not as admin.
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank1", &[]),
-            ExecuteMsg::Cancel {
-                id: Option::Some("bank2".to_string()),
-            },
+            ExecuteMsg::Remove { id: "bank".into() },
         )
         .unwrap_err();
 
@@ -1426,8 +947,8 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info("bank", &[funds]),
-            ExecuteMsg::Cancel { id: Option::None },
+            mock_info("admin", &[funds]),
+            ExecuteMsg::Remove { id: "bank".into() },
         )
         .unwrap_err();
 
@@ -1435,35 +956,6 @@ mod tests {
         match err {
             ContractError::Std(StdError::GenericErr { msg }) => {
                 assert_eq!(msg, "no funds should be sent during cancel")
-            }
-            _ => panic!("unexpected execute error"),
-        }
-
-        // Vote yes as 'admin'
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("admin", &[]),
-            ExecuteMsg::Vote {
-                id: "bank".into(),
-                choice: VoteChoice::Yes,
-            },
-        )
-        .unwrap();
-
-        // Try to cancel the voted yes join proposal
-        let err = execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Cancel { id: Option::None },
-        )
-        .unwrap_err();
-
-        // Ensure the expected error was returned.
-        match err {
-            ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "membership already exists")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -1481,31 +973,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1547,31 +1027,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1630,31 +1098,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1696,31 +1152,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1764,31 +1208,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1834,31 +1266,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1892,31 +1312,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -1995,31 +1403,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2057,31 +1453,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2124,31 +1508,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2198,31 +1570,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(10),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2321,31 +1681,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(100),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2383,31 +1731,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(100),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2422,7 +1758,7 @@ mod tests {
             mock_env(),
             mock_info("admin", &[]),
             ExecuteMsg::SetKyc {
-                id: Option::Some("bank".to_string()),
+                id: Option::Some("bank".into()),
                 kyc_attr: "bank1.kyc.pb".into(),
             },
         )
@@ -2445,31 +1781,19 @@ mod tests {
             mock_info("admin", &[]),
             InitMsg {
                 denom: "dcc.coin".into(),
-                vote_duration: Uint128::new(100),
             },
         )
         .unwrap();
 
-        // Create join proposal
-        execute(
-            deps.as_mut(),
-            mock_env(),
-            mock_info("bank", &[]),
-            ExecuteMsg::Join {
-                name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
-            },
-        )
-        .unwrap();
-
-        // Vote yes as 'admin'
+        // Create join member
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::Vote {
+            ExecuteMsg::Join {
                 id: "bank".into(),
-                choice: VoteChoice::Yes,
+                name: "bank".into(),
+                kyc_attr: "bank.kyc.pb".into(),
             },
         )
         .unwrap();
@@ -2539,7 +1863,7 @@ mod tests {
             mock_env(),
             mock_info("admin", &[]),
             ExecuteMsg::SetKyc {
-                id: Option::Some("bank".to_string()),
+                id: Option::Some("bank".into()),
                 kyc_attr: "bank.kyc.pb".into(),
             },
         )
@@ -2639,12 +1963,7 @@ mod tests {
 
         // Validate state values
         assert_eq!(config_state.denom, "dcc.coin");
-        assert_eq!(config_state.vote_duration, Uint128::new(5000));
         assert_eq!(config_state.admin, Addr::unchecked("id"));
-
-        // Validate join proposals migrated
-        let join_proposals = get_join_proposals(deps.as_ref()).unwrap();
-        assert_eq!(join_proposals.len(), 2);
 
         // Validate members migrated
         let members = get_members(deps.as_ref()).unwrap();
@@ -2666,7 +1985,6 @@ mod tests {
             .save(&StateV2 {
                 admin: Addr::unchecked("id"),
                 denom: "dcc.coin".to_string(),
-                vote_duration: Uint128::new(5000),
             })
             .unwrap();
 

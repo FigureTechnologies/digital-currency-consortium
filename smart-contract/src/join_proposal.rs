@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
+#[allow(deprecated)]
 use crate::msg::{MigrateMsg, VoteChoice};
 use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
@@ -10,7 +11,6 @@ use provwasm_std::ProvenanceQuery;
 use semver::{Version, VersionReq};
 
 pub static JOIN_PROPOSAL_KEY: &[u8] = b"proposal";
-pub static JOIN_PROPOSAL_V2_KEY: &[u8] = b"proposalv2";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -35,39 +35,8 @@ pub struct JoinProposal {
     // The name of the proposed member (optional).
     pub name: Option<String>,
     // Admin vote, which supersedes yes/no by members.
+    #[allow(deprecated)]
     pub admin_vote: Option<VoteChoice>,
-}
-
-/// Join proposal state.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct JoinProposalV2 {
-    // The proposal ID (also the proposed member address).
-    pub id: Addr,
-    // The block height the proposal was created at.
-    pub created: Uint128,
-    // The block height the voting window closes.
-    pub expires: Uint128,
-    // The name of the proposed member.
-    pub name: String,
-    // Admin vote, which supersedes yes/no by members.
-    pub admin_vote: Option<VoteChoice>,
-    // KYC attributes required for holding dcc tokens.
-    pub kyc_attr: Option<String>,
-}
-
-#[allow(deprecated)]
-impl From<JoinProposal> for JoinProposalV2 {
-    fn from(join_proposal: JoinProposal) -> Self {
-        JoinProposalV2 {
-            id: join_proposal.id,
-            created: join_proposal.created,
-            expires: join_proposal.expires,
-            name: join_proposal.name.unwrap_or_default(),
-            admin_vote: join_proposal.admin_vote,
-            kyc_attr: Option::None,
-        }
-    }
 }
 
 #[allow(deprecated)]
@@ -82,23 +51,26 @@ pub fn migrate_join_proposals(
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
     if upgrade_req.matches(&current_version) {
-        let existing_join_proposal_ids: Vec<Vec<u8>> = legacy_join_proposals_read(store)
-            .range(None, None, Order::Ascending)
-            .map(|item| {
-                let (join_proposal_key, _) = item.unwrap();
-                join_proposal_key
-            })
-            .collect();
+        let existing_join_proposal_ids: Vec<Vec<u8>> = get_legacy_proposal_ids(store);
 
         for existing_join_proposal_id in existing_join_proposal_ids {
-            let existing_join_proposal =
-                legacy_join_proposals_read(store).load(&existing_join_proposal_id)?;
-            join_proposals(store)
-                .save(&existing_join_proposal_id, &existing_join_proposal.into())?
+            // Just remove all join proposals
+            legacy_join_proposals(store).remove(&existing_join_proposal_id);
         }
     }
 
     Ok(())
+}
+
+#[allow(deprecated)]
+pub fn get_legacy_proposal_ids(storage: &dyn Storage) -> Vec<Vec<u8>> {
+    legacy_join_proposals_read(storage)
+        .range(None, None, Order::Ascending)
+        .map(|item| {
+            let (join_proposal_key, _) = item.unwrap();
+            join_proposal_key
+        })
+        .collect()
 }
 
 #[allow(deprecated)]
@@ -111,24 +83,16 @@ pub fn legacy_join_proposals_read(storage: &dyn Storage) -> ReadonlyBucket<JoinP
     bucket_read(storage, JOIN_PROPOSAL_KEY)
 }
 
-pub fn join_proposals(storage: &mut dyn Storage) -> Bucket<JoinProposalV2> {
-    bucket(storage, JOIN_PROPOSAL_V2_KEY)
-}
-
-pub fn join_proposals_read(storage: &dyn Storage) -> ReadonlyBucket<JoinProposalV2> {
-    bucket_read(storage, JOIN_PROPOSAL_V2_KEY)
-}
-
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, Order, Uint128};
     use provwasm_mocks::mock_dependencies;
 
     use crate::error::ContractError;
     #[allow(deprecated)]
     use crate::join_proposal::{
-        join_proposals_read, legacy_join_proposals, migrate_join_proposals, JoinProposal,
-        JoinProposalV2,
+        get_legacy_proposal_ids, legacy_join_proposals, legacy_join_proposals_read,
+        migrate_join_proposals, JoinProposal,
     };
     use crate::msg::MigrateMsg;
 
@@ -155,20 +119,8 @@ mod tests {
 
         migrate_join_proposals(deps.as_mut(), &MigrateMsg {})?;
 
-        let join_store = join_proposals_read(&deps.storage);
-        let migrated_join_proposal = join_store.load(b"id")?;
-
-        assert_eq!(
-            migrated_join_proposal,
-            JoinProposalV2 {
-                id: Addr::unchecked("id"),
-                created: Uint128::new(50000),
-                expires: Uint128::new(50100),
-                name: "bank".to_string(),
-                admin_vote: Option::None,
-                kyc_attr: Option::None,
-            }
-        );
+        let existing_join_proposal_ids: Vec<Vec<u8>> = get_legacy_proposal_ids(&deps.storage);
+        assert_eq!(existing_join_proposal_ids.len(), 0);
 
         Ok(())
     }

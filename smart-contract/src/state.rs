@@ -39,8 +39,6 @@ pub struct StateV2 {
     pub admin: Addr,
     // The token denomination.
     pub denom: String,
-    // The number of blocks proposal voting windows are open.
-    pub vote_duration: Uint128,
 }
 
 #[allow(deprecated)]
@@ -49,7 +47,6 @@ impl From<State> for StateV2 {
         StateV2 {
             admin: state.admin,
             denom: state.dcc_denom,
-            vote_duration: state.vote_duration,
         }
     }
 }
@@ -66,8 +63,9 @@ pub fn migrate_state(
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
     if upgrade_req.matches(&current_version) {
-        let existing_state = legacy_config(store).load()?;
-        config(store).save(&existing_state.into())?
+        let existing_state = legacy_config_read(store).load()?;
+        legacy_config(store).remove(); // remove old state
+        config(store).save(&existing_state.into())?;
     }
 
     Ok(())
@@ -125,7 +123,6 @@ mod tests {
             StateV2 {
                 admin: Addr::unchecked("id"),
                 denom: "test.dcc".to_string(),
-                vote_duration: Uint128::new(5000)
             }
         );
 

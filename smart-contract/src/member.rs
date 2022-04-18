@@ -71,17 +71,12 @@ pub fn migrate_members(
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
     if upgrade_req.matches(&current_version) {
-        let existing_member_ids: Vec<Vec<u8>> = legacy_members_read(store)
-            .range(None, None, Order::Ascending)
-            .map(|item| {
-                let (member_key, _) = item.unwrap();
-                member_key
-            })
-            .collect();
+        let existing_member_ids: Vec<Vec<u8>> = get_legacy_member_ids(store);
 
         for existing_member_id in existing_member_ids {
             let existing_member = legacy_members_read(store).load(&existing_member_id)?;
-            members(store).save(&existing_member_id, &existing_member.into())?
+            legacy_members(store).remove(&existing_member_id); // remove legacy
+            members(store).save(&existing_member_id, &existing_member.into())?;
         }
     }
 
@@ -106,15 +101,28 @@ pub fn members_read(storage: &dyn Storage) -> ReadonlyBucket<MemberV2> {
     bucket_read(storage, MEMBER_V2_KEY)
 }
 
+#[allow(deprecated)]
+pub fn get_legacy_member_ids(storage: &dyn Storage) -> Vec<Vec<u8>> {
+    legacy_members_read(storage)
+        .range(None, None, Order::Ascending)
+        .map(|item| {
+            let (member_key, _) = item.unwrap();
+            member_key
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Addr, Uint128};
+    use cosmwasm_std::{Addr, Order, Uint128};
     use provwasm_mocks::mock_dependencies;
 
     use crate::error::ContractError;
-    use crate::member::members_read;
     #[allow(deprecated)]
-    use crate::member::{legacy_members, migrate_members, Member, MemberV2};
+    use crate::member::{
+        get_legacy_member_ids, legacy_members, legacy_members_read, members_read, migrate_members,
+        Member, MemberV2,
+    };
     use crate::msg::MigrateMsg;
 
     #[test]
@@ -131,7 +139,7 @@ mod tests {
                 denom: "test.dcc".to_string(),
                 joined: Uint128::new(50100),
                 weight: Uint128::new(1000),
-                name: "bank".to_string(),
+                name: "bank".into(),
             },
         )?;
 
@@ -145,10 +153,13 @@ mod tests {
             MemberV2 {
                 id: Addr::unchecked("id"),
                 joined: Uint128::new(50100),
-                name: "bank".to_string(),
+                name: "bank".into(),
                 kyc_attr: Option::None,
             }
         );
+
+        let existing_member_ids = get_legacy_member_ids(&deps.storage);
+        assert_eq!(existing_member_ids.len(), 0);
 
         Ok(())
     }

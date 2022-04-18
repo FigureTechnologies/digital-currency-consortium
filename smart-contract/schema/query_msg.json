@@ -5,43 +5,11 @@
     {
       "type": "object",
       "required": [
-        "get_join_proposals"
-      ],
-      "properties": {
-        "get_join_proposals": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "get_members"
       ],
       "properties": {
         "get_members": {
           "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "get_join_proposal"
-      ],
-      "properties": {
-        "get_join_proposal": {
-          "type": "object",
-          "required": [
-            "id"
-          ],
-          "properties": {
-            "id": {
-              "type": "string"
-            }
-          }
         }
       },
       "additionalProperties": false
