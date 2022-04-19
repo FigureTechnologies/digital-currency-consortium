@@ -87,12 +87,17 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     match msg {
-        ExecuteMsg::Join { id, name, kyc_attr } => try_join(deps, env, info, id, name, kyc_attr),
+        ExecuteMsg::Join {
+            id,
+            name,
+            kyc_attrs,
+        } => try_join(deps, env, info, id, name, kyc_attrs),
         ExecuteMsg::Remove { id } => try_remove(deps, info, id),
         ExecuteMsg::Transfer { amount, recipient } => try_transfer(deps, info, amount, recipient),
         ExecuteMsg::Mint { amount, address } => try_mint(deps, info, amount, address),
         ExecuteMsg::Burn { amount } => try_burn(deps, info, amount),
-        ExecuteMsg::SetKyc { id, kyc_attr } => try_set_kyc(deps, info, id, kyc_attr),
+        ExecuteMsg::AddKyc { id, kyc_attr } => try_add_kyc(deps, info, id, kyc_attr),
+        ExecuteMsg::RemoveKyc { id, kyc_attr } => try_remove_kyc(deps, info, id, kyc_attr),
     }
 }
 
@@ -103,7 +108,7 @@ fn try_join(
     info: MessageInfo,
     id: String,
     name: String,
-    kyc_attr: String,
+    kyc_attrs: Vec<String>,
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
@@ -112,8 +117,22 @@ fn try_join(
     if name.len() < MIN_NAME_LEN {
         return Err(contract_err("invalid name too short"));
     }
-    if kyc_attr.trim().is_empty() {
-        return Err(contract_err("kyc attribute name is empty"));
+    if kyc_attrs.is_empty() {
+        return Err(contract_err("at least one kyc attribute is required"));
+    }
+    for kyc_attr in &kyc_attrs {
+        if kyc_attr.trim().is_empty() {
+            return Err(contract_err("kyc attribute name is empty"));
+        }
+    }
+
+    let mut valid_attrs: Vec<String> = kyc_attrs
+        .iter()
+        .map(|kyc_attr| kyc_attr.trim().into())
+        .collect();
+    valid_attrs.dedup();
+    if valid_attrs.len() != kyc_attrs.len() {
+        return Err(contract_err("duplicate kyc attributes in args"));
     }
 
     let address = deps.api.addr_validate(&id)?;
@@ -128,9 +147,11 @@ fn try_join(
     }
 
     // Verify kyc attribute does not already exist
-    let kyc_attrs = get_attributes(deps.as_ref())?;
-    if kyc_attrs.contains(&kyc_attr) {
-        return Err(contract_err("duplicate kyc attribute"));
+    let curr_kyc_attrs = get_attributes(deps.as_ref())?;
+    for kyc_attr in &valid_attrs {
+        if curr_kyc_attrs.contains(&kyc_attr) {
+            return Err(contract_err("duplicate kyc attribute"));
+        }
     }
 
     // Check for existing member
@@ -145,13 +166,12 @@ fn try_join(
             id: address.clone(),
             joined: Uint128::from(env.block.height),
             name: name.clone(),
-            kyc_attr: Option::Some(kyc_attr.clone()),
+            kyc_attrs: valid_attrs.clone(),
         },
     )?;
 
     let res = Response::new()
         .add_attribute("action", "join")
-        .add_attribute("join_kyc_attr", kyc_attr)
         .add_attribute("join_member_id", address.clone());
     Ok(res)
 }
@@ -225,10 +245,16 @@ fn try_transfer(
         return Err(contract_err("insufficient dcc balance in transfer"));
     }
 
-    // Ensure accounts have the required kyc attrs if they aren't members.
-    let kyc_attrs: Vec<String> = get_attributes(deps.as_ref())?;
-    let from_attr = matched_attribute(deps.as_ref(), info.sender.clone(), kyc_attrs.clone())?;
-    let to_attr = matched_attribute(deps.as_ref(), recipient.clone(), kyc_attrs)?;
+    // Ensure accounts have the required member kyc attribute.
+    let members: Vec<MemberV2> = get_members(deps.as_ref())?;
+    let from_member = match members_read(deps.storage).may_load(info.sender.as_bytes())? {
+        Some(m) => m,
+        None => matched_member(deps.as_ref(), info.sender.clone(), members.clone())?,
+    };
+    let to_member = match members_read(deps.storage).may_load(recipient.as_bytes())? {
+        Some(m) => m,
+        None => matched_member(deps.as_ref(), recipient.clone(), members)?,
+    };
 
     // Transfer the dcc
     let res = Response::new()
@@ -243,8 +269,8 @@ fn try_transfer(
         .add_attribute("denom", &state.denom)
         .add_attribute("sender", info.sender)
         .add_attribute("recipient", recipient)
-        .add_attribute("from_attr", from_attr)
-        .add_attribute("to_attr", to_attr);
+        .add_attribute("from_member_id", &from_member.id)
+        .add_attribute("to_member_id", &to_member.id);
     Ok(res)
 }
 
@@ -271,10 +297,9 @@ fn try_mint(
     let member = members(deps.storage).load(key)?;
 
     // Ensure member has a kyc attribute set.
-    if member.kyc_attr.is_none() {
+    if member.kyc_attrs.is_empty() {
         return Err(contract_err("member is missing kyc attribute"));
     }
-    let member_attr = member.kyc_attr.unwrap();
 
     // Mint dcc token.
     let state = config_read(deps.storage).load()?;
@@ -283,8 +308,7 @@ fn try_mint(
         // Add wasm event attributes
         .add_attribute("action", "mint")
         .add_attribute("member_id", &member.id)
-        .add_attribute("amount", amount)
-        .add_attribute("from_attr", member_attr.clone());
+        .add_attribute("amount", amount);
 
     // Withdraw to address or fallback.
     match address {
@@ -299,17 +323,14 @@ fn try_mint(
                 )?)
                 .add_attribute("withdraw_denom", &state.denom)
                 .add_attribute("withdraw_address", info.sender)
-                .add_attribute("to_attr", member_attr);
         }
         Some(addr) => {
             // When withdrawing dcc tokens to a non-member account, ensure the recipient has the
             // required kyc attribute for member.
             let address = deps.api.addr_validate(&addr)?;
-            let to_attr = if address != info.sender {
-                ensure_attribute(deps.as_ref(), address.clone(), vec![member_attr])?
-            } else {
-                member_attr
-            };
+            if address != info.sender {
+                matched_member(deps.as_ref(), address.clone(), vec![member])?;
+            }
             // Withdraw minted dcc tokens to the provided account.
             res = res
                 .add_message(withdraw_coins(
@@ -320,7 +341,6 @@ fn try_mint(
                 )?)
                 .add_attribute("withdraw_denom", &state.denom)
                 .add_attribute("withdraw_address", address)
-                .add_attribute("to_attr", to_attr);
         }
     };
     Ok(res)
@@ -379,8 +399,8 @@ fn try_burn(
     Ok(res)
 }
 
-// Set a member kyc attribute.
-fn try_set_kyc(
+// Add a member kyc attribute.
+fn try_add_kyc(
     deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
     id: Option<String>,
@@ -393,6 +413,7 @@ fn try_set_kyc(
     if kyc_attr.trim().is_empty() {
         return Err(contract_err("kyc attribute name is empty"));
     }
+    let valid_attr = kyc_attr.trim().into();
 
     // Load state and ensure sender is the administrator or calling id.
     let state = config(deps.storage).load()?;
@@ -410,19 +431,66 @@ fn try_set_kyc(
         None => members_read(deps.storage).load(info.sender.as_bytes())?,
     };
 
-    // Ensure kyc attribute is different
-    if member.kyc_attr == Some(kyc_attr.clone()) {
-        return Err(contract_err("kyc attribute is unchanged"));
+    let curr_kyc_attributes = get_attributes(deps.as_ref())?;
+    // Ensure kyc attribute wasn't already added
+    if curr_kyc_attributes.contains(&valid_attr) {
+        return Err(contract_err("kyc attribute already exists"));
     }
-
     // Add the kyc attribute and save
-    member.kyc_attr = Some(kyc_attr.clone());
+    member.kyc_attrs.push(valid_attr.clone());
     members(deps.storage).save(member.id.as_bytes(), &member)?;
 
     // Add wasm event attributes
     Ok(Response::new()
-        .add_attribute("action", "set_kyc_attribute")
-        .add_attribute("set_kyc_attr", kyc_attr)
+        .add_attribute("action", "add_kyc_attribute")
+        .add_attribute("add_kyc_attr", valid_attr)
+        .add_attribute("member_id", &member.id))
+}
+
+// Remove a member kyc attribute.
+fn try_remove_kyc(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    id: Option<String>,
+    kyc_attr: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Validate params.
+    if !info.funds.is_empty() {
+        return Err(contract_err("no funds should be sent during kyc add"));
+    }
+    if kyc_attr.trim().is_empty() {
+        return Err(contract_err("kyc attribute name is empty"));
+    }
+    let valid_attr = kyc_attr.trim().into();
+
+    // Load state and ensure sender is the administrator or calling id.
+    let state = config(deps.storage).load()?;
+
+    let mut member = match id {
+        Some(addr) => {
+            let address = deps.api.addr_validate(&addr)?;
+            // Only admin can modify kyc_attr for different members
+            if info.sender != state.admin {
+                return Err(ContractError::Unauthorized {});
+            }
+
+            members_read(deps.storage).load(address.as_bytes())?
+        }
+        None => members_read(deps.storage).load(info.sender.as_bytes())?,
+    };
+    // Ensure kyc attribute exists
+    if !member.kyc_attrs.contains(&valid_attr) {
+        return Err(contract_err("kyc attribute does not exist"));
+    }
+
+    // Remove the kyc attribute and save
+    member.kyc_attrs.retain(|kyc_attr| *kyc_attr != valid_attr);
+    members(deps.storage).save(member.id.as_bytes(), &member)?;
+
+    // Add wasm event attributes
+    Ok(Response::new()
+        .add_attribute("action", "remove_kyc_attribute")
+        .add_attribute("remove_kyc_attr", kyc_attr)
         .add_attribute("member_id", &member.id))
 }
 
@@ -431,54 +499,24 @@ fn contract_err(s: &str) -> ContractError {
     ContractError::Std(StdError::generic_err(s))
 }
 
-// Return the member or first matched attribute of an address, otherwise return an error.
-fn matched_attribute(
-    deps: Deps<ProvenanceQuery>,
-    addr: Addr,
-    attrs: Vec<String>,
-) -> Result<String, ContractError> {
-    // Skip the check if no attributes are required.
-    if attrs.is_empty() {
-        return Err(contract_err("requires at least one kyc attribute"));
-    }
-    // Check if member before checking provided attributes.
-    let member = members_read(deps.storage).may_load(addr.as_bytes())?;
-    match member {
-        Some(m) => {
-            if m.kyc_attr.is_none() {
-                return Err(contract_err("no member kyc_attr found"));
-            }
-            let kyc_attr = m.kyc_attr.unwrap();
-            for name in attrs.iter() {
-                if *name == kyc_attr {
-                    return Ok(kyc_attr);
-                }
-            }
-            Err(contract_err(&format!(
-                "no kyc attributes found for {}",
-                addr
-            )))
-        }
-        None => ensure_attribute(deps, addr, attrs),
-    }
-}
-
 // Return the first matched attribute, otherwise return an error.
-fn ensure_attribute(
+fn matched_member(
     deps: Deps<ProvenanceQuery>,
     addr: Addr,
-    attrs: Vec<String>,
-) -> Result<String, ContractError> {
+    members: Vec<MemberV2>,
+) -> Result<MemberV2, ContractError> {
     // Skip the check if no attributes are required.
-    if attrs.is_empty() {
-        return Err(contract_err("requires at least one kyc attribute"));
+    if members.is_empty() {
+        return Err(contract_err("requires at least one member"));
     }
     // Check for all provided attributes
     let querier = ProvenanceQuerier::new(&deps.querier);
-    for name in attrs.iter() {
-        let res = querier.get_attributes(addr.clone(), Some(name))?;
-        if !res.attributes.is_empty() {
-            return Ok(name.to_string());
+    for member in members.iter() {
+        for kyc_attr in member.kyc_attrs.iter() {
+            let res = querier.get_attributes(addr.clone(), Some(kyc_attr))?;
+            if !res.attributes.is_empty() {
+                return Ok(member.clone());
+            }
         }
     }
     return Err(contract_err(&format!(
@@ -531,7 +569,7 @@ fn get_members(deps: Deps<ProvenanceQuery>) -> Result<Vec<MemberV2>, ContractErr
 fn get_attributes(deps: Deps<ProvenanceQuery>) -> Result<Vec<String>, ContractError> {
     Ok(get_members(deps)?
         .into_iter()
-        .filter_map(|item| item.kyc_attr)
+        .flat_map(|item| item.kyc_attrs)
         .collect())
 }
 
@@ -651,7 +689,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -662,7 +700,7 @@ mod tests {
 
         assert_eq!(member.id, "bank");
         assert_eq!(member.joined, Uint128::new(12345));
-        assert_eq!(member.kyc_attr.unwrap(), "bank.kyc.pb");
+        assert_eq!(member.kyc_attrs, vec!["bank.kyc.pb"]);
         assert_eq!(member.name, "bank");
     }
 
@@ -690,7 +728,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "ban".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap_err();
@@ -711,7 +749,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: " ".into(),
+                kyc_attrs: vec![" ".into()],
             },
         )
         .unwrap_err();
@@ -732,7 +770,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap_err();
@@ -752,7 +790,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap_err();
@@ -761,6 +799,27 @@ mod tests {
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "no funds should be sent during join")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to create with same kyc attributes.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into(), "bank.kyc.pb".into()],
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "duplicate kyc attributes in args")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -790,7 +849,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank1".into(),
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attrs: vec!["bank1.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -803,7 +862,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank2".into(),
                 name: "bank2".into(),
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attrs: vec!["bank1.kyc.pb".into()],
             },
         )
         .unwrap_err();
@@ -841,7 +900,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -854,7 +913,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank2".into(),
-                kyc_attr: "bank2.kyc.pb".into(),
+                kyc_attrs: vec!["bank2.kyc.pb".into()],
             },
         )
         .unwrap_err();
@@ -892,7 +951,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -938,7 +997,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1018,7 +1077,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1072,7 +1131,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1143,7 +1202,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1197,7 +1256,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1253,7 +1312,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1311,7 +1370,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1357,7 +1416,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1425,7 +1484,7 @@ mod tests {
     }
 
     #[test]
-    fn mint_withdraw_dcc_test() {
+    fn mint_withdraw_test() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1448,7 +1507,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1475,6 +1534,73 @@ mod tests {
     }
 
     #[test]
+    fn mint_withdraw_not_member_customer() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member 1
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank1".into(),
+                name: "bank1".into(),
+                kyc_attrs: vec!["bank1.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        // Create join member 2
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank2".into(),
+                name: "bank2".into(),
+                kyc_attrs: vec!["bank2.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        // Assume the customer has the required attribute.
+        deps.querier
+            .with_attributes("customer", &[("bank2.kyc.pb", "ok", "string")]);
+
+        // Mint reserve tokens and withdraw dcc to a customer address.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank1", &[]),
+            ExecuteMsg::Mint {
+                amount: Uint128::new(100),
+                address: Some("customer".into()),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg }) => {
+                assert_eq!(msg, "no kyc attributes found for customer")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
     fn mint_withdraw_no_attribute() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
@@ -1498,7 +1624,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1553,7 +1679,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1615,7 +1741,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1703,7 +1829,7 @@ mod tests {
     }
 
     #[test]
-    fn set_kyc_test() {
+    fn add_kyc_test() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1726,34 +1852,34 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
 
         let key = "bank".as_bytes();
         let config_state = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(config_state.kyc_attr.unwrap(), "bank.kyc.pb");
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb"]);
 
-        // Set new kyc attribute
+        // Add new kyc attribute
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("bank", &[]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::None,
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attr: "bank2.kyc.pb".into(),
             },
         )
         .unwrap();
 
-        // Ensure we now have the updated kyc attribute.
+        // Ensure we now have the updated kyc attributes.
         let config_state = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(config_state.kyc_attr.unwrap(), "bank1.kyc.pb");
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb", "bank2.kyc.pb"]);
     }
 
     #[test]
-    fn set_kyc_test_admin() {
+    fn add_kyc_test_admin() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1776,34 +1902,34 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
 
         let key = "bank".as_bytes();
         let config_state = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(config_state.kyc_attr.unwrap(), "bank.kyc.pb");
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb"]);
 
-        // Set new kyc attribute
+        // Add new kyc attribute
         execute(
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::Some("bank".into()),
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attr: "bank2.kyc.pb".into(),
             },
         )
         .unwrap();
 
         // Ensure we now have the updated kyc attribute.
         let config_state = members_read(&deps.storage).load(key).unwrap();
-        assert_eq!(config_state.kyc_attr.unwrap(), "bank1.kyc.pb");
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb", "bank2.kyc.pb"]);
     }
 
     #[test]
-    fn set_kyc_param_errors() {
+    fn add_kyc_param_errors() {
         // Create mock deps.
         let mut deps = mock_dependencies(&[]);
 
@@ -1826,7 +1952,7 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attr: "bank.kyc.pb".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
             },
         )
         .unwrap();
@@ -1837,9 +1963,9 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[funds]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::None,
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attr: "bank2.kyc.pb".into(),
             },
         )
         .unwrap_err();
@@ -1857,7 +1983,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::None,
                 kyc_attr: "".into(),
             },
@@ -1872,14 +1998,14 @@ mod tests {
             _ => panic!("unexpected execute error"),
         }
 
-        // Try to set a kyc attribute as a non-admin
+        // Try to add a kyc attribute as a non-admin
         let err = execute(
             deps.as_mut(),
             mock_env(),
             mock_info("non.admin", &[]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::None,
-                kyc_attr: "bank1.kyc.pb".into(),
+                kyc_attr: "bank2.kyc.pb".into(),
             },
         )
         .unwrap_err();
@@ -1895,7 +2021,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             mock_info("admin", &[]),
-            ExecuteMsg::SetKyc {
+            ExecuteMsg::AddKyc {
                 id: Option::Some("bank".into()),
                 kyc_attr: "bank.kyc.pb".into(),
             },
@@ -1905,7 +2031,216 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "kyc attribute is unchanged")
+                assert_eq!(msg, "kyc attribute already exists")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn remove_kyc_test() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        let key = "bank".as_bytes();
+        let config_state = members_read(&deps.storage).load(key).unwrap();
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb"]);
+
+        // Remove kyc attribute
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("bank", &[]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::None,
+                kyc_attr: "bank.kyc.pb".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure we now have the updated kyc attributes.
+        let config_state = members_read(&deps.storage).load(key).unwrap();
+        assert!(config_state.kyc_attrs.is_empty());
+    }
+
+    #[test]
+    fn remove_kyc_test_admin() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        let key = "bank".as_bytes();
+        let config_state = members_read(&deps.storage).load(key).unwrap();
+        assert_eq!(config_state.kyc_attrs, vec!["bank.kyc.pb"]);
+
+        // Remove new kyc attribute
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::Some("bank".into()),
+                kyc_attr: "bank.kyc.pb".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure we now have the updated kyc attribute.
+        let config_state = members_read(&deps.storage).load(key).unwrap();
+        assert!(config_state.kyc_attrs.is_empty());
+    }
+
+    #[test]
+    fn remove_kyc_param_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        // Try to send funds w/ the kyc message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[funds]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::None,
+                kyc_attr: "bank.kyc.pb".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during kyc add")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to remove an empty name.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::None,
+                kyc_attr: "".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "kyc attribute name is empty")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to remove a kyc attribute as a non-admin
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("non.admin", &[]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::None,
+                kyc_attr: "bank.kyc.pb".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::NotFound { .. }) => {}
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to remove a kyc attr that does not exist.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::RemoveKyc {
+                id: Option::Some("bank".into()),
+                kyc_attr: "bank2.kyc.pb".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "kyc attribute does not exist")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2023,7 +2358,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "cannot upgrade from a newer version")
+                assert_eq!(msg, "cannot upgrade from same or newer version")
             }
             _ => panic!("unexpected execute error"),
         }

@@ -12,15 +12,18 @@
           "type": "object",
           "required": [
             "id",
-            "kyc_attr",
+            "kyc_attrs",
             "name"
           ],
           "properties": {
             "id": {
               "type": "string"
             },
-            "kyc_attr": {
-              "type": "string"
+            "kyc_attrs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             },
             "name": {
               "type": "string"
@@ -123,10 +126,36 @@
     {
       "type": "object",
       "required": [
-        "set_kyc"
+        "add_kyc"
       ],
       "properties": {
-        "set_kyc": {
+        "add_kyc": {
+          "type": "object",
+          "required": [
+            "kyc_attr"
+          ],
+          "properties": {
+            "id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "kyc_attr": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_kyc"
+      ],
+      "properties": {
+        "remove_kyc": {
           "type": "object",
           "required": [
             "kyc_attr"

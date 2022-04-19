@@ -25,7 +25,7 @@ pub enum ExecuteMsg {
     Join {
         id: String,
         name: String,
-        kyc_attr: String,
+        kyc_attrs: Vec<String>,
     },
     Remove {
         id: String,
@@ -45,7 +45,12 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     // Set the kyc attribute for member.
-    SetKyc {
+    AddKyc {
+        id: Option<String>, // If admin, can set the kyc attribute for another member id
+        kyc_attr: String,
+    },
+    // Set the kyc attribute for member.
+    RemoveKyc {
         id: Option<String>, // If admin, can set the kyc attribute for another member id
         kyc_attr: String,
     },

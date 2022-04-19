@@ -43,7 +43,7 @@ pub struct MemberV2 {
     // The name of the member (or just the address if not provided in the join proposal).
     pub name: String,
     // KYC attributes required for holding dcc tokens.
-    pub kyc_attr: Option<String>,
+    pub kyc_attrs: Vec<String>,
 }
 
 #[allow(deprecated)]
@@ -53,7 +53,7 @@ impl From<Member> for MemberV2 {
             id: member.id,
             joined: member.joined,
             name: member.name,
-            kyc_attr: Option::None,
+            kyc_attrs: Vec::new(),
         }
     }
 }
@@ -153,7 +153,7 @@ mod tests {
                 id: Addr::unchecked("id"),
                 joined: Uint128::new(50100),
                 name: "bank".into(),
-                kyc_attr: Option::None,
+                kyc_attrs: Vec::new(),
             }
         );
 

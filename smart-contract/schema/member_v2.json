@@ -6,6 +6,7 @@
   "required": [
     "id",
     "joined",
+    "kyc_attrs",
     "name"
   ],
   "properties": {
@@ -15,11 +16,11 @@
     "joined": {
       "$ref": "#/definitions/Uint128"
     },
-    "kyc_attr": {
-      "type": [
-        "string",
-        "null"
-      ]
+    "kyc_attrs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "name": {
       "type": "string"
