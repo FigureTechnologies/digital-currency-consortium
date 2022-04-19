@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use crate::error::ContractError;
 #[allow(deprecated)]
 use crate::msg::{MigrateMsg, VoteChoice};
-use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
 use provwasm_std::ProvenanceQuery;
@@ -42,11 +41,10 @@ pub struct JoinProposal {
 #[allow(deprecated)]
 pub fn migrate_join_proposals(
     deps: DepsMut<ProvenanceQuery>,
+    current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
-    let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
@@ -85,20 +83,20 @@ pub fn legacy_join_proposals_read(storage: &dyn Storage) -> ReadonlyBucket<JoinP
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Addr, Order, Uint128};
+    use cosmwasm_std::{Addr, Uint128};
     use provwasm_mocks::mock_dependencies;
+    use semver::Version;
 
     use crate::error::ContractError;
     #[allow(deprecated)]
     use crate::join_proposal::{
-        get_legacy_proposal_ids, legacy_join_proposals, legacy_join_proposals_read,
-        migrate_join_proposals, JoinProposal,
+        get_legacy_proposal_ids, legacy_join_proposals, migrate_join_proposals, JoinProposal,
     };
     use crate::msg::MigrateMsg;
 
     #[test]
     #[allow(deprecated)]
-    pub fn migrate_legacy_proposal_to_v2() -> Result<(), ContractError> {
+    pub fn migrate_legacy_proposal_to_removed() -> Result<(), ContractError> {
         let mut deps = mock_dependencies(&[]);
 
         legacy_join_proposals(&mut deps.storage).save(
@@ -117,7 +115,8 @@ mod tests {
             },
         )?;
 
-        migrate_join_proposals(deps.as_mut(), &MigrateMsg {})?;
+        let current_version = Version::parse("0.0.1")?;
+        migrate_join_proposals(deps.as_mut(), current_version, &MigrateMsg {})?;
 
         let existing_join_proposal_ids: Vec<Vec<u8>> = get_legacy_proposal_ids(&deps.storage);
         assert_eq!(existing_join_proposal_ids.len(), 0);

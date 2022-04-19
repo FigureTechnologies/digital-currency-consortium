@@ -5,4 +5,3 @@ pub mod join_proposal;
 pub mod member;
 pub mod msg;
 pub mod state;
-pub mod version_info;

@@ -2,20 +2,23 @@ use cosmwasm_std::{
     entry_point, to_binary, Addr, Deps, DepsMut, Env, MessageInfo, Order, QueryResponse, Response,
     StdError, Uint128,
 };
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use provwasm_std::{
     activate_marker, burn_marker_supply, create_marker, finalize_marker, grant_marker_access,
     mint_marker_supply, transfer_marker_coins, withdraw_coins, MarkerAccess, MarkerType,
     ProvenanceMsg, ProvenanceQuerier, ProvenanceQuery,
 };
+use semver::Version;
 
 use crate::error::ContractError;
 use crate::join_proposal::migrate_join_proposals;
 use crate::member::{members, members_read, migrate_members, MemberV2};
 use crate::msg::{ExecuteMsg, InitMsg, Members, MigrateMsg, QueryMsg};
 use crate::state::{config, config_read, migrate_state, StateV2};
-use crate::version_info::migrate_version_info;
 
 // Contract constants
+pub static CONTRACT_NAME: &str = env!("CARGO_CRATE_NAME");
+pub static CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub static MIN_DENOM_LEN: usize = 8;
 pub static MIN_NAME_LEN: usize = 4;
 
@@ -62,6 +65,10 @@ pub fn instantiate(
             .add_message(finalize_marker(&msg.denom)?)
             .add_message(activate_marker(&msg.denom)?);
     }
+
+    // Set contract version.
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(res)
 }
 
@@ -535,17 +542,39 @@ pub fn migrate(
     _env: Env,
     msg: MigrateMsg,
 ) -> Result<Response, ContractError> {
+    let ver_result = get_contract_version(deps.storage);
+    let ver = match ver_result {
+        Ok(ver) => ver,
+        // Default if running older version never set
+        _ => ContractVersion {
+            contract: CONTRACT_NAME.into(),
+            version: "0.0.1".into(),
+        },
+    };
+
+    // Sanity check contract name for match.
+    if ver.contract != CONTRACT_NAME {
+        return Err(contract_err("can only upgrade from same type"));
+    }
+
+    // Ensure we are upgrading to a newer version only.
+    let current_version = Version::parse(&ver.version)?;
+    let new_version = Version::parse(CONTRACT_VERSION)?;
+    if current_version >= new_version {
+        return Err(contract_err("cannot upgrade from same or newer version"));
+    }
+
     // migrate state
-    migrate_state(deps.branch(), &msg)?;
+    migrate_state(deps.branch(), current_version.clone(), &msg)?;
 
     // migrate join proposals
-    migrate_join_proposals(deps.branch(), &msg)?;
+    migrate_join_proposals(deps.branch(), current_version.clone(), &msg)?;
 
     // migrate members
-    migrate_members(deps.branch(), &msg)?;
+    migrate_members(deps.branch(), current_version, &msg)?;
 
-    // lastly, migrate version_info
-    migrate_version_info(deps.branch())?;
+    // lastly, migrate version
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::default())
 }
@@ -561,7 +590,6 @@ mod tests {
     use crate::msg::VoteChoice;
     #[allow(deprecated)]
     use crate::state::{legacy_config, State};
-    use crate::version_info::{version_info, version_info_read, VersionInfo, CRATE_NAME};
     use cosmwasm_std::testing::{mock_env, mock_info};
     use cosmwasm_std::{coin, from_binary, Decimal};
     use provwasm_mocks::{mock_dependencies, must_read_binary_file};
@@ -592,6 +620,11 @@ mod tests {
 
         // Validate state values
         assert_eq!(config_state.denom, "dcc.coin");
+
+        let contract_version = get_contract_version(&deps.storage).unwrap();
+
+        assert_eq!(contract_version.contract, CONTRACT_NAME);
+        assert_eq!(contract_version.version, CONTRACT_VERSION);
     }
 
     #[test]
@@ -1948,10 +1981,7 @@ mod tests {
             )
             .unwrap();
 
-        assert!(version_info_read(&deps.storage)
-            .may_load()
-            .unwrap()
-            .is_none());
+        assert!(get_contract_version(&deps.storage).is_err());
 
         // Call migrate
         let res = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap(); // Panics on error
@@ -1970,10 +2000,7 @@ mod tests {
         assert_eq!(members.len(), 1);
 
         // Validate updated version set
-        assert!(version_info_read(&deps.storage)
-            .may_load()
-            .unwrap()
-            .is_some());
+        assert!(get_contract_version(&deps.storage).is_ok());
     }
 
     #[test]
@@ -1988,17 +2015,17 @@ mod tests {
             })
             .unwrap();
 
-        version_info(&mut deps.storage)
-            .save(&VersionInfo {
-                definition: CRATE_NAME.to_string(),
-                version: "0.5.0".to_string(),
-            })
-            .unwrap();
+        set_contract_version(&mut deps.storage, CONTRACT_NAME, CONTRACT_VERSION).unwrap();
 
         // Call migrate
-        let res = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap(); // Panics on error
+        let err = migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap_err();
 
-        // Should just get the default response for now
-        assert_eq!(res, Response::default());
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "cannot upgrade from a newer version")
+            }
+            _ => panic!("unexpected execute error"),
+        }
     }
 }

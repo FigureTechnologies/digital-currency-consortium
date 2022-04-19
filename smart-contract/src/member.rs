@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::MigrateMsg;
-use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
 use provwasm_std::ProvenanceQuery;
@@ -62,11 +61,10 @@ impl From<Member> for MemberV2 {
 #[allow(deprecated)]
 pub fn migrate_members(
     deps: DepsMut<ProvenanceQuery>,
+    current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
-    let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
@@ -114,14 +112,14 @@ pub fn get_legacy_member_ids(storage: &dyn Storage) -> Vec<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Addr, Order, Uint128};
+    use cosmwasm_std::{Addr, Uint128};
     use provwasm_mocks::mock_dependencies;
+    use semver::Version;
 
     use crate::error::ContractError;
     #[allow(deprecated)]
     use crate::member::{
-        get_legacy_member_ids, legacy_members, legacy_members_read, members_read, migrate_members,
-        Member, MemberV2,
+        get_legacy_member_ids, legacy_members, members_read, migrate_members, Member, MemberV2,
     };
     use crate::msg::MigrateMsg;
 
@@ -143,7 +141,8 @@ mod tests {
             },
         )?;
 
-        migrate_members(deps.as_mut(), &MigrateMsg {})?;
+        let current_version = Version::parse("0.0.1")?;
+        migrate_members(deps.as_mut(), current_version, &MigrateMsg {})?;
 
         let member_store = members_read(&deps.storage);
         let migrated_member = member_store.load(b"id")?;

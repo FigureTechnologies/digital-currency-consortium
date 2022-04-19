@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::MigrateMsg;
-use crate::version_info::version_info_read;
 use cosmwasm_std::{Addr, Decimal, DepsMut, Storage, Uint128};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 use provwasm_std::ProvenanceQuery;
@@ -54,11 +53,10 @@ impl From<State> for StateV2 {
 #[allow(deprecated)]
 pub fn migrate_state(
     deps: DepsMut<ProvenanceQuery>,
+    current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
     let store = deps.storage;
-    let version_info = version_info_read(store).may_load()?.unwrap_or_default();
-    let current_version = Version::parse(&version_info.version)?;
     // version support added in 0.5.0, all previous versions migrate to v2 of store data
     let upgrade_req = VersionReq::parse("<0.5.0")?;
 
@@ -93,6 +91,7 @@ pub fn legacy_config_read(storage: &dyn Storage) -> ReadonlySingleton<State> {
 mod tests {
     use cosmwasm_std::{Addr, Decimal, Uint128};
     use provwasm_mocks::mock_dependencies;
+    use semver::Version;
 
     use crate::error::ContractError;
     use crate::msg::MigrateMsg;
@@ -113,7 +112,8 @@ mod tests {
             admin_weight: Uint128::zero(),
         })?;
 
-        migrate_state(deps.as_mut(), &MigrateMsg {})?;
+        let current_version = Version::parse("0.0.1")?;
+        migrate_state(deps.as_mut(), current_version, &MigrateMsg {})?;
 
         let config_store = config_read(&deps.storage);
         let migrated_state = config_store.load()?;

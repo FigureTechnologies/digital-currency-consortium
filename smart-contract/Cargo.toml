@@ -31,6 +31,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 provwasm-std = { version = "1.0.0-beta2" }
 cosmwasm-std = { version = "1.0.0-beta8", features = ["iterator"] }
 cosmwasm-storage = { version = "1.0.0-beta8", features = ["iterator"] }
+cw2 = "0.13.2"
 schemars = "0.8.1"
 semver = "1.0.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
