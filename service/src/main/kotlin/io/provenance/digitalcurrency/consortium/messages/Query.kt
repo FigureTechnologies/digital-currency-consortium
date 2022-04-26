@@ -20,8 +20,7 @@ interface JsonI
 
 @JsonInclude(Include.NON_NULL)
 class QueryRequest(
-    @JsonProperty("get_members") val getMembers: EmptyObject? = null,
-    @JsonProperty("get_join_proposals") val getJoinProposals: EmptyObject? = null
+    @JsonProperty("get_members") val getMembers: EmptyObject? = null
 ) : JsonI
 
 internal val mapper = ObjectMapper()

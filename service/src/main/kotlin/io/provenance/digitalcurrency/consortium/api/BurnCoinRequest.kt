@@ -9,19 +9,16 @@ import javax.validation.constraints.Digits
 import javax.validation.constraints.NotNull
 
 /**
- * Request to the middleware to take dcc token from bank member address and redeem/burn bank coin.
+ * Request to the middleware to burn dcc token from bank member address.
  *
  * @param uuid Unique UUID for this request
  * @param amount The amount in USD to mint to the address.
  */
 @ApiModel(
-    value = "RedeemBurnCoinRequest",
-    description = """
-        Request to the middleware to redeem and burn dcc token and corresponding bank token. 
-        Must have sufficient dcc coin at bank address and reserve token escrowed.
-    """
+    value = "BurnCoinRequest",
+    description = "Request to the middleware to burn dcc token. Must have sufficient dcc coin at bank address."
 )
-data class RedeemBurnCoinRequest(
+data class BurnCoinRequest(
 
     @ApiModelProperty(
         value = "A unique uuid for this request.",
@@ -30,7 +27,7 @@ data class RedeemBurnCoinRequest(
     @get:NotNull val uuid: UUID,
 
     @ApiModelProperty(
-        value = "The amount of fiat in USD to mint to the customer's address.",
+        value = "The amount of fiat in USD to burn.",
         required = true,
         allowableValues = "Greater than 0"
     )

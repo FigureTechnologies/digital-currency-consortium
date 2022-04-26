@@ -1,6 +1,5 @@
 package io.provenance.digitalcurrency.consortium.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.protobuf.GeneratedMessageV3
 import cosmos.authz.v1beta1.Authz.Grant
 import cosmos.authz.v1beta1.Tx.MsgGrant
@@ -8,7 +7,6 @@ import cosmos.base.v1beta1.CoinOuterClass.Coin
 import cosmos.tx.v1beta1.ServiceOuterClass.BroadcastMode.BROADCAST_MODE_BLOCK
 import cosmos.tx.v1beta1.ServiceOuterClass.GetTxResponse
 import cosmwasm.wasm.v1.QueryOuterClass.QuerySmartContractStateRequest
-import cosmwasm.wasm.v1.Tx
 import io.grpc.Status.Code
 import io.grpc.StatusRuntimeException
 import io.provenance.attribute.v1.Attribute
@@ -16,30 +14,23 @@ import io.provenance.client.grpc.BaseReqSigner
 import io.provenance.client.grpc.PbClient
 import io.provenance.client.protobuf.extensions.getAccountCoins
 import io.provenance.client.protobuf.extensions.getAllAttributes
-import io.provenance.client.protobuf.extensions.getMarkerEscrow
 import io.provenance.client.protobuf.extensions.getTx
 import io.provenance.client.protobuf.extensions.queryWasm
 import io.provenance.client.wallet.fromMnemonic
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.extension.throwIfFailed
 import io.provenance.digitalcurrency.consortium.extension.toAny
-import io.provenance.digitalcurrency.consortium.extension.toByteString
 import io.provenance.digitalcurrency.consortium.extension.toProtoTimestamp
 import io.provenance.digitalcurrency.consortium.extension.toTxBody
-import io.provenance.digitalcurrency.consortium.messages.AcceptRequest
 import io.provenance.digitalcurrency.consortium.messages.EmptyObject
-import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
-import io.provenance.digitalcurrency.consortium.messages.JoinRequest
 import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
 import io.provenance.digitalcurrency.consortium.messages.QueryRequest
 import io.provenance.digitalcurrency.consortium.messages.toByteString
 import io.provenance.digitalcurrency.consortium.messages.toValueResponse
 import io.provenance.marker.v1.MarkerTransferAuthorization
 import org.springframework.stereotype.Service
-import java.math.BigInteger
 import java.time.OffsetDateTime
 import javax.annotation.PreDestroy
 
@@ -47,8 +38,6 @@ import javax.annotation.PreDestroy
 class PbcService(
     private val pbClient: PbClient,
     private val provenanceProperties: ProvenanceProperties,
-    private val mapper: ObjectMapper,
-    bankClientProperties: BankClientProperties,
     serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
@@ -78,18 +67,10 @@ class PbcService(
             )
         }
     final val managerAddress: String by lazy { managerSigner.address() }
-    final val reserveDenom = bankClientProperties.denom
 
     init {
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
-
-    fun getMarkerEscrowBalance(escrowDenom: String = reserveDenom) =
-        // id is marker denom, denom is escrow denom
-        getMarkerEscrowBalance(reserveDenom, escrowDenom)
-
-    fun getMarkerEscrowBalance(reserveDenom: String, escrowDenom: String) =
-        pbClient.markerClient.getMarkerEscrow(reserveDenom, escrowDenom)?.amount ?: "0"
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
         pbClient.bankClient.getAccountCoins(address)
@@ -118,48 +99,6 @@ class PbcService(
                 .toTxBody(timeoutHeight),
             gasAdjustment = provenanceProperties.gasAdjustment,
         ).throwIfFailed("Batch broadcast failed")
-
-    fun join(name: String, maxSupply: BigInteger) =
-        pbClient.estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerSigner)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteRequest(
-                            join = JoinRequest(
-                                denom = reserveDenom,
-                                maxSupply = maxSupply.toString(),
-                                name = name
-                            )
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody(),
-            mode = BROADCAST_MODE_BLOCK
-        ).throwIfFailed("Join failed")
-
-    fun accept() =
-        pbClient.estimateAndBroadcastTx(
-            signers = listOf(BaseReqSigner(managerSigner)),
-            txBody = Tx.MsgExecuteContract.newBuilder()
-                .setSender(managerAddress)
-                .setContract(provenanceProperties.contractAddress)
-                .setMsg(
-                    mapper.writeValueAsString(
-                        ExecuteRequest(
-                            accept = AcceptRequest()
-                        )
-                    ).toByteString()
-                )
-                .build()
-                .toAny()
-                .toTxBody(),
-            mode = BROADCAST_MODE_BLOCK
-        ).throwIfFailed("Accept failed")
 
     fun grantAuthz(coins: List<Coin>, expiration: OffsetDateTime?) =
         pbClient.estimateAndBroadcastTx(

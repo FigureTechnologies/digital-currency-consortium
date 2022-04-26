@@ -44,8 +44,6 @@ services:
       - CONTRACT_ADDRESS=tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8
       # TODO the name of the digital currency denom
       - DCC_DENOM=usdf.local
-      # TODO your desired bank denom
-      - BANK_DENOM=bank3.coin
     depends_on:
       - digital-currency-consortium-postgres
     links:

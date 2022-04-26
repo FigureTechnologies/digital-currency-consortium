@@ -23,10 +23,10 @@ import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.frameworks.toOutput
+import io.provenance.digitalcurrency.consortium.getBurnEvent
 import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
 import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
-import io.provenance.digitalcurrency.consortium.getRedeemBurnEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
 import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
 import io.provenance.digitalcurrency.consortium.messages.MemberResponse
@@ -92,21 +92,15 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 members = listOf(
                     MemberResponse(
                         id = TEST_MEMBER_ADDRESS,
-                        supply = 5000,
-                        maxSupply = 10000000,
-                        denom = "bank.omni.dcc",
                         joined = 11000,
-                        weight = 10000000,
-                        name = "Bank"
+                        name = "Bank",
+                        kycAttributes = listOf("bank.kyc.pb")
                     ),
                     MemberResponse(
                         id = TEST_OTHER_MEMBER_ADDRESS,
-                        supply = 10000,
-                        maxSupply = 10000000,
-                        denom = "otherbank.omni.dcc",
                         joined = 12345,
-                        weight = 10000000,
-                        name = "Other Bank"
+                        name = "Other Bank",
+                        kycAttributes = listOf("otherbank.kyc.pb")
                     )
                 )
             )
@@ -129,8 +123,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     @Nested
     inner class CoinMovementEvents {
         private val mint = getMintEvent(
-            dccDenom = serviceProperties.dccDenom,
-            bankDenom = bankClientProperties.denom
+            dccDenom = serviceProperties.dccDenom
         )
 
         private val redeem = getTransferEvent(
@@ -138,10 +131,9 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             denom = serviceProperties.dccDenom
         )
 
-        private val redeemBurn = getRedeemBurnEvent(
+        private val burn = getBurnEvent(
             memberId = TEST_MEMBER_ADDRESS,
-            denom = serviceProperties.dccDenom,
-            reserveDenom = bankClientProperties.denom
+            denom = serviceProperties.dccDenom
         )
 
         private val transfer = getMarkerTransferEvent(
@@ -167,7 +159,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint.copy(memberId = "someotherbank")),
                 transfers = listOf(redeem),
-                redeemBurns = listOf(redeemBurn.copy(memberId = "someotherbank")),
+                burns = listOf(burn.copy(memberId = "someotherbank")),
                 markerTransfers = listOf(transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS, toAddress = "someotherbank")),
             )
 
@@ -194,7 +186,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint, mint.copy(withdrawAddress = TEST_MEMBER_ADDRESS)),
                 transfers = listOf(redeem, redeem.copy(sender = TEST_OTHER_MEMBER_ADDRESS)),
-                redeemBurns = listOf(redeemBurn),
+                burns = listOf(burn),
                 markerTransfers = listOf(transfer, transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS)),
             )
 
@@ -221,7 +213,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
                 transfers = listOf(redeem),
-                redeemBurns = listOf(redeemBurn),
+                burns = listOf(burn),
                 markerTransfers = listOf(transfer),
             )
 
@@ -231,21 +223,21 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
                 transfers = listOf(redeem),
-                redeemBurns = listOf(redeemBurn),
+                burns = listOf(burn),
                 markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
                 transfers = listOf(redeem),
-                redeemBurns = listOf(redeemBurn),
+                burns = listOf(burn),
                 markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
                 transfers = listOf(redeem),
-                redeemBurns = listOf(redeemBurn),
+                burns = listOf(burn),
                 markerTransfers = listOf(transfer),
             )
 
@@ -273,8 +265,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 mints = listOf(
                     getMintEvent(
                         txHash = "tx1",
-                        dccDenom = serviceProperties.dccDenom,
-                        bankDenom = bankClientProperties.denom
+                        dccDenom = serviceProperties.dccDenom
                     )
                 ),
                 transfers = listOf(
@@ -284,12 +275,11 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                         denom = serviceProperties.dccDenom
                     )
                 ),
-                redeemBurns = listOf(
-                    getRedeemBurnEvent(
+                burns = listOf(
+                    getBurnEvent(
                         txHash = "tx1",
                         memberId = TEST_MEMBER_ADDRESS,
-                        denom = serviceProperties.dccDenom,
-                        reserveDenom = bankClientProperties.denom
+                        denom = serviceProperties.dccDenom
                     )
                 ),
                 markerTransfers = listOf(
@@ -388,6 +378,8 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                         amount = DEFAULT_AMOUNT.toString(),
                         height = 1L,
                         txHash = txHash,
+                        fromMemberId = TEST_MEMBER_ADDRESS,
+                        toMemberId = TEST_MEMBER_ADDRESS,
                         sender = "sender",
                         recipient = "recipient"
                     )

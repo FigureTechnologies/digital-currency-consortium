@@ -72,18 +72,6 @@ dependencies {
         it(Libraries.ExposedDao)
         it(Libraries.ExposedJavaTime)
         it(Libraries.ExposedJdbc)
-
-        it(Libraries.BouncyCastle)
-        it(Libraries.Coroutines)
-        it(Libraries.KethereumBip32)
-        it(Libraries.KethereumBip39)
-        it(Libraries.KethereumCrypto)
-        it(Libraries.KethereumCryptoApi)
-        it(Libraries.KethereumCryptoImplBc)
-        it(Libraries.KethereumKotlinExtensions)
-        it(Libraries.KethereumModel)
-        it(Libraries.KomputingBase58)
-        it(Libraries.KomputingBip44)
     }
 
     testImplementation.let {
@@ -96,7 +84,6 @@ dependencies {
         it(Libraries.TestContainersPostgres)
         it(Libraries.TestContainers)
         it(Libraries.TestContainersJunitJupiter)
-        it(Libraries.TestCoroutines)
     }
 
     testRuntimeOnly(Libraries.JunitJupiterEngine)

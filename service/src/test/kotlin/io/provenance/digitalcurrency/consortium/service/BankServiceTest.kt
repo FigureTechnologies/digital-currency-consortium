@@ -8,8 +8,8 @@ import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
@@ -185,7 +185,7 @@ class BankServiceTest : BaseIntegrationTest() {
     }
 
     @Nested
-    inner class RedeemBurnCoin {
+    inner class BurnCoin {
 
         @Autowired
         lateinit var pbcServiceMock: PbcService
@@ -204,12 +204,11 @@ class BankServiceTest : BaseIntegrationTest() {
 
             whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
             whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("50000") // $500
-            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("25000") // $250
 
             bankService = BankService(bankClientProperties, pbcServiceMock, serviceProperties)
 
             transaction {
-                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
+                CoinBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
                 CoinTransferRecord.insert(UUID.randomUUID(), TEST_ADDRESS, BigDecimal("250"))
             }
         }
@@ -220,10 +219,10 @@ class BankServiceTest : BaseIntegrationTest() {
 
             // $500 usdf balance - $100 existing - $250 transfer = $150 available
             // $250 escrow balance - $100 existing = $150 available
-            bankService.redeemBurnCoin(uuid, BigDecimal("150"))
+            bankService.burnCoin(uuid, BigDecimal("150"))
 
             transaction {
-                val coinRedeemBurn = CoinRedeemBurnRecord.findById(uuid)
+                val coinRedeemBurn = CoinBurnRecord.findById(uuid)
                 Assertions.assertNotNull(coinRedeemBurn, "Coin redeem burn exists")
                 Assertions.assertTrue(BigDecimal("150").compareTo(coinRedeemBurn!!.fiatAmount) == 0, "Amount is correct")
                 Assertions.assertEquals(TxStatus.QUEUED, coinRedeemBurn.status, "Tx request is queued")
@@ -232,10 +231,10 @@ class BankServiceTest : BaseIntegrationTest() {
 
         @Test
         fun `redeem burning coin with duplicate uuid will exception`() {
-            val uuid = transaction { CoinRedeemBurnRecord.all().first().id.value }
+            val uuid = transaction { CoinBurnRecord.all().first().id.value }
 
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
-                bankService.redeemBurnCoin(uuid, BigDecimal("1"))
+                bankService.burnCoin(uuid, BigDecimal("1"))
             }
 
             Assertions.assertTrue(exception.message!!.contains("already exists"), "Should error with already exists")
@@ -249,31 +248,13 @@ class BankServiceTest : BaseIntegrationTest() {
 
             // $499.99 usdf balance - $100 existing - $250 transfer = $149.99 available
             val exception = Assertions.assertThrows(IllegalStateException::class.java) {
-                bankService.redeemBurnCoin(uuid, BigDecimal("150"))
+                bankService.burnCoin(uuid, BigDecimal("150"))
             }
 
             Assertions.assertTrue(exception.message!!.contains("Insufficient dcc coin"), "Should error with insufficient dcc")
 
             // works fine with adjusted amount
-            bankService.redeemBurnCoin(uuid, BigDecimal("149.99"))
-        }
-
-        @Test
-        fun `redeem burning coin with insufficient reserve escrowed coin will exception`() {
-            val uuid = UUID.randomUUID()
-
-            // $500 usdf balance - $100 existing - $250 transfer = $150 available
-            // $249.99 escrow balance - $100 existing = $149.99 available
-            whenever(pbcServiceMock.getMarkerEscrowBalance()).thenReturn("24999") // $249.99
-
-            val exception = Assertions.assertThrows(IllegalStateException::class.java) {
-                bankService.redeemBurnCoin(uuid, BigDecimal("150"))
-            }
-
-            Assertions.assertTrue(exception.message!!.contains("Insufficient bank reserve coin escrowed"), "Should error with insufficient reserve")
-
-            // works fine with adjusted amount
-            bankService.redeemBurnCoin(uuid, BigDecimal("149.99"))
+            bankService.burnCoin(uuid, BigDecimal("149.99"))
         }
     }
 
@@ -304,21 +285,15 @@ class BankServiceTest : BaseIntegrationTest() {
                     members = listOf(
                         MemberResponse(
                             id = TEST_MEMBER_ADDRESS,
-                            supply = 5000,
-                            maxSupply = 10000000,
-                            denom = "bank.omni.dcc",
                             joined = 11000,
-                            weight = 10000000,
-                            name = "Bank"
+                            name = "Bank",
+                            kycAttributes = listOf("bank.kyc.pb")
                         ),
                         MemberResponse(
                             id = TEST_OTHER_MEMBER_ADDRESS,
-                            supply = 10000,
-                            maxSupply = 10000000,
-                            denom = "otherbank.omni.dcc",
                             joined = 12345,
-                            weight = 10000000,
-                            name = "Other Bank"
+                            name = "Other Bank",
+                            kycAttributes = listOf("otherbank.kyc.pb")
                         )
                     )
                 )
@@ -328,8 +303,8 @@ class BankServiceTest : BaseIntegrationTest() {
 
             transaction {
                 insertRegisteredAddress(bankAccountUuid, TEST_ADDRESS, TXN_COMPLETE)
-                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
-                CoinRedeemBurnRecord.insert(UUID.randomUUID(), BigDecimal("50"))
+                CoinBurnRecord.insert(UUID.randomUUID(), BigDecimal("100"))
+                CoinBurnRecord.insert(UUID.randomUUID(), BigDecimal("50"))
                 CoinTransferRecord.insert(UUID.randomUUID(), TEST_ADDRESS, BigDecimal("50"))
             }
         }

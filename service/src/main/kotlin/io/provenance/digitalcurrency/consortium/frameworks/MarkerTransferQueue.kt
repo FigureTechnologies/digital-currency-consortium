@@ -1,7 +1,6 @@
 package io.provenance.digitalcurrency.consortium.frameworks
 
 import io.provenance.digitalcurrency.consortium.annotation.NotTest
-import io.provenance.digitalcurrency.consortium.api.BankSettlementRequest
 import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
@@ -68,27 +67,9 @@ class MarkerTransferQueue(
                             }
                         }
                         null -> {
-                            // TODO - cache member banks
-                            // Let bank know of dcc deposit from another member bank.
-                            pbcService.getMembers().members
-                                .firstOrNull { it.id == transfer.fromAddress }
-                                ?.let { member ->
-                                    transfer.sendAndComplete("fiat settlement") {
-                                        bankClient.settleFiat(
-                                            BankSettlementRequest(
-                                                uuid = transfer.id.value,
-                                                bankMemberAddress = member.id,
-                                                bankMemberName = member.name,
-                                                amount = transfer.fiatAmount
-                                            )
-                                        )
-                                    }
-                                }
-                                ?: run {
-                                    // Marker transfer cannot be handled
-                                    MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ERROR)
-                                    log.error("Address ${transfer.fromAddress} is not registered")
-                                }
+                            // Marker transfer cannot be handled
+                            MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ERROR)
+                            log.error("Address ${transfer.fromAddress} is not registered")
                         }
                     }
                 }

@@ -6,8 +6,8 @@ import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.messages.AmountRequest
@@ -45,11 +45,11 @@ fun MarkerTransferRecord.mdc() = listOf(
     "from" to fromAddress
 ).toTypedArray()
 
-fun CoinRedeemBurnRecord.mdc() = listOf(
+fun CoinBurnRecord.mdc() = listOf(
     "uuid" to id.value,
-    "type" to "Redeem",
+    "type" to "Burn",
     "status" to status,
-    "coin amount" to coinAmount
+    "coinAmount" to coinAmount
 ).toTypedArray()
 
 fun CoinMintRecord.getExecuteContractMessage() =
@@ -60,9 +60,9 @@ fun CoinMintRecord.getExecuteContractMessage() =
         )
     )
 
-fun CoinRedeemBurnRecord.getExecuteContractMessage() =
+fun CoinBurnRecord.getExecuteContractMessage() =
     ExecuteRequest(
-        redeemAndBurn = AmountRequest(
+        burn = AmountRequest(
             amount = coinAmount.toString(),
         )
     )

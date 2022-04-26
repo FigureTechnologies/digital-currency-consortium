@@ -12,17 +12,16 @@ object PluginIds {
 }
 
 object PluginVersions {
-    const val Kotlin = "1.5.21"
+    const val Kotlin = "1.6.21"
 
     const val DependencyAnalysis = "0.69.0"
     const val Flyway = "7.12.1"
     const val Protobuf = "0.8.17"
-    const val SpringBoot = "2.5.3"
+    const val SpringBoot = "2.5.13"
 }
 
 object Versions {
     const val Kotlin = PluginVersions.Kotlin
-    const val Coroutines = "1.5.1"
 
     const val Jacoco = "0.8.7"
 
@@ -63,7 +62,6 @@ object Libraries {
     const val KotlinStdlib = "org.jetbrains.kotlin:kotlin-stdlib:${Versions.Kotlin}"
     const val KotlinStdlibJdk8 = "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${Versions.Kotlin}"
     const val KotlinAllOpen = "org.jetbrains.kotlin:kotlin-allopen:${Versions.Kotlin}"
-    const val Coroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.Coroutines}"
 
     const val LogbackCore = "ch.qos.logback.contrib:logback-json-core:${Versions.Logback}"
     const val LogbackClassic = "ch.qos.logback.contrib:logback-json-classic:${Versions.Logback}"
@@ -103,17 +101,6 @@ object Libraries {
     const val ExposedJavaTime = "org.jetbrains.exposed:exposed-jodatime:${Versions.Exposed}"
     const val ExposedJdbc = "org.jetbrains.exposed:exposed-jdbc:${Versions.Exposed}"
 
-    const val BouncyCastle = "org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}"
-    const val KethereumBip32 = "com.github.komputing.kethereum:bip32:${Versions.Kethereum}"
-    const val KethereumBip39 = "com.github.komputing.kethereum:bip39:${Versions.Kethereum}"
-    const val KethereumCrypto = "com.github.komputing.kethereum:crypto:${Versions.Kethereum}"
-    const val KethereumCryptoApi = "com.github.komputing.kethereum:crypto_api:${Versions.Kethereum}"
-    const val KethereumCryptoImplBc = "com.github.komputing.kethereum:crypto_impl_bouncycastle:${Versions.Kethereum}"
-    const val KethereumKotlinExtensions = "com.github.komputing.kethereum:extensions_kotlin:${Versions.Kethereum}"
-    const val KethereumModel = "com.github.komputing.kethereum:model:${Versions.Kethereum}"
-    const val KomputingBase58 = "com.github.komputing:kbase58:${Versions.Komputing}"
-    const val KomputingBip44 = "com.github.komputing:kbip44:${Versions.Komputing}"
-
     const val SpringBootDevTools = "org.springframework.boot:spring-boot-devtools:${Versions.SpringBoot}"
     const val SpringBootActuator = "org.springframework.boot:spring-boot-starter-actuator:${Versions.SpringBoot}"
     const val SpringBootStartedJdbc = "org.springframework.boot:spring-boot-starter-jdbc:${Versions.SpringBoot}"
@@ -132,7 +119,6 @@ object Libraries {
     const val TestContainersPostgres = "org.testcontainers:postgresql:${Versions.TestContainers}"
     const val TestContainers = "org.testcontainers:testcontainers:${Versions.TestContainers}"
     const val TestContainersJunitJupiter = "org.testcontainers:junit-jupiter:${Versions.TestContainers}"
-    const val TestCoroutines = "org.jetbrains.kotlinx:kotlinx-coroutines-test:${Versions.Coroutines}"
 
     const val KtLint = "com.pinterest:ktlint:${Versions.KtLint}"
 }

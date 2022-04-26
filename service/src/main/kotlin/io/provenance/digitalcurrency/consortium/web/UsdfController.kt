@@ -1,7 +1,7 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import io.provenance.digitalcurrency.consortium.api.BurnCoinRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
-import io.provenance.digitalcurrency.consortium.api.RedeemBurnCoinRequest
 import io.provenance.digitalcurrency.consortium.api.TransferRequest
 import io.provenance.digitalcurrency.consortium.service.BankService
 import io.swagger.annotations.Api
@@ -32,9 +32,7 @@ class UsdfController(private val bankService: BankService) {
     @PostMapping(MINT_V1)
     @ApiOperation(
         value = "Mint coin to a registered address",
-        notes = """
-            Request that the middleware mint coin corresponding to a fiat deposit from a customer.
-            """
+        notes = "Request that the middleware mint coin corresponding to a fiat deposit from a customer."
     )
     fun mintCoin(
         @Valid
@@ -46,20 +44,18 @@ class UsdfController(private val bankService: BankService) {
         return ResponseEntity.ok(uuid)
     }
 
-    @PostMapping(REDEEM_BURN_V1)
+    @PostMapping(BURN_V1)
     @ApiOperation(
-        value = "Redeem and burn dcc/reserve token",
-        notes = """
-            Request that the middleware redeem and burn dcc and reserve token.
-            """
+        value = "Burn dcc token",
+        notes = "Request that the middleware burn dcc token held at member address."
     )
-    fun redeemBurn(
+    fun burnCoin(
         @Valid
-        @ApiParam(value = "RedeemBurnRequest")
-        @RequestBody request: RedeemBurnCoinRequest
+        @ApiParam(value = "BurnCoinRequest")
+        @RequestBody request: BurnCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, amount) = request
-        bankService.redeemBurnCoin(uuid, amount)
+        bankService.burnCoin(uuid, amount)
         return ResponseEntity.ok(uuid)
     }
 

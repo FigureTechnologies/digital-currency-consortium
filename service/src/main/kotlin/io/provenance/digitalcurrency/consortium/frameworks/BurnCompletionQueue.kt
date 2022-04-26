@@ -5,7 +5,7 @@ import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.config.withMdc
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.mdc
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -13,11 +13,11 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import java.util.UUID
 
-class CoinRedemptionDirective(
+class CoinBurnDirective(
     override val id: UUID
 ) : Directive()
 
-class CoinRedemptionOutcome(
+class CoinBurnOutcome(
     override val id: UUID
 ) : Outcome()
 
@@ -27,7 +27,7 @@ class RedeemBurnCompletionQueue(
     private val bankClient: BankClient,
     coroutineProperties: CoroutineProperties
 ) :
-    ActorModel<CoinRedemptionDirective, CoinRedemptionOutcome> {
+    ActorModel<CoinBurnDirective, CoinBurnOutcome> {
     private val log = logger()
 
     @EventListener(DataSourceConnectedEvent::class)
@@ -39,33 +39,33 @@ class RedeemBurnCompletionQueue(
     override val numWorkers: Int = coroutineProperties.numWorkers
     override val pollingDelayMillis: Long = coroutineProperties.pollingDelayMs
 
-    override suspend fun loadMessages(): List<CoinRedemptionDirective> =
+    override suspend fun loadMessages(): List<CoinBurnDirective> =
         transaction {
-            CoinRedeemBurnRecord.findTxnCompleted().map { CoinRedemptionDirective(it.id.value) }
+            CoinBurnRecord.findTxnCompleted().map { CoinBurnDirective(it.id.value) }
         }
 
-    override fun processMessage(message: CoinRedemptionDirective): CoinRedemptionOutcome {
+    override fun processMessage(message: CoinBurnDirective): CoinBurnOutcome {
         transaction {
-            CoinRedeemBurnRecord.findTxnCompletedForUpdate(message.id).first().let { coinRedemptionBurn ->
+            CoinBurnRecord.findTxnCompletedForUpdate(message.id).first().let { coinRedemptionBurn ->
                 withMdc(*coinRedemptionBurn.mdc()) {
-                    log.info("Completing redeem and burn contract by notifying bank")
+                    log.info("Completing burn contract by notifying bank")
                     try {
                         bankClient.completeBurn(coinRedemptionBurn.id.value)
-                        CoinRedeemBurnRecord.updateStatus(coinRedemptionBurn.id.value, TxStatus.ACTION_COMPLETE)
+                        CoinBurnRecord.updateStatus(coinRedemptionBurn.id.value, TxStatus.ACTION_COMPLETE)
                     } catch (e: Exception) {
-                        log.error("updating mint status at bank failed; it will retry.", e)
+                        log.error("updating burn status at bank failed; it will retry.", e)
                     }
                 }
             }
         }
-        return CoinRedemptionOutcome(message.id)
+        return CoinBurnOutcome(message.id)
     }
 
-    override fun onMessageSuccess(result: CoinRedemptionOutcome) {
-        log.info("redemption queue successfully processed uuid ${result.id}.")
+    override fun onMessageSuccess(result: CoinBurnOutcome) {
+        log.info("burn queue successfully processed uuid ${result.id}.")
     }
 
-    override fun onMessageFailure(message: CoinRedemptionDirective, e: Exception) {
-        log.error("redemption queue got error for uuid ${message.id}", e)
+    override fun onMessageFailure(message: CoinBurnDirective, e: Exception) {
+        log.error("burn queue got error for uuid ${message.id}", e)
     }
 }
