@@ -4,7 +4,6 @@ import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
-import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
 import io.provenance.digitalcurrency.consortium.config.CoroutineProperties
@@ -13,8 +12,6 @@ import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus.ERROR
 import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
-import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
-import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -25,7 +22,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.never
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import java.util.UUID
 
@@ -48,19 +44,6 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
     fun beforeAll() {
         reset(bankClientMock)
         reset(pbcServiceMock)
-
-        whenever(pbcServiceMock.getMembers()).thenReturn(
-            MemberListResponse(
-                members = listOf(
-                    MemberResponse(
-                        id = TEST_OTHER_MEMBER_ADDRESS,
-                        joined = 12345,
-                        name = "Other Bank",
-                        kycAttributes = listOf("otherbank.kyc.pb")
-                    )
-                )
-            )
-        )
 
         markerTransferQueue = MarkerTransferQueue(
             bankClient = bankClientMock,

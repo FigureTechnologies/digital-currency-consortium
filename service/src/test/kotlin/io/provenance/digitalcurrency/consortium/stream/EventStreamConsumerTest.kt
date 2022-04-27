@@ -28,8 +28,6 @@ import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
 import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
-import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
-import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
 import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockResponse
@@ -87,24 +85,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         reset(rpcClientMock)
 
         whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
-        whenever(pbcServiceMock.getMembers()).thenReturn(
-            MemberListResponse(
-                members = listOf(
-                    MemberResponse(
-                        id = TEST_MEMBER_ADDRESS,
-                        joined = 11000,
-                        name = "Bank",
-                        kycAttributes = listOf("bank.kyc.pb")
-                    ),
-                    MemberResponse(
-                        id = TEST_OTHER_MEMBER_ADDRESS,
-                        joined = 12345,
-                        name = "Other Bank",
-                        kycAttributes = listOf("otherbank.kyc.pb")
-                    )
-                )
-            )
-        )
     }
 
     @BeforeAll
@@ -167,7 +147,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         }
 
         @Test
-        fun `coinMovement - mints, redeems, redeem+burns and transfers for bank parties are persisted`() {
+        fun `coinMovement - mints, redeems, burns and transfers for bank parties are persisted`() {
             val blockTime = OffsetDateTime.now()
             val blockResponse = BlockResponse(
                 block = Block(
@@ -185,7 +165,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleCoinMovementEvents(
                 blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint, mint.copy(withdrawAddress = TEST_MEMBER_ADDRESS)),
-                transfers = listOf(redeem, redeem.copy(sender = TEST_OTHER_MEMBER_ADDRESS)),
+                transfers = listOf(redeem, redeem.copy(sender = TEST_ADDRESS)),
                 burns = listOf(burn),
                 markerTransfers = listOf(transfer, transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS)),
             )

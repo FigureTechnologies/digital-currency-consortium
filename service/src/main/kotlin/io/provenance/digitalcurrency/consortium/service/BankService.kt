@@ -79,8 +79,6 @@ class BankService(
         val pendingAmount = CoinBurnRecord.findPendingAmount() + CoinTransferRecord.findPendingAmount()
         val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
             .toBigInteger() - pendingAmount
-        println("PENDING AMOUNT:$pendingAmount")
-        println("DCC BALANCE:$dccBalance")
         check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
     }
 
@@ -115,9 +113,6 @@ class BankService(
                         check(registration.isActive()) { "Cannot transfer to removed bank account $bankAccountUuid" }
                         CoinTransferRecord.insert(uuid, registration, amount)
                     }
-                    // Sending to another member bank
-                    blockchainAddress != null && pbcService.getMembers().members.any { it.id == blockchainAddress } ->
-                        CoinTransferRecord.insert(uuid, blockchainAddress, amount)
                     else -> throw IllegalStateException("No valid address found for transfer $uuid this should not happen")
                 }
             }

@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.consortium.service
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
-import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.BankClientProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
@@ -13,8 +12,6 @@ import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
-import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
-import io.provenance.digitalcurrency.consortium.messages.MemberResponse
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions
@@ -280,24 +277,6 @@ class BankServiceTest : BaseIntegrationTest() {
 
             whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
             whenever(pbcServiceMock.getCoinBalance(any(), any())).thenReturn("50000") // $500
-            whenever(pbcServiceMock.getMembers()).thenReturn(
-                MemberListResponse(
-                    members = listOf(
-                        MemberResponse(
-                            id = TEST_MEMBER_ADDRESS,
-                            joined = 11000,
-                            name = "Bank",
-                            kycAttributes = listOf("bank.kyc.pb")
-                        ),
-                        MemberResponse(
-                            id = TEST_OTHER_MEMBER_ADDRESS,
-                            joined = 12345,
-                            name = "Other Bank",
-                            kycAttributes = listOf("otherbank.kyc.pb")
-                        )
-                    )
-                )
-            )
 
             bankService = BankService(bankClientProperties, pbcServiceMock, serviceProperties)
 
@@ -412,22 +391,6 @@ class BankServiceTest : BaseIntegrationTest() {
             }
 
             Assertions.assertEquals("Blockchain address cannot be null when bank account uuid is not set", exception.message, "Should error with not set")
-        }
-
-        @Test
-        fun `transferring coin to a another member bank address stores a coin transfer record`() {
-            val uuid = UUID.randomUUID()
-
-            // $500 available - $100 burn - $50 burn - $50 tranfser = $300 available
-            bankService.transferCoin(uuid, bankAccountUuid = null, blockchainAddress = TEST_OTHER_MEMBER_ADDRESS, BigDecimal("300"))
-
-            transaction {
-                val coinTransferRecord = CoinTransferRecord.findById(uuid)
-                Assertions.assertNotNull(coinTransferRecord, "Coin transfer exists")
-                Assertions.assertTrue(BigDecimal("300").compareTo(coinTransferRecord!!.fiatAmount) == 0, "Amount is correct")
-                Assertions.assertEquals(TxStatus.QUEUED, coinTransferRecord.status, "Tx request is queued")
-                Assertions.assertEquals(TEST_OTHER_MEMBER_ADDRESS, coinTransferRecord.address, "To address is correct")
-            }
         }
 
         @Test

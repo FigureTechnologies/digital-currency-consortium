@@ -60,7 +60,7 @@ fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = 
 fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
     Mint(
         amount = DEFAULT_AMOUNT.toString(),
-        withdrawDenom = dccDenom,
+        denom = dccDenom,
         withdrawAddress = TEST_ADDRESS,
         memberId = TEST_MEMBER_ADDRESS,
         height = 50,

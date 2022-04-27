@@ -6,7 +6,6 @@ private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
 private const val ATTRIBUTE_FROM = "from_address"
-private const val ATTRIBUTE_WITHDRAW_DENOM = "withdraw_denom"
 private const val ATTRIBUTE_WITHDRAW_ADDRESS = "withdraw_address"
 private const val ATTRIBUTE_MEMBER_ID = "member_id"
 private const val ATTRIBUTE_SENDER = "sender"
@@ -86,7 +85,7 @@ typealias Mints = List<Mint>
 
 data class Mint(
     val amount: String,
-    val withdrawDenom: String,
+    val denom: String,
     val withdrawAddress: String,
     val memberId: String,
     val height: Long,
@@ -96,7 +95,7 @@ data class Mint(
 private fun StreamEvent.toMint(): Mint =
     Mint(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
-        withdrawDenom = getAttribute(ATTRIBUTE_WITHDRAW_DENOM),
+        denom = getAttribute(ATTRIBUTE_DENOM),
         withdrawAddress = getAttribute(ATTRIBUTE_WITHDRAW_ADDRESS),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
         height = height,

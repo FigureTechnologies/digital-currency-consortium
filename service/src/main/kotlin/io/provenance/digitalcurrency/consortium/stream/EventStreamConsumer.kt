@@ -6,13 +6,13 @@ import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.BURN
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.EventStreamRecord
 import io.provenance.digitalcurrency.consortium.domain.MINT
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.REDEEM
-import io.provenance.digitalcurrency.consortium.domain.REDEEM_BURN
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -158,7 +158,7 @@ class EventStreamConsumer(
         // SC Mint events denote the "on ramp" for a bank user to get coin
         val filteredMints = mints.filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
             .mapNotNull { event ->
-                log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.withdrawDenom}")
+                log.debug("Mint - tx: $${event.txHash} member: ${event.memberId} withdrawAddr: ${event.withdrawAddress} amount: ${event.amount} denom: ${event.denom}")
 
                 val toAddressBankUuid = event.withdrawAddress.addressToBankUuid()
                 // val toAddressBankUuid =
@@ -186,8 +186,6 @@ class EventStreamConsumer(
                     event.recipient != pbcService.managerAddress -> null
                     // persist a record of this transaction if the from has this bank's attribute
                     fromAddressBankUuid != null -> RedeemWrapper(event, fromAddressBankUuid)
-                    // persist a record of this transaction if the from is another member bank
-                    pbcService.getMembers().members.any { it.id == event.sender } -> RedeemWrapper(event, null)
                     else -> null
                 }
             }
@@ -241,7 +239,7 @@ class EventStreamConsumer(
                     blockHeight = wrapper.mint.height,
                     blockTime = OffsetDateTime.parse(block.header.time),
                     amount = wrapper.mint.amount,
-                    denom = wrapper.mint.withdrawDenom,
+                    denom = wrapper.mint.denom,
                     type = MINT,
                 )
             }
@@ -272,7 +270,7 @@ class EventStreamConsumer(
                     blockTime = OffsetDateTime.parse(block.header.time),
                     amount = wrapper.burn.amount,
                     denom = wrapper.burn.denom,
-                    type = REDEEM_BURN,
+                    type = BURN,
                 )
             }
 
