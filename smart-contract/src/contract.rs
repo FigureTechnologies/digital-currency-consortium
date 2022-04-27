@@ -172,7 +172,7 @@ fn try_join(
 
     let res = Response::new()
         .add_attribute("action", "join")
-        .add_attribute("join_member_id", address.clone());
+        .add_attribute("member_id", address.clone());
     Ok(res)
 }
 
@@ -209,7 +209,7 @@ fn try_remove(
 
     let res = Response::new()
         .add_attribute("action", "remove")
-        .add_attribute("remove_member_id", address.clone());
+        .add_attribute("member_id", address.clone());
     Ok(res)
 }
 
@@ -308,7 +308,8 @@ fn try_mint(
         // Add wasm event attributes
         .add_attribute("action", "mint")
         .add_attribute("member_id", &member.id)
-        .add_attribute("amount", amount);
+        .add_attribute("amount", amount)
+        .add_attribute("denom", &state.denom);
 
     // Withdraw to address or fallback.
     match address {
@@ -321,7 +322,7 @@ fn try_mint(
                     &state.denom,
                     info.sender.clone(),
                 )?)
-                .add_attribute("withdraw_denom", &state.denom)
+
                 .add_attribute("withdraw_address", info.sender)
         }
         Some(addr) => {
@@ -339,7 +340,6 @@ fn try_mint(
                     &state.denom,
                     address.clone(),
                 )?)
-                .add_attribute("withdraw_denom", &state.denom)
                 .add_attribute("withdraw_address", address)
         }
     };
@@ -443,7 +443,7 @@ fn try_add_kyc(
     // Add wasm event attributes
     Ok(Response::new()
         .add_attribute("action", "add_kyc_attribute")
-        .add_attribute("add_kyc_attr", valid_attr)
+        .add_attribute("name", valid_attr)
         .add_attribute("member_id", &member.id))
 }
 
@@ -490,7 +490,7 @@ fn try_remove_kyc(
     // Add wasm event attributes
     Ok(Response::new()
         .add_attribute("action", "remove_kyc_attribute")
-        .add_attribute("remove_kyc_attr", kyc_attr)
+        .add_attribute("name", kyc_attr)
         .add_attribute("member_id", &member.id))
 }
 
