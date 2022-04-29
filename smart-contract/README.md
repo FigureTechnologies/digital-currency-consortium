@@ -661,8 +661,7 @@ provenanced tx wasm migrate \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet
