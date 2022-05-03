@@ -30,6 +30,7 @@ object Versions {
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
+    const val EventStream = "0.6.0"
 
     const val BouncyCastle = "1.63"
     const val Exposed = "0.33.1"
@@ -41,6 +42,8 @@ object Versions {
     const val Kethereum = "0.83.4"
     const val Komputing = "0.1"
     const val Logback = "0.1.5"
+    const val Moshi = "1.13.0"
+    const val OkHttp = "4.9.3"
     const val Postgres = "42.2.23"
     const val Protobuf = "3.6.1"
     const val Swagger = "3.0.0"
@@ -74,6 +77,10 @@ object Libraries {
     const val PbcProto = "io.provenance:proto-kotlin:${Versions.PbcProto}"
     const val PbcClient = "io.provenance.client:pb-grpc-client-kotlin:${Versions.PbcClient}"
 
+    const val EventStreamCore = "io.provenance.eventstream:es-core:${Versions.EventStream}"
+    const val EventStreamApi = "io.provenance.eventstream:es-api:${Versions.EventStream}"
+    const val EventStreamApiModel = "io.provenance.eventstream:es-api-model:${Versions.EventStream}"
+
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
     const val FeignSlf4j = "io.github.openfeign:feign-slf4j:${Versions.Feign}"
@@ -87,6 +94,9 @@ object Libraries {
 
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
 
+    const val Moshi = "com.squareup.moshi:moshi:${Versions.Moshi}"
+    const val MoshiKotlin = "com.squareup.moshi:moshi-kotlin:${Versions.Moshi}"
+    const val OkHttp = "com.squareup.okhttp3:okhttp:${Versions.OkHttp}"
     const val Scarlet = "com.tinder.scarlet:scarlet:${Versions.ScarletForEventStream}"
     const val ScarletStreamAdapter = "com.tinder.scarlet:stream-adapter-rxjava2:${Versions.ScarletForEventStream}"
     const val ScarletWebsocket = "com.tinder.scarlet:websocket-okhttp:${Versions.ScarletForEventStream}"
