@@ -41,15 +41,21 @@ fun BlockData.transfers(contractAddress: String): Transfers =
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+            // Filter out older events we do not care about
+            val fromMemberId = event.getAttribute(ATTRIBUTE_FROM_MEMBER)
+            val toMemberId = event.getAttribute(ATTRIBUTE_TO_MEMBER)
+
             event.eventType == WASM_EVENT &&
                 action == TRANSFER_ACTION &&
+                fromMemberId.isNotBlank() &&
+                toMemberId.isNotBlank() &&
                 contractAddress == contractAddressAttr
         }.map { event -> event.toTransfer() }
 
 typealias Transfers = List<Transfer>
 
 data class Transfer(
-    val amount: String,
+    val amount: Long,
     val denom: String,
     val sender: String,
     val recipient: String,
@@ -62,7 +68,7 @@ data class Transfer(
 
 private fun TxEvent.toTransfer(): Transfer =
     Transfer(
-        amount = getAttribute(ATTRIBUTE_AMOUNT),
+        amount = getAttribute(ATTRIBUTE_AMOUNT).toLong(),
         denom = getAttribute(ATTRIBUTE_DENOM),
         sender = getAttribute(ATTRIBUTE_SENDER),
         recipient = getAttribute(ATTRIBUTE_RECIPIENT),

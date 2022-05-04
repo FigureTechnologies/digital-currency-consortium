@@ -32,6 +32,7 @@ object Versions {
     const val PbcClient = "1.0.5"
     const val EventStream = "0.6.0"
 
+    const val CommonsCsv = "1.9.0"
     const val BouncyCastle = "1.63"
     const val Exposed = "0.33.1"
     const val Feign = "11.6"
@@ -91,6 +92,8 @@ object Libraries {
     const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
     const val GrpcProto = "io.grpc:grpc-protobuf:${Versions.Grpc}"
     const val GrpcStub = "io.grpc:grpc-stub:${Versions.Grpc}"
+
+    const val CommonsCsv = "org.apache.commons:commons-csv:${Versions.CommonsCsv}"
 
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
 

@@ -22,7 +22,7 @@ class FlywayConfig(private val dataSource: DataSource) {
 
     @Bean
     fun flywayInitializer(flyway: Flyway): FlywayMigrationInitializer = FlywayMigrationInitializer(flyway).apply {
-        flyway.clean()
+        // flyway.clean()
         flyway.info().all().forEach {
             log.info("Flyway migration: ${it.statusIndication()} ${it.type} ${it.script} ${it.physicalLocation}")
         }

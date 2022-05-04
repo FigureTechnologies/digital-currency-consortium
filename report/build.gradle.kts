@@ -40,6 +40,8 @@ dependencies {
         it(Libraries.SpringBootStarterValidation)
         it(Libraries.JavaxValidation)
 
+        it(Libraries.CommonsCsv)
+
         it(Libraries.Postgres)
 
         // ----- Event Stream -----
