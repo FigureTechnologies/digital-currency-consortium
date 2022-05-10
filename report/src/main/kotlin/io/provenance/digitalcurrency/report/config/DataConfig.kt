@@ -22,7 +22,7 @@ class DataConfig {
     fun dataSource(databaseProperties: DatabaseProperties): DataSource {
         val config = HikariConfig().apply {
             jdbcUrl =
-                "jdbc:postgresql://${databaseProperties.hostname}:${databaseProperties.port}/${databaseProperties.name}?prepareThreshold=0"
+                "${databaseProperties.prefix}:postgresql://${databaseProperties.hostname}:${databaseProperties.port}/${databaseProperties.name}?prepareThreshold=0"
             username = databaseProperties.username
             password = databaseProperties.password
             schema = databaseProperties.schema

@@ -4,20 +4,13 @@ import io.provenance.digitalcurrency.report.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.report.domain.SettlementNetEntryRecord
 import io.provenance.digitalcurrency.report.domain.SettlementReportRecord
 import io.provenance.digitalcurrency.report.domain.SettlementWireEntryRecord
-import org.apache.commons.csv.CSVFormat
-import org.apache.commons.csv.CSVPrinter
 import org.springframework.stereotype.Service
-import java.io.StringWriter
+import kotlin.math.abs
 
 @Service
 class SettlementReportService {
 
-    private val csvFormat = CSVFormat.Builder.create(CSVFormat.RFC4180)
-        .setIgnoreEmptyLines(true)
-        .setSkipHeaderRecord(true)
-        .build()
-
-    fun createReport(fromBlockHeight: Long, toBlockHeight: Long): String {
+    fun createReport(fromBlockHeight: Long, toBlockHeight: Long): SettlementReportRecord {
         val record = SettlementReportRecord.insert(fromBlockHeight, toBlockHeight)
         val netPositions = CoinMovementRecord.findNetPositions(fromBlockHeight, toBlockHeight)
         check(netPositions.sumOf { (_, amount) -> amount } == 0L) { "Unexpected net positions do not net to zero" }
@@ -39,7 +32,7 @@ class SettlementReportService {
                     val (receiverId, receiverAmount) = receiver
 
                     when {
-                        receiverAmount >= senderAmount -> {
+                        receiverAmount >= abs(senderAmount) -> {
                             SettlementWireEntryRecord.insert(record, senderId, receiverId, -senderAmount)
                             receiver = receiver.copy(second = receiverAmount + senderAmount)
                             senderAmount = 0L
@@ -60,23 +53,6 @@ class SettlementReportService {
                 }
             }
 
-        return record.createCsv()
-    }
-
-    private fun SettlementReportRecord.createCsv(): String {
-        val stringWriter = StringWriter()
-        val csvPrinter = CSVPrinter(stringWriter, csvFormat)
-        csvPrinter.use {
-            // Print net balances
-            csvPrinter.printRecord(listOf("Member", "Net Position"))
-            netEntries.forEach { csvPrinter.printRecord(listOf(it.memberId, it.amount.toString())) }
-            csvPrinter.println()
-
-            // Print wire transfers
-            csvPrinter.printRecord(listOf("Sender", "Receiver", "Amount"))
-            wireEntries.forEach { csvPrinter.printRecord(listOf(it.fromMemberId, it.toMemberId, it.amount.toString())) }
-        }
-
-        return stringWriter.toString()
+        return record
     }
 }
