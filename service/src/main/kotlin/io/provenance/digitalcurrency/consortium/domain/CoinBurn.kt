@@ -8,7 +8,7 @@ typealias CBT = CoinBurnTable
 
 object CoinBurnTable : BaseCoinRequestTable(name = "coin_burn_v2")
 
-open class CoinRedeemBurnEntityClass : BaseCoinRequestEntityClass<CBT, CoinBurnRecord>(CBT) {
+open class CoinBurnEntityClass : BaseCoinRequestEntityClass<CBT, CoinBurnRecord>(CBT) {
 
     fun findPending() = find { CBT.status inList listOf(TxStatus.PENDING, TxStatus.QUEUED) }
 
@@ -22,5 +22,5 @@ open class CoinRedeemBurnEntityClass : BaseCoinRequestEntityClass<CBT, CoinBurnR
 }
 
 class CoinBurnRecord(uuid: EntityID<UUID>) : BaseCoinRequestRecord(CBT, uuid) {
-    companion object : CoinRedeemBurnEntityClass()
+    companion object : CoinBurnEntityClass()
 }

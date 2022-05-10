@@ -36,6 +36,8 @@ fun List<Attribute>.splitAttributes(): List<List<Attribute>> =
         }
     }
 
+private fun StreamEvent.isFailed() = (code ?: 0) > 0
+private fun StreamEvent.isSuccess() = !isFailed()
 private fun StreamEvent.getAttribute(key: String): String = this.attributes.getAttribute(key)
 
 private fun List<Attribute>.getAttribute(key: String): String =
@@ -54,7 +56,7 @@ data class MarkerTransfer(
 typealias MarkerTransfers = List<MarkerTransfer>
 
 fun EventBatch.markerTransfers(): MarkerTransfers = events
-    .filter { it.eventType == MARKER_TRANSFER_EVENT }
+    .filter { it.eventType == MARKER_TRANSFER_EVENT && it.isSuccess() }
     .flatMap { event ->
         val nestedAttributes = event.attributes.splitAttributes()
 
@@ -78,8 +80,10 @@ fun EventBatch.mints(contractAddress: String): Mints =
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == WASM_EVENT &&
                 action == MINT_ACTION &&
-                contractAddress == contractAddressAttr
-        }.map { event -> event.toMint() }
+                contractAddress == contractAddressAttr &&
+                event.isSuccess()
+        }
+        .map { event -> event.toMint() }
 
 typealias Mints = List<Mint>
 
@@ -107,7 +111,10 @@ fun EventBatch.burns(contractAddress: String): Burns =
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT && action == BURN_ACTION && contractAddress == contractAddressAttr
+            event.eventType == WASM_EVENT &&
+                action == BURN_ACTION &&
+                contractAddress == contractAddressAttr &&
+                event.isSuccess()
         }
         .map { event -> event.toBurn() }
 
@@ -137,8 +144,10 @@ fun EventBatch.transfers(contractAddress: String): Transfers =
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == WASM_EVENT &&
                 action == TRANSFER_ACTION &&
-                contractAddress == contractAddressAttr
-        }.map { event -> event.toTransfer() }
+                contractAddress == contractAddressAttr &&
+                event.isSuccess()
+        }
+        .map { event -> event.toTransfer() }
 
 typealias Transfers = List<Transfer>
 
@@ -170,8 +179,10 @@ fun EventBatch.migrations(contractAddress: String): Migrations =
         .filter { event ->
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == MIGRATE_EVENT &&
-                contractAddress == contractAddressAttr
-        }.map { event -> event.toMigration() }
+                contractAddress == contractAddressAttr &&
+                event.isSuccess()
+        }
+        .map { event -> event.toMigration() }
 
 typealias Migrations = List<Migration>
 
@@ -188,4 +199,4 @@ private fun StreamEvent.toMigration(): Migration =
         txHash = txHash
     )
 
-fun EventBatch.txHashes() = events.map { it.txHash }.distinct()
+fun EventBatch.txHashes() = events.filter { it.isSuccess() }.map { it.txHash }.distinct()

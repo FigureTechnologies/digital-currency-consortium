@@ -23,7 +23,7 @@ class CoinBurnOutcome(
 
 @Component
 @NotTest
-class RedeemBurnCompletionQueue(
+class BurnCompletionQueue(
     private val bankClient: BankClient,
     coroutineProperties: CoroutineProperties
 ) :
@@ -32,7 +32,7 @@ class RedeemBurnCompletionQueue(
 
     @EventListener(DataSourceConnectedEvent::class)
     fun startProcessing() {
-        log.info("start redemption queueing framework")
+        log.info("start burn queueing framework")
         start()
     }
 
