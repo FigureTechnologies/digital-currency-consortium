@@ -12,11 +12,11 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.8.2, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.10.0, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.8.2
+cd provenance && git checkout v1.10.0
 make install
 make localnet-start
 ```
