@@ -98,6 +98,7 @@ pub fn execute(
         ExecuteMsg::Burn { amount } => try_burn(deps, info, amount),
         ExecuteMsg::AddKyc { id, kyc_attr } => try_add_kyc(deps, info, id, kyc_attr),
         ExecuteMsg::RemoveKyc { id, kyc_attr } => try_remove_kyc(deps, info, id, kyc_attr),
+        ExecuteMsg::SetAdmin { id } => try_set_admin(deps, info, id),
     }
 }
 
@@ -455,7 +456,7 @@ fn try_remove_kyc(
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during kyc add"));
+        return Err(contract_err("no funds should be sent during kyc remove"));
     }
     if kyc_attr.trim().is_empty() {
         return Err(contract_err("kyc attribute name is empty"));
@@ -491,6 +492,34 @@ fn try_remove_kyc(
         .add_attribute("action", "remove_kyc_attribute")
         .add_attribute("name", kyc_attr)
         .add_attribute("member_id", &member.id))
+}
+
+fn try_set_admin(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    id: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Validate params.
+    if !info.funds.is_empty() {
+        return Err(contract_err("no funds should be sent during set admin"));
+    }
+
+    let address = deps.api.addr_validate(&id)?;
+
+    // Load state and address is changed.
+    let mut state = config_read(deps.storage).load()?;
+    if state.admin == address {
+        return Err(contract_err("admin address is unchanged"));
+    }
+
+    // Update the admin and save
+    state.admin = address;
+    config(deps.storage).save(&state)?;
+
+    // Add wasm event attributes
+    Ok(Response::new()
+        .add_attribute("action", "set_admin")
+        .add_attribute("admin", &state.admin))
 }
 
 // A helper function for creating generic contract errors.
@@ -2181,7 +2210,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "no funds should be sent during kyc add")
+                assert_eq!(msg, "no funds should be sent during kyc remove")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2240,6 +2269,91 @@ mod tests {
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "kyc attribute does not exist")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn set_admin() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::SetAdmin {
+                id: "newadmin".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure admin is changed.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.admin, "newadmin")
+    }
+
+    #[test]
+    fn set_admin_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Try to send funds w/ the kyc message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[funds]),
+            ExecuteMsg::SetAdmin {
+                id: "newadmin".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during set admin")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to set name to existing admin.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::SetAdmin { id: "admin".into() },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "admin address is unchanged")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2323,11 +2437,11 @@ mod tests {
         // Should just get the default response for now
         assert_eq!(res, Response::default());
 
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let state = config_read(&deps.storage).load().unwrap();
 
         // Validate state values
-        assert_eq!(config_state.denom, "dcc.coin");
-        assert_eq!(config_state.admin, Addr::unchecked("id"));
+        assert_eq!(state.denom, "dcc.coin");
+        assert_eq!(state.admin, Addr::unchecked("id"));
 
         // Validate members migrated
         let members = get_members(deps.as_ref()).unwrap();

@@ -54,6 +54,9 @@ pub enum ExecuteMsg {
         id: Option<String>, // If admin, can set the kyc attribute for another member id
         kyc_attr: String,
     },
+    SetAdmin {
+        id: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
