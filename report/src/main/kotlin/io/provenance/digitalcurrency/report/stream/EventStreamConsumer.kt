@@ -43,10 +43,10 @@ class EventStreamConsumer(
                 from = lastHeight
             ).collect { blockData ->
                 val transfers = blockData.transfers(contractProperties.address)
-                if (transfers.isNotEmpty()) {
-                    log.info("Handling transfers at height:${blockData.height}")
 
-                    transaction {
+                transaction {
+                    if (transfers.isNotEmpty()) {
+                        log.info("Handling transfers at height:${blockData.height}")
                         transfers.forEach { transfer ->
                             CoinMovementRecord.insert(
                                 txHash = transfer.txHash,
@@ -60,9 +60,7 @@ class EventStreamConsumer(
                             )
                         }
                     }
-                }
 
-                transaction {
                     EventStreamRecord.update(eventStreamId, blockData.height)
                 }
             }
