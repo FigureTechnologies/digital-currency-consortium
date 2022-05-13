@@ -28,9 +28,9 @@ overflow-checks = true
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-provwasm-std = { version = "1.0.0-beta2" }
-cosmwasm-std = { version = "1.0.0-beta8", features = ["iterator"] }
-cosmwasm-storage = { version = "1.0.0-beta8", features = ["iterator"] }
+provwasm-std = { version = "1.0.0-rc.0" }
+cosmwasm-std = { version = "1.0.0-rc.0", features = ["iterator"] }
+cosmwasm-storage = { version = "1.0.0-rc.0", features = ["iterator"] }
 cw2 = "0.13.2"
 schemars = "0.8.1"
 semver = "1.0.3"
@@ -38,5 +38,5 @@ serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.24" }
 
 [dev-dependencies]
-provwasm-mocks = { version = "1.0.0-beta2" }
-cosmwasm-schema = { version = "1.0.0-beta8" }
+provwasm-mocks = { version = "1.0.0-rc.0" }
+cosmwasm-schema = { version = "1.0.0-rc.0" }
