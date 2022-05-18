@@ -1,8 +1,12 @@
 package io.provenance.digitalcurrency.consortium.api
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import io.provenance.hdwallet.bech32.Bech32
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
+import springfox.documentation.annotations.ApiIgnore
 import java.util.UUID
+import javax.validation.constraints.AssertTrue
 import javax.validation.constraints.NotNull
 
 /**
@@ -30,4 +34,15 @@ data class RegisterAddressRequest(
         required = true
     )
     @get:NotNull val blockchainAddress: String
-)
+) {
+
+    @JsonIgnore
+    @ApiIgnore
+    @AssertTrue(message = "Invalid blockchain address")
+    fun hasValidAddress() = try {
+        Bech32.decode(blockchainAddress)
+        true
+    } catch (e: IllegalArgumentException) {
+        false
+    }
+}

@@ -30,6 +30,7 @@ object Versions {
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
+    const val PbcHDWallet = "0.1.15"
 
     const val Exposed = "0.38.2"
     const val Feign = "11.8"
@@ -66,6 +67,7 @@ object Libraries {
 
     const val PbcProto = "io.provenance:proto-kotlin:${Versions.PbcProto}"
     const val PbcClient = "io.provenance.client:pb-grpc-client-kotlin:${Versions.PbcClient}"
+    const val PbcHDWallet = "io.provenance.hdwallet:hdwallet:${Versions.PbcHDWallet}"
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"

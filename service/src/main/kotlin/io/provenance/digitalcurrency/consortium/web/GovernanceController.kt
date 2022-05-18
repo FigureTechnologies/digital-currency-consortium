@@ -9,6 +9,7 @@ import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -57,6 +58,7 @@ class GovernanceController(private val rpcClient: RpcClient, private val pbcServ
     @ApiOperation(value = "Grant authz allowance so smart contract has permission to move restricted coins out of member bank address")
     fun grantAuth(
         @Valid
+        @ApiParam(value = "GrantRequest")
         @RequestBody request: GrantRequest
     ): ResponseEntity<String> {
         log.info("Trying to grant authz: $request")

@@ -163,7 +163,7 @@
           {
             "in": "body",
             "name": "request",
-            "description": "request",
+            "description": "GrantRequest",
             "required": true,
             "schema": {
               "$ref": "#/definitions/GrantRequest"

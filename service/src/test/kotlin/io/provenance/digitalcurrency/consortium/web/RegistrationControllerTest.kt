@@ -106,7 +106,7 @@ class RegistrationControllerTest : BaseIntegrationTest() {
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
 
-            val expected = "{\"errors\":[\"IllegalStateException: Bank account $uuid is already registered for address test-address\"]}"
+            val expected = "{\"errors\":[\"IllegalStateException: Bank account $uuid is already registered for address $TEST_ADDRESS\"]}"
 
             assertEquals(expected, responseError.body.toString())
         }
