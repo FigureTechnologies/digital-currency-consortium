@@ -96,6 +96,55 @@
         }
       }
     },
+    "/digital-currency-consortium/api/v1/burns": {
+      "post": {
+        "tags": [
+          "USDF API"
+        ],
+        "summary": "Burn dcc token",
+        "description": "Request that the middleware burn dcc token held at member address.",
+        "operationId": "burnCoinUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json",
+          "text/plain"
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "request",
+            "description": "BurnCoinRequest",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BurnCoinRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/digital-currency-consortium/api/v1/grants": {
       "post": {
         "tags": [
@@ -173,51 +222,6 @@
             "description": "Not Found"
           }
         }
-      },
-      "post": {
-        "tags": [
-          "Governance API"
-        ],
-        "summary": "Proposal to join the consortium as a member bank",
-        "operationId": "joinConsortiumUsingPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json",
-          "text/plain"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "request",
-            "description": "request",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/JoinConsortiumRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "201": {
-            "description": "Created"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
       }
     },
     "/digital-currency-consortium/api/v1/mints": {
@@ -226,7 +230,7 @@
           "USDF API"
         ],
         "summary": "Mint coin to a registered address",
-        "description": "\n            Request that the middleware mint coin corresponding to a fiat deposit from a customer.\n            ",
+        "description": "Request that the middleware mint coin corresponding to a fiat deposit from a customer.",
         "operationId": "mintCoinUsingPOST",
         "consumes": [
           "application/json"
@@ -243,91 +247,6 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/MintCoinRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          "201": {
-            "description": "Created"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/digital-currency-consortium/api/v1/proposals/accepts": {
-      "post": {
-        "tags": [
-          "Governance API"
-        ],
-        "summary": "Accept joining the consortium as a member bank",
-        "operationId": "acceptProposalUsingPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json",
-          "text/plain"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "201": {
-            "description": "Created"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      }
-    },
-    "/digital-currency-consortium/api/v1/redeem-burns": {
-      "post": {
-        "tags": [
-          "USDF API"
-        ],
-        "summary": "Redeem and burn dcc/reserve token",
-        "description": "\n            Request that the middleware redeem and burn dcc and reserve token.\n            ",
-        "operationId": "redeemBurnUsingPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json",
-          "text/plain"
-        ],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "request",
-            "description": "RedeemBurnRequest",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/RedeemBurnCoinRequest"
             }
           }
         ],
@@ -495,6 +414,28 @@
     }
   },
   "definitions": {
+    "BurnCoinRequest": {
+      "type": "object",
+      "required": [
+        "amount",
+        "uuid"
+      ],
+      "properties": {
+        "amount": {
+          "type": "number",
+          "description": "The amount of fiat in USD to burn.",
+          "minimum": 0,
+          "exclusiveMinimum": false
+        },
+        "uuid": {
+          "type": "string",
+          "format": "uuid",
+          "description": "A unique uuid for this request."
+        }
+      },
+      "title": "BurnCoinRequest",
+      "description": "Request to the middleware to burn dcc token. Must have sufficient dcc coin at bank address."
+    },
     "GrantCoinRequest": {
       "type": "object",
       "required": [
@@ -539,45 +480,15 @@
       "title": "GrantRequest",
       "description": "Request to the middleware to grant authz a list of coins to move restricted coin."
     },
-    "JoinConsortiumRequest": {
-      "type": "object",
-      "required": [
-        "maxSupplyUsd",
-        "name"
-      ],
-      "properties": {
-        "maxSupplyUsd": {
-          "type": "number",
-          "minimum": 0,
-          "exclusiveMinimum": false
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "title": "JoinConsortiumRequest"
-    },
     "MemberResponse": {
       "type": "object",
       "required": [
-        "denom",
-        "escrowedSupply",
         "id",
         "joined",
-        "maxSupply",
-        "name",
-        "supply",
-        "weight"
+        "kycAttributes",
+        "name"
       ],
       "properties": {
-        "denom": {
-          "type": "string",
-          "description": "A member bank reserve token denomination."
-        },
-        "escrowedSupply": {
-          "type": "string",
-          "description": "A member bank's fiat available in USD."
-        },
         "id": {
           "type": "string",
           "description": "A member bank address and identifier."
@@ -587,22 +498,16 @@
           "format": "date-time",
           "description": "Timestamp member bank joined consortium."
         },
-        "maxSupply": {
-          "type": "string",
-          "description": "A member bank maximum bank supply mintable in USD."
+        "kycAttributes": {
+          "type": "array",
+          "description": "A member bank's KYC attributes.",
+          "items": {
+            "type": "string"
+          }
         },
         "name": {
           "type": "string",
           "description": "A member bank name."
-        },
-        "supply": {
-          "type": "string",
-          "description": "A member bank supply of minted reserve token in USD."
-        },
-        "weight": {
-          "type": "integer",
-          "format": "int64",
-          "description": "A member bank's weight for member voting."
         }
       },
       "title": "MemberResponse",
@@ -634,28 +539,6 @@
       },
       "title": "MintCoinRequest",
       "description": "Request to the middleware to mint coin to the user's address associated with their bank account"
-    },
-    "RedeemBurnCoinRequest": {
-      "type": "object",
-      "required": [
-        "amount",
-        "uuid"
-      ],
-      "properties": {
-        "amount": {
-          "type": "number",
-          "description": "The amount of fiat in USD to mint to the customer's address.",
-          "minimum": 0,
-          "exclusiveMinimum": false
-        },
-        "uuid": {
-          "type": "string",
-          "format": "uuid",
-          "description": "A unique uuid for this request."
-        }
-      },
-      "title": "RedeemBurnCoinRequest",
-      "description": "\n        Request to the middleware to redeem and burn dcc token and corresponding bank token. \n        Must have sufficient dcc coin at bank address and reserve token escrowed.\n    "
     },
     "RegisterAddressRequest": {
       "type": "object",

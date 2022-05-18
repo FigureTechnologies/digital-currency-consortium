@@ -5,18 +5,18 @@ private const val ATTRIBUTE_CODE_ID = "code_id"
 private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
 private const val ATTRIBUTE_AMOUNT = "amount"
 private const val ATTRIBUTE_DENOM = "denom"
-private const val ATTRIBUTE_RESERVE_DENOM = "reserve_denom"
 private const val ATTRIBUTE_FROM = "from_address"
-private const val ATTRIBUTE_WITHDRAW_DENOM = "withdraw_denom"
 private const val ATTRIBUTE_WITHDRAW_ADDRESS = "withdraw_address"
 private const val ATTRIBUTE_MEMBER_ID = "member_id"
 private const val ATTRIBUTE_SENDER = "sender"
 private const val ATTRIBUTE_TO = "to_address"
 private const val ATTRIBUTE_RECIPIENT = "recipient"
+private const val ATTRIBUTE_FROM_MEMBER = "from_member_id"
+private const val ATTRIBUTE_TO_MEMBER = "to_member_id"
 
 private const val MINT_ACTION = "mint"
 private const val TRANSFER_ACTION = "transfer"
-private const val REDEEM_BURN_ACTION = "redeem_and_burn"
+private const val BURN_ACTION = "burn"
 
 const val WASM_EVENT = "wasm"
 const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
@@ -90,7 +90,6 @@ typealias Mints = List<Mint>
 data class Mint(
     val amount: String,
     val denom: String,
-    val withdrawDenom: String,
     val withdrawAddress: String,
     val memberId: String,
     val height: Long,
@@ -101,42 +100,39 @@ private fun StreamEvent.toMint(): Mint =
     Mint(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
-        withdrawDenom = getAttribute(ATTRIBUTE_WITHDRAW_DENOM),
         withdrawAddress = getAttribute(ATTRIBUTE_WITHDRAW_ADDRESS),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
         height = height,
         txHash = txHash
     )
 
-fun EventBatch.redeemBurns(contractAddress: String): RedeemBurns =
+fun EventBatch.burns(contractAddress: String): Burns =
     events
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
             event.eventType == WASM_EVENT &&
-                action == REDEEM_BURN_ACTION &&
+                action == BURN_ACTION &&
                 contractAddress == contractAddressAttr &&
                 event.isSuccess()
         }
-        .map { event -> event.toRedeemBurn() }
+        .map { event -> event.toBurn() }
 
-typealias RedeemBurns = List<RedeemBurn>
+typealias Burns = List<Burn>
 
-data class RedeemBurn(
+data class Burn(
     val amount: String,
     val denom: String,
     val memberId: String,
-    val reserveDenom: String,
     val height: Long,
     val txHash: String
 )
 
-private fun StreamEvent.toRedeemBurn(): RedeemBurn =
-    RedeemBurn(
+private fun StreamEvent.toBurn(): Burn =
+    Burn(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
-        reserveDenom = getAttribute(ATTRIBUTE_RESERVE_DENOM),
         height = height,
         txHash = txHash,
     )
@@ -160,6 +156,8 @@ data class Transfer(
     val denom: String,
     val sender: String,
     val recipient: String,
+    val fromMemberId: String,
+    val toMemberId: String,
     val height: Long,
     val txHash: String
 )
@@ -170,6 +168,8 @@ private fun StreamEvent.toTransfer(): Transfer =
         denom = getAttribute(ATTRIBUTE_DENOM),
         sender = getAttribute(ATTRIBUTE_SENDER),
         recipient = getAttribute(ATTRIBUTE_RECIPIENT),
+        fromMemberId = getAttribute(ATTRIBUTE_FROM_MEMBER),
+        toMemberId = getAttribute(ATTRIBUTE_TO_MEMBER),
         height = height,
         txHash = txHash
     )

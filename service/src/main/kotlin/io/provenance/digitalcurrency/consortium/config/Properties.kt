@@ -42,7 +42,8 @@ class ProvenanceProperties(
     val chainId: String,
     val mainNet: Boolean,
     val contractAddress: String,
-    val gasAdjustment: Double
+    val gasAdjustment: Double,
+    val maxBatchSize: Int,
 ) {
     fun uri() = URI(grpcChannelUrl)
 }
@@ -67,7 +68,6 @@ class BankClientProperties(
     val uri: String,
     val context: String,
     val kycTagName: String,
-    val denom: String
 )
 
 @ConstructorBinding

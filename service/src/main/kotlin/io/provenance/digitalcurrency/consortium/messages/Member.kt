@@ -6,12 +6,9 @@ import com.fasterxml.jackson.annotation.JsonProperty
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class MemberResponse(
     val id: String,
-    val supply: Long,
-    @JsonProperty("max_supply") val maxSupply: Long,
-    val denom: String,
     val joined: Long,
-    val weight: Long,
     val name: String,
+    @JsonProperty("kyc_attrs") val kycAttributes: List<String>,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

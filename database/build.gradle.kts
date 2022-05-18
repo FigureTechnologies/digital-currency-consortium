@@ -7,7 +7,7 @@ apply {
 }
 
 dependencies {
-    api(Libraries.Flyway)
+    implementation(Libraries.Flyway)
 }
 
 flyway {

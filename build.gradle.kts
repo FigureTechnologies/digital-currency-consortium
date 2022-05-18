@@ -6,7 +6,7 @@ plugins {
     id(PluginIds.DependencyAnalysis) version PluginVersions.DependencyAnalysis
     id(PluginIds.Idea)
     id(PluginIds.Jacoco)
-    id(PluginIds.Protobuf) version PluginVersions.Protobuf
+    id(PluginIds.ProjectReport)
 }
 
 allprojects {
@@ -16,9 +16,6 @@ allprojects {
     repositories {
         mavenCentral()
         mavenLocal()
-
-        // For KEthereum library
-        maven("https://jitpack.io")
     }
 }
 
@@ -27,13 +24,16 @@ task<Exec>("generateDccSpec") {
     commandLine("node", "generator.mjs")
 }
 
+tasks.htmlDependencyReport {
+    projects = project.subprojects
+}
+
 subprojects {
     project.ext.properties["kotlin_version"] = Versions.Kotlin
 
     apply {
         plugin(PluginIds.Kotlin)
         plugin(PluginIds.Idea)
-        plugin(PluginIds.Protobuf)
         plugin(PluginIds.Jacoco)
     }
 
@@ -84,13 +84,6 @@ subprojects {
     }
 
     dependencies {
-        implementation.let {
-            it(Libraries.KotlinAllOpen)
-            it(Libraries.KotlinReflect)
-            it(Libraries.KotlinStdlib)
-            it(Libraries.KotlinStdlibJdk8)
-        }
-
         ktlint(Libraries.KtLint)
     }
 

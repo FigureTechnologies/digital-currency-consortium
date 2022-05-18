@@ -7,8 +7,8 @@ import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
@@ -30,6 +30,7 @@ class TxBatchHandler(
     private val pbcTimeoutService: PbcTimeoutService,
 ) {
     private val log = logger()
+    private val maxBatchSize = provenanceProperties.maxBatchSize
 
     @Scheduled(
         initialDelayString = "\${queue.batch_initial_delay_ms}",
@@ -43,7 +44,7 @@ class TxBatchHandler(
             waitingForCommit = transaction { !TxRequestViewRecord.findPending().empty() }
         } while (waitingForCommit)
 
-        val requests = transaction { TxRequestViewRecord.findQueued().map { it.id to it.type } }
+        val requests = transaction { TxRequestViewRecord.findQueued(limit = maxBatchSize).map { it.id to it.type } }
             .mapNotNull { (id, type) ->
                 when (type) {
                     TxRequestType.MINT -> transaction {
@@ -55,9 +56,9 @@ class TxBatchHandler(
                                 null
                             }
                     }
-                    TxRequestType.REDEEM_BURN -> transaction {
+                    TxRequestType.BURN -> transaction {
                         // TODO - add extra safety for insufficient coin
-                        CoinRedeemBurnRecord.findById(id)!!
+                        CoinBurnRecord.findById(id)!!
                             .let { it to buildExecuteContractMessage(it.getExecuteContractMessage()) }
                     }
                     TxRequestType.TRANSFER -> transaction {

@@ -9,7 +9,6 @@ import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
 import io.provenance.digitalcurrency.consortium.api.AlertRequest
 import io.provenance.digitalcurrency.consortium.api.BalanceRequest
-import io.provenance.digitalcurrency.consortium.api.BankSettlementRequest
 import io.provenance.digitalcurrency.consortium.api.CoinMovementRequest
 import io.provenance.digitalcurrency.consortium.api.DepositFiatRequest
 import org.springframework.http.ResponseEntity
@@ -28,9 +27,6 @@ interface BankClient {
 
     @RequestLine("POST /api/v1/fiat/deposits")
     fun depositFiat(request: DepositFiatRequest): ResponseEntity<String>
-
-    @RequestLine("POST /api/v1/fiat/settlements")
-    fun settleFiat(request: BankSettlementRequest): ResponseEntity<String>
 
     @RequestLine("POST /api/v1/transactions/logship")
     fun persistCoinMovement(request: CoinMovementRequest): ResponseEntity<String>

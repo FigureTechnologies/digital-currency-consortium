@@ -1,9 +1,9 @@
 package io.provenance.digitalcurrency.consortium
 
+import io.provenance.digitalcurrency.consortium.stream.Burn
 import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
 import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
-import io.provenance.digitalcurrency.consortium.stream.RedeemBurn
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
 import kotlin.random.Random
@@ -32,16 +32,17 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         denom = denom,
         sender = TEST_ADDRESS,
         recipient = toAddress,
+        fromMemberId = TEST_MEMBER_ADDRESS,
+        toMemberId = TEST_MEMBER_ADDRESS,
         height = 50,
         txHash = txHash
     )
 
-fun getRedeemBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER_ADDRESS, denom: String, reserveDenom: String) =
-    RedeemBurn(
+fun getBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER_ADDRESS, denom: String) =
+    Burn(
         amount = DEFAULT_AMOUNT.toString(),
         denom = denom,
         memberId = memberId,
-        reserveDenom = reserveDenom,
         height = 50,
         txHash = txHash,
     )
@@ -56,11 +57,10 @@ fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = 
         txHash = txHash
     )
 
-fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String, bankDenom: String) =
+fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
     Mint(
         amount = DEFAULT_AMOUNT.toString(),
-        denom = bankDenom,
-        withdrawDenom = dccDenom,
+        denom = dccDenom,
         withdrawAddress = TEST_ADDRESS,
         memberId = TEST_MEMBER_ADDRESS,
         height = 50,
