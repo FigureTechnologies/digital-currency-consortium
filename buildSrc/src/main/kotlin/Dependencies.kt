@@ -29,7 +29,7 @@ object Versions {
     const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
     const val PbcHDWallet = "0.1.15"
-    const val EventStream = "0.6.0"
+    const val EventStream = "0.6.1"
 
     const val CommonsCsv = "1.9.0"
     const val Exposed = "0.38.2"
