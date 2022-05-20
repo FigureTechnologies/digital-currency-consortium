@@ -11,10 +11,14 @@ plugins {
     id(PluginIds.Idea)
     id(PluginIds.Jacoco)
     id(PluginIds.ProjectReport)
+
+    id(PluginIds.KotlinSpring) version PluginVersions.Kotlin apply false
+    id(PluginIds.KotlinAllOpen) version PluginVersions.Kotlin apply false
+    id(PluginIds.SpringBoot) version PluginVersions.SpringBoot apply false
 }
 
 allprojects {
-    group = "io.provenance.digitalcurrency.consortium"
+    group = "io.provenance.digitalcurrency"
     version = artifactVersion(this)
 
     repositories {
@@ -35,10 +39,18 @@ tasks.htmlDependencyReport {
 subprojects {
     project.ext.properties["kotlin_version"] = Versions.Kotlin
 
+    val isApp = name == "report" || name == "service"
+
     apply {
         plugin(PluginIds.Kotlin)
         plugin(PluginIds.Idea)
         plugin(PluginIds.Jacoco)
+
+        if (isApp) {
+            plugin(PluginIds.KotlinSpring)
+            plugin(PluginIds.KotlinAllOpen)
+            plugin(PluginIds.SpringBoot)
+        }
     }
 
     repositories {
@@ -74,12 +86,17 @@ subprojects {
     }
 
     val testListener = CustomTestLoggingListener(project)
-    tasks.withType<Test> {
+    tasks.test {
         useJUnitPlatform()
         systemProperty("spring.profiles.active", "development")
         testLogging {
-            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
             showStandardStreams = true
+            events(
+                PASSED,
+                SKIPPED,
+                FAILED
+            )
+            exceptionFormat = FULL
         }
         addTestListener(testListener)
         doLast {
@@ -89,10 +106,8 @@ subprojects {
 
     dependencies {
         ktlint(Libraries.KtLint)
-    }
 
-    if (project.name == "report" || project.name == "service") {
-        dependencies {
+        if (isApp) {
             api.let {
                 it(Libraries.LogbackCore)
                 it(Libraries.LogbackClassic)
@@ -143,16 +158,16 @@ subprojects {
 
             testRuntimeOnly(Libraries.JunitJupiterEngine)
         }
+    }
 
-        tasks.test {
-            useJUnitPlatform {}
-            testLogging {
-                events(
-                    PASSED,
-                    SKIPPED,
-                    FAILED
-                )
-                exceptionFormat = FULL
+    configurations {
+        all {
+            exclude(group = "log4j")
+            resolutionStrategy.eachDependency {
+                if (requested.group == "org.apache.logging.log4j") {
+                    useVersion("2.17.0")
+                    because("CVE-2021-44228")
+                }
             }
         }
     }

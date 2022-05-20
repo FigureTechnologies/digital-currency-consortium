@@ -1,20 +1,20 @@
 object PluginIds {
     const val Kotlin = "kotlin"
-    const val KotlinSpring = "plugin.spring"
 
     const val DependencyAnalysis = "com.autonomousapps.dependency-analysis"
     const val Flyway = "org.flywaydb.flyway"
     const val Idea = "idea"
     const val Jacoco = "jacoco"
     const val ProjectReport = "project-report"
+
     const val SpringBoot = "org.springframework.boot"
     const val KotlinAllOpen = "org.jetbrains.kotlin.plugin.allopen"
+    const val KotlinSpring = "org.jetbrains.kotlin.plugin.spring"
 }
 
 object PluginVersions {
     const val Kotlin = "1.6.21"
-
-    const val DependencyAnalysis = "0.69.0"
+    const val DependencyAnalysis = "1.2.1"
     const val Flyway = "7.15.0"
     const val SpringBoot = "2.5.13"
 }
@@ -72,7 +72,6 @@ object Libraries {
     const val PbcHDWallet = "io.provenance.hdwallet:hdwallet:${Versions.PbcHDWallet}"
 
     const val EventStreamCore = "io.provenance.eventstream:es-core:${Versions.EventStream}"
-    const val EventStreamApi = "io.provenance.eventstream:es-api:${Versions.EventStream}"
     const val EventStreamApiModel = "io.provenance.eventstream:es-api-model:${Versions.EventStream}"
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
