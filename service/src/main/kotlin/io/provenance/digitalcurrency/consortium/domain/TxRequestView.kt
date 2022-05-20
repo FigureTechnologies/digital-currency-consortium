@@ -28,7 +28,7 @@ open class TxRequestViewEntityClass : UUIDEntityClass<TxRequestViewRecord>(TRV) 
     fun findByTxHash(txHash: String) = find { TRV.txHash eq txHash }
 
     fun findExpired() = find {
-        (TRV.created lessEq OffsetDateTime.now().minusSeconds(30))
+        (TRV.created lessEq OffsetDateTime.now().minusSeconds(120))
             .and(TRV.status eq TxStatus.PENDING)
             .and(TRV.txHash.isNotNull())
     }

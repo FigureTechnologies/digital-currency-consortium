@@ -6,6 +6,7 @@ import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
+import java.time.OffsetDateTime
 import kotlin.random.Random
 
 const val TEST_ADDRESS = "tp1a9xvl9gfljsdnanmn9rj38e2mcselp3r8q0qvg"
@@ -23,6 +24,7 @@ fun getMigrationEvent(txHash: String = randomTxHash()) =
     Migration(
         codeId = "2",
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )
 
@@ -35,6 +37,7 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         fromMemberId = TEST_MEMBER_ADDRESS,
         toMemberId = TEST_MEMBER_ADDRESS,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )
 
@@ -44,6 +47,7 @@ fun getBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER
         denom = denom,
         memberId = memberId,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash,
     )
 
@@ -54,6 +58,7 @@ fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = 
         amount = DEFAULT_AMOUNT.toString(),
         denom = denom,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )
 
@@ -64,5 +69,6 @@ fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
         withdrawAddress = TEST_ADDRESS,
         memberId = TEST_MEMBER_ADDRESS,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )

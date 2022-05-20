@@ -3,13 +3,6 @@ import org.springframework.boot.gradle.tasks.run.BootRun
 dependencies {
     implementation.let {
         it(Libraries.CommonsCsv)
-
-        // ----- Event Stream -----
-        it(Libraries.EventStreamCore)
-        it(Libraries.EventStreamApiModel)
-        it(Libraries.Moshi)
-        it(Libraries.MoshiKotlin)
-        it(Libraries.OkHttp)
     }
 }
 

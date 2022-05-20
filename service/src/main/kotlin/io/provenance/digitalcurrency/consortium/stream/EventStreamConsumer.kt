@@ -16,22 +16,21 @@ import io.provenance.digitalcurrency.consortium.domain.REDEEM
 import io.provenance.digitalcurrency.consortium.domain.TRANSFER
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
-import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
-import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.provenance.digitalcurrency.consortium.service.TxRequestService
+import io.provenance.eventstream.decoder.moshiDecoderAdapter
+import io.provenance.eventstream.net.okHttpNetAdapter
+import io.provenance.eventstream.stream.flows.blockDataFlow
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
-import java.time.OffsetDateTime
 import java.util.UUID
 
 @Component
 @NotTest
 class EventStreamConsumer(
-    private val eventStreamFactory: EventStreamFactory,
     private val pbcService: PbcService,
-    private val rpcClient: RpcClient,
     eventStreamProperties: EventStreamProperties,
     private val serviceProperties: ServiceProperties,
     private val provenanceProperties: ProvenanceProperties,
@@ -39,15 +38,12 @@ class EventStreamConsumer(
 ) {
     private val log = logger()
 
-    // We're only interested in specific wasm events from pbc
-    private val eventTypes =
-        listOf(WASM_EVENT, MARKER_TRANSFER_EVENT, MIGRATE_EVENT, ATTRIBUTE_DELETE_EVENT, ATTRIBUTE_ADD_EVENT)
-
     // The current event stream IDs
     private val eventStreamId = UUID.fromString(eventStreamProperties.id)
     private val coinMovementEventStreamId = UUID.fromString(eventStreamProperties.coinMovementId)
 
     private val epochHeight = eventStreamProperties.epoch
+    private val eventStreamUri = eventStreamProperties.rpcUri
     private val coinMovementEpochHeight = eventStreamProperties.coinMovementEpoch
 
     // This is scheduled so if the event streaming server or its proxied blockchain daemon node go down,
@@ -61,23 +57,39 @@ class EventStreamConsumer(
         val record = transaction { EventStreamRecord.findById(eventStreamId) }
         val lastHeight = record?.lastBlockHeight
             ?: transaction { EventStreamRecord.insert(eventStreamId, epochHeight) }.lastBlockHeight
-        val responseObserver =
-            EventStreamResponseObserver<EventBatch> { batch ->
-                handleEvents(
-                    batch.height,
-                    txHashes = batch.txHashes(),
-                    migrations = batch.migrations(provenanceProperties.contractAddress),
-                    transfers = batch.transfers(provenanceProperties.contractAddress)
-                )
 
-                transaction { EventStreamRecord.update(eventStreamId, batch.height) }
+        runBlocking {
+            val netAdapter = okHttpNetAdapter(eventStreamUri)
+
+            log.info("Starting event stream at height $lastHeight")
+
+            blockDataFlow(
+                netAdapter = netAdapter,
+                decoderAdapter = moshiDecoderAdapter(),
+                from = lastHeight
+            ).collect { blockData ->
+                val txEvents = blockData.txEvents()
+                val txErrors = blockData.txErrors()
+
+                transaction {
+                    if (txEvents.isNotEmpty()) {
+                        handleEvents(
+                            txHashes = txEvents.map { it.txHash }.distinct(),
+                            migrations = txEvents.migrations(provenanceProperties.contractAddress),
+                            transfers = txEvents.transfers(provenanceProperties.contractAddress)
+                        )
+                    }
+
+                    if (txErrors.isNotEmpty()) {
+                        handleErrors(txHashes = txErrors.map { it.txHash }.distinct())
+                    }
+
+                    EventStreamRecord.update(eventStreamId, blockData.height)
+                }
             }
 
-        log.info("Starting event stream at height $lastHeight")
-
-        eventStreamFactory.getStream(eventTypes, lastHeight + 1, responseObserver).streamEvents()
-
-        handleStream(responseObserver, log)
+            netAdapter.shutdown()
+        }
     }
 
     // This is scheduled so if the event streaming server or its proxied blockchain daemon node go down,
@@ -96,25 +108,33 @@ class EventStreamConsumer(
                     coinMovementEpochHeight
                 )
             }.lastBlockHeight
-        val responseObserver =
-            EventStreamResponseObserver<EventBatch> { batch ->
-                handleCoinMovementEvents(
-                    batch.height,
-                    mints = batch.mints(provenanceProperties.contractAddress),
-                    // TODO - these are really redemption requests, probably need to distinguish between redemption transfers and burns
-                    transfers = batch.transfers(provenanceProperties.contractAddress),
-                    burns = batch.burns(provenanceProperties.contractAddress),
-                    markerTransfers = batch.markerTransfers(),
-                )
 
-                transaction { EventStreamRecord.update(coinMovementEventStreamId, batch.height) }
+        runBlocking {
+            val netAdapter = okHttpNetAdapter(eventStreamUri)
+
+            log.info("Starting coin movement event stream at height $lastHeight")
+
+            blockDataFlow(
+                netAdapter = netAdapter,
+                decoderAdapter = moshiDecoderAdapter(),
+                from = lastHeight
+            ).collect { blockData ->
+                val txEvents = blockData.txEvents()
+
+                transaction {
+                    handleCoinMovementEvents(
+                        mints = txEvents.mints(provenanceProperties.contractAddress),
+                        transfers = txEvents.transfers(provenanceProperties.contractAddress),
+                        burns = txEvents.burns(provenanceProperties.contractAddress),
+                        markerTransfers = txEvents.markerTransfers(),
+                    )
+
+                    EventStreamRecord.update(coinMovementEventStreamId, blockData.height)
+                }
             }
 
-        log.info("Starting coin movement event stream at height $lastHeight")
-
-        eventStreamFactory.getStream(eventTypes, lastHeight + 1, responseObserver).streamEvents()
-
-        handleStream(responseObserver, log)
+            netAdapter.shutdown()
+        }
     }
 
     data class MintWrapper(
@@ -146,14 +166,11 @@ class EventStreamConsumer(
     }
 
     fun handleCoinMovementEvents(
-        blockHeight: Long,
         mints: Mints,
         transfers: Transfers,
         burns: Burns,
         markerTransfers: MarkerTransfers
     ) {
-        // TODO (steve) is there a grpc endpoint for this?
-        val block = rpcClient.fetchBlock(blockHeight).block
 
         // SC Mint events denote the "on ramp" for a bank user to get coin
         val filteredMints = mints.filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
@@ -237,7 +254,7 @@ class EventStreamConsumer(
                     toAddress = wrapper.mint.withdrawAddress,
                     toAddressBankUuid = wrapper.toAddressBankUuid,
                     blockHeight = wrapper.mint.height,
-                    blockTime = OffsetDateTime.parse(block.header.time),
+                    blockTime = checkNotNull(wrapper.mint.dateTime),
                     amount = wrapper.mint.amount,
                     denom = wrapper.mint.denom,
                     type = MINT,
@@ -252,7 +269,7 @@ class EventStreamConsumer(
                     toAddress = wrapper.transfer.recipient,
                     toAddressBankUuid = null,
                     blockHeight = wrapper.transfer.height,
-                    blockTime = OffsetDateTime.parse(block.header.time),
+                    blockTime = checkNotNull(wrapper.transfer.dateTime),
                     amount = wrapper.transfer.amount,
                     denom = wrapper.transfer.denom,
                     type = REDEEM,
@@ -267,7 +284,7 @@ class EventStreamConsumer(
                     toAddress = wrapper.burn.memberId,
                     toAddressBankUuid = null,
                     blockHeight = wrapper.burn.height,
-                    blockTime = OffsetDateTime.parse(block.header.time),
+                    blockTime = checkNotNull(wrapper.burn.dateTime),
                     amount = wrapper.burn.amount,
                     denom = wrapper.burn.denom,
                     type = BURN,
@@ -282,7 +299,7 @@ class EventStreamConsumer(
                     toAddress = wrapper.transfer.toAddress,
                     toAddressBankUuid = wrapper.toAddressBankUuid,
                     blockHeight = wrapper.transfer.height,
-                    blockTime = OffsetDateTime.parse(block.header.time),
+                    blockTime = checkNotNull(wrapper.transfer.dateTime),
                     amount = wrapper.transfer.amount,
                     denom = wrapper.transfer.denom,
                     type = TRANSFER,
@@ -291,7 +308,7 @@ class EventStreamConsumer(
         }
     }
 
-    fun handleEvents(blockHeight: Long, txHashes: List<String>, migrations: Migrations, transfers: Transfers) {
+    fun handleEvents(txHashes: List<String>, migrations: Migrations, transfers: Transfers) {
         // Handle dcc initialized transactions marked as complete
         txHashes.forEach { txHash ->
             if (transaction { !TxRequestViewRecord.findByTxHash(txHash).empty() }) {
@@ -346,5 +363,13 @@ class EventStreamConsumer(
             txHash = transfer.txHash,
             txStatus = TxStatus.TXN_COMPLETE
         )
+    }
+
+    fun handleErrors(txHashes: List<String>) {
+        // Handle dcc initialized transactions marked as error reset to queued
+        txHashes.forEach { txHash ->
+            log.info("resetting txn errors for $txHash")
+            txRequestService.resetTxns(txHash)
+        }
     }
 }
