@@ -1,6 +1,7 @@
 package io.provenance.digitalcurrency.consortium.api
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import io.provenance.hdwallet.bech32.Bech32
 import io.swagger.annotations.ApiModel
 import io.swagger.annotations.ApiModelProperty
 import springfox.documentation.annotations.ApiIgnore
@@ -63,4 +64,14 @@ data class TransferRequest(
     @ApiIgnore
     @AssertTrue(message = "Only bank account or blockchain address can be set")
     fun hasOneToAddress() = !(bankAccountUuid != null && blockchainAddress != null)
+
+    @JsonIgnore
+    @ApiIgnore
+    @AssertTrue(message = "Invalid blockchain address")
+    fun hasValidAddress() = try {
+        blockchainAddress?.also { Bech32.decode(it) }
+        true
+    } catch (e: IllegalArgumentException) {
+        false
+    }
 }

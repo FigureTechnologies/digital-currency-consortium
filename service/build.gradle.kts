@@ -45,6 +45,7 @@ dependencies {
 
         it(Libraries.PbcProto)
         it(Libraries.PbcClient)
+        it(Libraries.PbcHDWallet)
 
         it(Libraries.SpringBootDevTools)
         it(Libraries.SpringBootActuator)
