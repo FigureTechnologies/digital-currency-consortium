@@ -47,3 +47,4 @@ CREATE TABLE settlement_wire_entry(
 );
 
 ALTER TABLE settlement_wire_entry ADD CONSTRAINT set_wire_entry_set_report_fk FOREIGN KEY(settlement_report_uuid) REFERENCES settlement_report(uuid);
+CREATE UNIQUE INDEX set_wire_entry_report_from_to_uidx ON settlement_wire_entry(settlement_report_uuid, from_member_id, to_member_id);

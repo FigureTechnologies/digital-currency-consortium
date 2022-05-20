@@ -33,7 +33,7 @@ private fun TxEvent.getAttribute(key: String): String = this.attributes.toAttrib
 
 private fun Attributes.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
-    this.firstOrNull { (k, _) -> k == key }?.second?.removeSurrounding("\"") ?: ""
+    this.firstOrNull { (k, _) -> k == key }?.second ?: ""
 
 fun BlockData.transfers(contractAddress: String): Transfers =
     blockResult
