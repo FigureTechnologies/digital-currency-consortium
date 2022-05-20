@@ -12,11 +12,11 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.8.2, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.10.0, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.8.2
+cd provenance && git checkout v1.10.0
 make install
 make localnet-start
 ```
@@ -669,3 +669,39 @@ provenanced tx wasm migrate \
 
 Note in this example that `2` is the new code id that was the output of the store command. Replace that with whatever
 code id is returned when you store the updated contract.
+
+## Set Admin
+
+Administrator can be reassigned to another key pair.
+
+Change the administrator in smart contract state.
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"set_admin":{"id":"tp1tqs43pw9ql44y24kx3sf9lzlanjafxydqx8ehf"}}' \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+Change the smart contract administrator. This can be the same or a different key pair than smart contract state admin.
+
+```bash
+provenanced tx wasm set-contract-admin \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    tp1tqs43pw9ql44y24kx3sf9lzlanjafxydqx8ehf \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```

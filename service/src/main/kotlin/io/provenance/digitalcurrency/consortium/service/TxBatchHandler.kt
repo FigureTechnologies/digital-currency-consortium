@@ -30,6 +30,7 @@ class TxBatchHandler(
     private val pbcTimeoutService: PbcTimeoutService,
 ) {
     private val log = logger()
+    private val maxBatchSize = provenanceProperties.maxBatchSize
 
     @Scheduled(
         initialDelayString = "\${queue.batch_initial_delay_ms}",
@@ -43,7 +44,7 @@ class TxBatchHandler(
             waitingForCommit = transaction { !TxRequestViewRecord.findPending().empty() }
         } while (waitingForCommit)
 
-        val requests = transaction { TxRequestViewRecord.findQueued().map { it.id to it.type } }
+        val requests = transaction { TxRequestViewRecord.findQueued(limit = maxBatchSize).map { it.id to it.type } }
             .mapNotNull { (id, type) ->
                 when (type) {
                     TxRequestType.MINT -> transaction {

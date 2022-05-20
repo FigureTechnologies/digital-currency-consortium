@@ -7,7 +7,6 @@ plugins {
     kotlin(PluginIds.KotlinSpring) version PluginVersions.Kotlin
     id(PluginIds.KotlinAllOpen) version "1.5.30-RC"
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
-    id(PluginIds.Protobuf)
 }
 
 configurations {
@@ -59,7 +58,6 @@ dependencies {
         it(Libraries.Flyway)
         it(Libraries.Exposed)
         it(Libraries.ExposedDao)
-        it(Libraries.ExposedJavaTime)
         it(Libraries.ExposedJdbc)
     }
 

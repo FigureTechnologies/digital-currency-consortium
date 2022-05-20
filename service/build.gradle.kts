@@ -7,7 +7,7 @@ plugins {
     kotlin(PluginIds.KotlinSpring) version PluginVersions.Kotlin
     id(PluginIds.KotlinAllOpen) version "1.5.30-RC"
     id(PluginIds.SpringBoot) version PluginVersions.SpringBoot
-    id(PluginIds.Protobuf)
+//    id(PluginIds.Protobuf)
 }
 
 configurations {
@@ -30,6 +30,11 @@ dependencies {
     api(Libraries.LogbackJackson)
 
     implementation.let {
+        it(Libraries.KotlinAllOpen)
+        it(Libraries.KotlinReflect)
+        it(Libraries.KotlinStdlib)
+        it(Libraries.KotlinStdlibJdk8)
+
         it(Libraries.FeignCore)
         it(Libraries.FeignJackson)
         it(Libraries.FeignSlf4j)
@@ -40,8 +45,7 @@ dependencies {
 
         it(Libraries.PbcProto)
         it(Libraries.PbcClient)
-        it(Libraries.GoogleProto)
-        it(Libraries.GoogleProtoJavaUtil)
+        it(Libraries.PbcHDWallet)
 
         it(Libraries.SpringBootDevTools)
         it(Libraries.SpringBootActuator)
@@ -49,11 +53,6 @@ dependencies {
         it(Libraries.SpringBootStarterWeb)
         it(Libraries.SpringBootStarterValidation)
         it(Libraries.JavaxValidation)
-
-        it(Libraries.GrpcAlts)
-        it(Libraries.GrpcStub)
-        it(Libraries.GrpcProto)
-        it(Libraries.GrpcNetty)
 
         it(Libraries.Postgres)
 
@@ -70,7 +69,6 @@ dependencies {
         it(Libraries.Flyway)
         it(Libraries.Exposed)
         it(Libraries.ExposedDao)
-        it(Libraries.ExposedJavaTime)
         it(Libraries.ExposedJdbc)
     }
 

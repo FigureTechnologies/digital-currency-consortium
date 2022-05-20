@@ -40,7 +40,8 @@ class ProvenanceProperties(
     val chainId: String,
     val mainNet: Boolean,
     val contractAddress: String,
-    val gasAdjustment: Double
+    val gasAdjustment: Double,
+    val maxBatchSize: Int,
 ) {
     fun uri() = URI(grpcChannelUrl)
 }

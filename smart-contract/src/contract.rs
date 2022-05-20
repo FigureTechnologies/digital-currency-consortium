@@ -22,7 +22,7 @@ pub static CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub static MIN_DENOM_LEN: usize = 8;
 pub static MIN_NAME_LEN: usize = 4;
 
-/// Create the initial configuration state and propose the dcc marker.
+/// Create the initial configuration state and propose the marker.
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut<ProvenanceQuery>,
@@ -42,7 +42,7 @@ pub fn instantiate(
     };
     config(deps.storage).save(&state)?;
 
-    // Create the dcc marker and grant permissions if it doesn't exist.
+    // Create the marker and grant permissions if it doesn't exist.
     // TODO - gas limit makes this impossible to use on testnet
     let mut res = Response::new();
     if !marker_exists(deps.as_ref(), &msg.denom) {
@@ -60,7 +60,7 @@ pub fn instantiate(
             .add_message(grant_marker_access(
                 &msg.denom,
                 info.sender,
-                vec![MarkerAccess::Admin], // The contract admin is also a dcc marker admin
+                vec![MarkerAccess::Admin], // The contract admin is also a marker admin
             )?)
             .add_message(finalize_marker(&msg.denom)?)
             .add_message(activate_marker(&msg.denom)?);
@@ -98,6 +98,7 @@ pub fn execute(
         ExecuteMsg::Burn { amount } => try_burn(deps, info, amount),
         ExecuteMsg::AddKyc { id, kyc_attr } => try_add_kyc(deps, info, id, kyc_attr),
         ExecuteMsg::RemoveKyc { id, kyc_attr } => try_remove_kyc(deps, info, id, kyc_attr),
+        ExecuteMsg::SetAdmin { id } => try_set_admin(deps, info, id),
     }
 }
 
@@ -213,7 +214,7 @@ fn try_remove(
     Ok(res)
 }
 
-// Transfer dcc from sender to recipient. Both accounts must either be member accounts, or
+// Transfer token from sender to recipient. Both accounts must either be member accounts, or
 // have the required kyc attributes.
 fn try_transfer(
     deps: DepsMut<ProvenanceQuery>,
@@ -223,7 +224,7 @@ fn try_transfer(
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Ensure no funds were sent
     if !info.funds.is_empty() {
-        return Err(contract_err("bank sends are not allowed in dcc transfer"));
+        return Err(contract_err("bank sends are not allowed in transfer"));
     }
 
     // Ensure amount is non-zero.
@@ -237,12 +238,12 @@ fn try_transfer(
     // Read state
     let state = config_read(deps.storage).load()?;
 
-    // Ensure the sender holds at least the indicated amount of dcc.
+    // Ensure the sender holds at least the indicated amount of token.
     let balance = deps
         .querier
         .query_balance(info.sender.clone(), &state.denom)?;
     if balance.amount < amount {
-        return Err(contract_err("insufficient dcc balance in transfer"));
+        return Err(contract_err("insufficient token balance in transfer"));
     }
 
     // Ensure accounts have the required member kyc attribute.
@@ -256,7 +257,7 @@ fn try_transfer(
         None => matched_member(deps.as_ref(), recipient.clone(), members)?,
     };
 
-    // Transfer the dcc
+    // Transfer the token
     let res = Response::new()
         .add_message(transfer_marker_coins(
             amount.u128(),
@@ -275,7 +276,7 @@ fn try_transfer(
 }
 
 // Increase the reserve supply of a member.
-// If an address is provided, mint dcc tokens and withdraw there.
+// If an address is provided, mint tokens and withdraw there.
 fn try_mint(
     deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
@@ -301,7 +302,7 @@ fn try_mint(
         return Err(contract_err("member is missing kyc attribute"));
     }
 
-    // Mint dcc token.
+    // Mint token.
     let state = config_read(deps.storage).load()?;
     let mut res = Response::new()
         .add_message(mint_marker_supply(amount.u128(), &state.denom)?)
@@ -314,7 +315,7 @@ fn try_mint(
     // Withdraw to address or fallback.
     match address {
         None => {
-            // Withdraw dcc tokens to the member account.
+            // Withdraw tokens to the member account.
             res = res
                 .add_message(withdraw_coins(
                     &state.denom,
@@ -322,17 +323,16 @@ fn try_mint(
                     &state.denom,
                     info.sender.clone(),
                 )?)
-
                 .add_attribute("withdraw_address", info.sender)
         }
         Some(addr) => {
-            // When withdrawing dcc tokens to a non-member account, ensure the recipient has the
+            // When withdrawing tokens to a non-member account, ensure the recipient has the
             // required kyc attribute for member.
             let address = deps.api.addr_validate(&addr)?;
             if address != info.sender {
                 matched_member(deps.as_ref(), address.clone(), vec![member])?;
             }
-            // Withdraw minted dcc tokens to the provided account.
+            // Withdraw minted tokens to the provided account.
             res = res
                 .add_message(withdraw_coins(
                     &state.denom,
@@ -369,29 +369,29 @@ fn try_burn(
     // Read state
     let state = config_read(deps.storage).load()?;
 
-    // Ensure the sender holds at least the indicated amount of dcc.
+    // Ensure the sender holds at least the indicated amount of token.
     let balance = deps
         .querier
         .query_balance(info.sender.clone(), &state.denom)?;
     if balance.amount < amount {
-        return Err(contract_err("insufficient dcc balance in burn"));
+        return Err(contract_err("insufficient token balance in burn"));
     }
 
-    // Get dcc marker
+    // Get token marker
     let querier = ProvenanceQuerier::new(&deps.querier);
-    let dcc_marker = querier.get_marker_by_denom(&state.denom)?;
+    let marker = querier.get_marker_by_denom(&state.denom)?;
 
     let res = Response::new()
-        // Escrow dcc in the marker account for burn.
+        // Escrow token in the marker account for burn.
         .add_message(transfer_marker_coins(
             amount.u128(),
             &state.denom,
-            dcc_marker.address,
+            marker.address,
             info.sender.clone(),
         )?)
-        // Burn the dcc token.
+        // Burn the token.
         .add_message(burn_marker_supply(amount.u128(), &state.denom)?)
-        // Add wasm event attributes.// Burn dcc token
+        // Add wasm event attributes.
         .add_attribute("action", "burn")
         .add_attribute("member_id", &member.id)
         .add_attribute("amount", amount)
@@ -456,7 +456,7 @@ fn try_remove_kyc(
 ) -> Result<Response<ProvenanceMsg>, ContractError> {
     // Validate params.
     if !info.funds.is_empty() {
-        return Err(contract_err("no funds should be sent during kyc add"));
+        return Err(contract_err("no funds should be sent during kyc remove"));
     }
     if kyc_attr.trim().is_empty() {
         return Err(contract_err("kyc attribute name is empty"));
@@ -492,6 +492,34 @@ fn try_remove_kyc(
         .add_attribute("action", "remove_kyc_attribute")
         .add_attribute("name", kyc_attr)
         .add_attribute("member_id", &member.id))
+}
+
+fn try_set_admin(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    id: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Validate params.
+    if !info.funds.is_empty() {
+        return Err(contract_err("no funds should be sent during set admin"));
+    }
+
+    let address = deps.api.addr_validate(&id)?;
+
+    // Load state and address is changed.
+    let mut state = config_read(deps.storage).load()?;
+    if state.admin == address {
+        return Err(contract_err("admin address is unchanged"));
+    }
+
+    // Update the admin and save
+    state.admin = address;
+    config(deps.storage).save(&state)?;
+
+    // Add wasm event attributes
+    Ok(Response::new()
+        .add_attribute("action", "set_admin")
+        .add_attribute("admin", &state.admin))
 }
 
 // A helper function for creating generic contract errors.
@@ -1082,7 +1110,7 @@ mod tests {
         )
         .unwrap();
 
-        // Assume the customer has a balance of dcc tokens + the required attribute.
+        // Assume the customer has a balance of tokens + the required attribute.
         let dcc = coin(1000, "dcc.coin");
         deps.querier
             .base
@@ -1172,7 +1200,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "bank sends are not allowed in dcc transfer")
+                assert_eq!(msg, "bank sends are not allowed in transfer")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -1207,7 +1235,7 @@ mod tests {
         )
         .unwrap();
 
-        // Assume the customer has the required attribute, but no dcc tokens.
+        // Assume the customer has the required attribute, but no tokens.
         deps.querier
             .with_attributes("customer", &[("bank.kyc.pb", "ok", "string")]);
 
@@ -1226,7 +1254,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "insufficient dcc balance in transfer")
+                assert_eq!(msg, "insufficient token balance in transfer")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -1317,7 +1345,7 @@ mod tests {
         )
         .unwrap();
 
-        // Assume the customer has a balance of dcc tokens + the required attribute.
+        // Assume the customer has a balance of tokens + the required attribute.
         let dcc = coin(1000, "dcc.coin");
         deps.querier
             .base
@@ -1822,7 +1850,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "insufficient dcc balance in burn")
+                assert_eq!(msg, "insufficient token balance in burn")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2182,7 +2210,7 @@ mod tests {
         // Ensure the expected error was returned.
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
-                assert_eq!(msg, "no funds should be sent during kyc add")
+                assert_eq!(msg, "no funds should be sent during kyc remove")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2241,6 +2269,91 @@ mod tests {
         match err {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "kyc attribute does not exist")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn set_admin() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::SetAdmin {
+                id: "newadmin".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure admin is changed.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.admin, "newadmin")
+    }
+
+    #[test]
+    fn set_admin_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Try to send funds w/ the kyc message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[funds]),
+            ExecuteMsg::SetAdmin {
+                id: "newadmin".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during set admin")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to set name to existing admin.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::SetAdmin { id: "admin".into() },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "admin address is unchanged")
             }
             _ => panic!("unexpected execute error"),
         }
@@ -2324,11 +2437,11 @@ mod tests {
         // Should just get the default response for now
         assert_eq!(res, Response::default());
 
-        let config_state = config_read(&deps.storage).load().unwrap();
+        let state = config_read(&deps.storage).load().unwrap();
 
         // Validate state values
-        assert_eq!(config_state.denom, "dcc.coin");
-        assert_eq!(config_state.admin, Addr::unchecked("id"));
+        assert_eq!(state.denom, "dcc.coin");
+        assert_eq!(state.admin, Addr::unchecked("id"));
 
         // Validate members migrated
         let members = get_members(deps.as_ref()).unwrap();
