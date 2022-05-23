@@ -1,4 +1,4 @@
-package io.provenance.digitalcurrency.consortium
+package io.provenance.digitalcurrency.report
 
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration
@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 import java.util.TimeZone
 
 @SpringBootApplication(
-    scanBasePackages = ["io.provenance.digitalcurrency.consortium"],
+    scanBasePackages = ["io.provenance.digitalcurrency.report"],
     exclude = [SecurityAutoConfiguration::class, ManagementWebSecurityAutoConfiguration::class]
 )
 @EnableScheduling

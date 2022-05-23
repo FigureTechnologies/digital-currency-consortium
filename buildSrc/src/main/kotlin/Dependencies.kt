@@ -1,21 +1,20 @@
 object PluginIds {
     const val Kotlin = "kotlin"
-    const val KotlinSpring = "plugin.spring"
 
     const val DependencyAnalysis = "com.autonomousapps.dependency-analysis"
     const val Flyway = "org.flywaydb.flyway"
     const val Idea = "idea"
     const val Jacoco = "jacoco"
     const val ProjectReport = "project-report"
-    const val Protobuf = "com.google.protobuf"
+
     const val SpringBoot = "org.springframework.boot"
     const val KotlinAllOpen = "org.jetbrains.kotlin.plugin.allopen"
+    const val KotlinSpring = "org.jetbrains.kotlin.plugin.spring"
 }
 
 object PluginVersions {
     const val Kotlin = "1.6.21"
-
-    const val DependencyAnalysis = "0.69.0"
+    const val DependencyAnalysis = "1.2.1"
     const val Flyway = "7.15.0"
     const val SpringBoot = "2.5.13"
 }
@@ -25,13 +24,14 @@ object Versions {
 
     const val Jacoco = "0.8.7"
 
-    const val Grpc = "1.39.0"
     // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
     const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
     const val PbcHDWallet = "0.1.15"
+    const val EventStream = "0.6.1"
 
+    const val CommonsCsv = "1.9.0"
     const val Exposed = "0.38.2"
     const val Feign = "11.8"
     const val Flyway = PluginVersions.Flyway
@@ -39,6 +39,8 @@ object Versions {
     const val JacksonHubspot = "0.9.12"
     const val JavaxValidation = "2.0.0.Final"
     const val Logback = "0.1.5"
+    const val Moshi = "1.13.0"
+    const val OkHttp = "4.9.3"
     const val Postgres = "42.2.23"
     const val Protobuf = "3.19.1"
     const val Swagger = "3.0.0"
@@ -69,19 +71,22 @@ object Libraries {
     const val PbcClient = "io.provenance.client:pb-grpc-client-kotlin:${Versions.PbcClient}"
     const val PbcHDWallet = "io.provenance.hdwallet:hdwallet:${Versions.PbcHDWallet}"
 
+    const val EventStreamCore = "io.provenance.eventstream:es-core:${Versions.EventStream}"
+    const val EventStreamApiModel = "io.provenance.eventstream:es-api-model:${Versions.EventStream}"
+
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
     const val FeignSlf4j = "io.github.openfeign:feign-slf4j:${Versions.Feign}"
     const val Jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
     const val JacksonHubspot = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonHubspot}"
 
-    const val GrpcAlts = "io.grpc:grpc-alts:${Versions.Grpc}"
-    const val GrpcNetty = "io.grpc:grpc-netty:${Versions.Grpc}"
-    const val GrpcProto = "io.grpc:grpc-protobuf:${Versions.Grpc}"
-    const val GrpcStub = "io.grpc:grpc-stub:${Versions.Grpc}"
+    const val CommonsCsv = "org.apache.commons:commons-csv:${Versions.CommonsCsv}"
 
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
 
+    const val Moshi = "com.squareup.moshi:moshi:${Versions.Moshi}"
+    const val MoshiKotlin = "com.squareup.moshi:moshi-kotlin:${Versions.Moshi}"
+    const val OkHttp = "com.squareup.okhttp3:okhttp:${Versions.OkHttp}"
     const val Scarlet = "com.tinder.scarlet:scarlet:${Versions.ScarletForEventStream}"
     const val ScarletStreamAdapter = "com.tinder.scarlet:stream-adapter-rxjava2:${Versions.ScarletForEventStream}"
     const val ScarletWebsocket = "com.tinder.scarlet:websocket-okhttp:${Versions.ScarletForEventStream}"
