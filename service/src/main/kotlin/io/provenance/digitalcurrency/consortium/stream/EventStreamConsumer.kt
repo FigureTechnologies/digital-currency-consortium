@@ -71,21 +71,19 @@ class EventStreamConsumer(
                 val txEvents = blockData.txEvents()
                 val txErrors = blockData.txErrors()
 
-                transaction {
-                    if (txEvents.isNotEmpty()) {
-                        handleEvents(
-                            txHashes = txEvents.map { it.txHash }.distinct(),
-                            migrations = txEvents.migrations(provenanceProperties.contractAddress),
-                            transfers = txEvents.transfers(provenanceProperties.contractAddress)
-                        )
-                    }
-
-                    if (txErrors.isNotEmpty()) {
-                        handleErrors(txHashes = txErrors.map { it.txHash }.distinct())
-                    }
-
-                    EventStreamRecord.update(eventStreamId, blockData.height)
+                if (txEvents.isNotEmpty()) {
+                    handleEvents(
+                        txHashes = txEvents.map { it.txHash }.distinct(),
+                        migrations = txEvents.migrations(provenanceProperties.contractAddress),
+                        transfers = txEvents.transfers(provenanceProperties.contractAddress)
+                    )
                 }
+
+                if (txErrors.isNotEmpty()) {
+                    handleErrors(txHashes = txErrors.map { it.txHash }.distinct())
+                }
+
+                transaction { EventStreamRecord.update(eventStreamId, blockData.height) }
             }
 
             netAdapter.shutdown()
@@ -121,14 +119,14 @@ class EventStreamConsumer(
             ).collect { blockData ->
                 val txEvents = blockData.txEvents()
 
-                transaction {
-                    handleCoinMovementEvents(
-                        mints = txEvents.mints(provenanceProperties.contractAddress),
-                        transfers = txEvents.transfers(provenanceProperties.contractAddress),
-                        burns = txEvents.burns(provenanceProperties.contractAddress),
-                        markerTransfers = txEvents.markerTransfers(),
-                    )
+                handleCoinMovementEvents(
+                    mints = txEvents.mints(provenanceProperties.contractAddress),
+                    transfers = txEvents.transfers(provenanceProperties.contractAddress),
+                    burns = txEvents.burns(provenanceProperties.contractAddress),
+                    markerTransfers = txEvents.markerTransfers(),
+                )
 
+                transaction {
                     EventStreamRecord.update(coinMovementEventStreamId, blockData.height)
                 }
             }
