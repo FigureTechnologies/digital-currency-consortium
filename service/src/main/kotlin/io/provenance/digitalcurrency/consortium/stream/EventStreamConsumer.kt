@@ -126,9 +126,7 @@ class EventStreamConsumer(
                     markerTransfers = txEvents.markerTransfers(),
                 )
 
-                transaction {
-                    EventStreamRecord.update(coinMovementEventStreamId, blockData.height)
-                }
+                transaction { EventStreamRecord.update(coinMovementEventStreamId, blockData.height) }
             }
 
             netAdapter.shutdown()
