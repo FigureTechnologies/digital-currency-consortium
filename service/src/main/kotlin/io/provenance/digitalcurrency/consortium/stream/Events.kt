@@ -1,5 +1,16 @@
 package io.provenance.digitalcurrency.consortium.stream
 
+import io.provenance.eventstream.stream.clients.BlockData
+import io.provenance.eventstream.stream.models.Event
+import io.provenance.eventstream.stream.models.TxError
+import io.provenance.eventstream.stream.models.TxEvent
+import io.provenance.eventstream.stream.models.extensions.dateTime
+import io.provenance.eventstream.stream.models.extensions.txData
+import io.provenance.eventstream.stream.models.extensions.txErroredEvents
+import io.provenance.eventstream.stream.models.extensions.txEvents
+import java.time.OffsetDateTime
+import java.util.Base64
+
 private const val ATTRIBUTE_ACTION = "action"
 private const val ATTRIBUTE_CODE_ID = "code_id"
 private const val ATTRIBUTE_CONTRACT_ADDRESS = "_contract_address"
@@ -20,15 +31,24 @@ private const val BURN_ACTION = "burn"
 
 const val WASM_EVENT = "wasm"
 const val MARKER_TRANSFER_EVENT = "provenance.marker.v1.EventMarkerTransfer"
-const val ATTRIBUTE_ADD_EVENT = "provenance.attribute.v1.EventAttributeAdd"
-const val ATTRIBUTE_DELETE_EVENT = "provenance.attribute.v1.EventAttributeDelete"
 const val MIGRATE_EVENT = "migrate"
 
-fun List<Attribute>.splitAttributes(): List<List<Attribute>> =
-    this.fold(listOf(mutableListOf())) { accum: List<MutableList<Attribute>>, attribute: Attribute ->
+private val base64Decoder = Base64.getDecoder()
+
+typealias Attribute = Pair<String, String>
+typealias Attributes = List<Attribute>
+
+private fun List<Event>.toAttributes(): Attributes = map { it.toAttribute() }
+
+private fun Event.toAttribute(): Attribute =
+    String(base64Decoder.decode(key)) to (value?.run { String(base64Decoder.decode(this)) } ?: "")
+
+fun List<Event>.splitAttributes(): List<MutableList<Attribute>> =
+    this.fold(listOf(mutableListOf())) { accum: List<MutableList<Attribute>>, event: Event ->
+        val attribute = event.toAttribute()
         val last = accum.last()
 
-        if (last.any { it.key == attribute.key }) {
+        if (last.any { it.first == attribute.first }) {
             accum.plus(listOf(mutableListOf(attribute)))
         } else {
             last.add(attribute)
@@ -36,13 +56,18 @@ fun List<Attribute>.splitAttributes(): List<List<Attribute>> =
         }
     }
 
-private fun StreamEvent.isFailed() = (code ?: 0) > 0
-private fun StreamEvent.isSuccess() = !isFailed()
-private fun StreamEvent.getAttribute(key: String): String = this.attributes.getAttribute(key)
+typealias TxEvents = List<TxEvent>
+typealias TxErrors = List<TxError>
 
-private fun List<Attribute>.getAttribute(key: String): String =
+fun BlockData.txEvents(): TxEvents = blockResult.txEvents(block.dateTime()) { index -> block.txData(index) }
+
+fun BlockData.txErrors(): TxErrors = blockResult.txErroredEvents(block.dateTime()) { index -> block.txData(index) }
+
+private fun TxEvent.getAttribute(key: String): String = this.attributes.toAttributes().getAttribute(key)
+
+private fun Attributes.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
-    this.firstOrNull { it.key == key }?.value?.removeSurrounding("\"") ?: ""
+    this.firstOrNull { (k, _) -> k == key }?.second?.removeSurrounding("\"") ?: ""
 
 data class MarkerTransfer(
     val fromAddress: String,
@@ -50,39 +75,39 @@ data class MarkerTransfer(
     val amount: String,
     val denom: String,
     val height: Long,
+    val dateTime: OffsetDateTime?,
     val txHash: String,
 )
 
 typealias MarkerTransfers = List<MarkerTransfer>
 
-fun EventBatch.markerTransfers(): MarkerTransfers = events
-    .filter { it.eventType == MARKER_TRANSFER_EVENT && it.isSuccess() }
-    .flatMap { event ->
-        val nestedAttributes = event.attributes.splitAttributes()
+fun TxEvents.markerTransfers(): MarkerTransfers =
+    filter { it.eventType == MARKER_TRANSFER_EVENT }
+        .flatMap { event ->
+            val nestedAttributes = event.attributes.splitAttributes()
 
-        nestedAttributes.map { it.toMarkerTransfer(this.height, event.txHash) }
-    }
+            nestedAttributes.map { it.toMarkerTransfer(event.blockHeight, event.blockDateTime, event.txHash) }
+        }
 
-private fun List<Attribute>.toMarkerTransfer(height: Long, txHash: String): MarkerTransfer =
+private fun List<Attribute>.toMarkerTransfer(height: Long, dateTime: OffsetDateTime?, txHash: String): MarkerTransfer =
     MarkerTransfer(
         fromAddress = getAttribute(ATTRIBUTE_FROM),
         toAddress = getAttribute(ATTRIBUTE_TO),
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         height = height,
+        dateTime = dateTime,
         txHash = txHash,
     )
 
-fun EventBatch.mints(contractAddress: String): Mints =
-    events
-        .filter { event ->
-            val action = event.getAttribute(ATTRIBUTE_ACTION)
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT &&
-                action == MINT_ACTION &&
-                contractAddress == contractAddressAttr &&
-                event.isSuccess()
-        }
+fun TxEvents.mints(contractAddress: String): Mints =
+    filter { event ->
+        val action = event.getAttribute(ATTRIBUTE_ACTION)
+        val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+        event.eventType == WASM_EVENT &&
+            action == MINT_ACTION &&
+            contractAddress == contractAddressAttr
+    }
         .map { event -> event.toMint() }
 
 typealias Mints = List<Mint>
@@ -93,29 +118,29 @@ data class Mint(
     val withdrawAddress: String,
     val memberId: String,
     val height: Long,
-    val txHash: String
+    val dateTime: OffsetDateTime?,
+    val txHash: String,
 )
 
-private fun StreamEvent.toMint(): Mint =
+private fun TxEvent.toMint(): Mint =
     Mint(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         withdrawAddress = getAttribute(ATTRIBUTE_WITHDRAW_ADDRESS),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
-        height = height,
+        height = blockHeight,
+        dateTime = blockDateTime,
         txHash = txHash
     )
 
-fun EventBatch.burns(contractAddress: String): Burns =
-    events
-        .filter { event ->
-            val action = event.getAttribute(ATTRIBUTE_ACTION)
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT &&
-                action == BURN_ACTION &&
-                contractAddress == contractAddressAttr &&
-                event.isSuccess()
-        }
+fun TxEvents.burns(contractAddress: String): Burns =
+    filter { event ->
+        val action = event.getAttribute(ATTRIBUTE_ACTION)
+        val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+        event.eventType == WASM_EVENT &&
+            action == BURN_ACTION &&
+            contractAddress == contractAddressAttr
+    }
         .map { event -> event.toBurn() }
 
 typealias Burns = List<Burn>
@@ -125,28 +150,28 @@ data class Burn(
     val denom: String,
     val memberId: String,
     val height: Long,
+    val dateTime: OffsetDateTime?,
     val txHash: String
 )
 
-private fun StreamEvent.toBurn(): Burn =
+private fun TxEvent.toBurn(): Burn =
     Burn(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
-        height = height,
+        height = blockHeight,
+        dateTime = blockDateTime,
         txHash = txHash,
     )
 
-fun EventBatch.transfers(contractAddress: String): Transfers =
-    events
-        .filter { event ->
-            val action = event.getAttribute(ATTRIBUTE_ACTION)
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == WASM_EVENT &&
-                action == TRANSFER_ACTION &&
-                contractAddress == contractAddressAttr &&
-                event.isSuccess()
-        }
+fun TxEvents.transfers(contractAddress: String): Transfers =
+    filter { event ->
+        val action = event.getAttribute(ATTRIBUTE_ACTION)
+        val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+        event.eventType == WASM_EVENT &&
+            action == TRANSFER_ACTION &&
+            contractAddress == contractAddressAttr
+    }
         .map { event -> event.toTransfer() }
 
 typealias Transfers = List<Transfer>
@@ -159,10 +184,11 @@ data class Transfer(
     val fromMemberId: String,
     val toMemberId: String,
     val height: Long,
+    val dateTime: OffsetDateTime?,
     val txHash: String
 )
 
-private fun StreamEvent.toTransfer(): Transfer =
+private fun TxEvent.toTransfer(): Transfer =
     Transfer(
         amount = getAttribute(ATTRIBUTE_AMOUNT),
         denom = getAttribute(ATTRIBUTE_DENOM),
@@ -170,18 +196,17 @@ private fun StreamEvent.toTransfer(): Transfer =
         recipient = getAttribute(ATTRIBUTE_RECIPIENT),
         fromMemberId = getAttribute(ATTRIBUTE_FROM_MEMBER),
         toMemberId = getAttribute(ATTRIBUTE_TO_MEMBER),
-        height = height,
+        height = blockHeight,
+        dateTime = blockDateTime,
         txHash = txHash
     )
 
-fun EventBatch.migrations(contractAddress: String): Migrations =
-    events
-        .filter { event ->
-            val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
-            event.eventType == MIGRATE_EVENT &&
-                contractAddress == contractAddressAttr &&
-                event.isSuccess()
-        }
+fun TxEvents.migrations(contractAddress: String): Migrations =
+    filter { event ->
+        val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
+        event.eventType == MIGRATE_EVENT &&
+            contractAddress == contractAddressAttr
+    }
         .map { event -> event.toMigration() }
 
 typealias Migrations = List<Migration>
@@ -189,14 +214,14 @@ typealias Migrations = List<Migration>
 data class Migration(
     val codeId: String,
     val height: Long,
+    val dateTime: OffsetDateTime?,
     val txHash: String
 )
 
-private fun StreamEvent.toMigration(): Migration =
+private fun TxEvent.toMigration(): Migration =
     Migration(
         codeId = getAttribute(ATTRIBUTE_CODE_ID),
-        height = height,
+        height = blockHeight,
+        dateTime = blockDateTime,
         txHash = txHash
     )
-
-fun EventBatch.txHashes() = events.filter { it.isSuccess() }.map { it.txHash }.distinct()

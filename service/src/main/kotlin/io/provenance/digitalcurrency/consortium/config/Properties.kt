@@ -42,6 +42,7 @@ class ProvenanceProperties(
     val contractAddress: String,
     val gasAdjustment: Double,
     val maxBatchSize: Int,
+    val blocksBeforeTimeout: Int,
 ) {
     fun uri() = URI(grpcChannelUrl)
 }
@@ -52,11 +53,9 @@ class ProvenanceProperties(
 class EventStreamProperties(
     val id: String,
     val coinMovementId: String,
-    val websocketUri: String,
     val rpcUri: String,
     val epoch: Long,
     val coinMovementEpoch: Long,
-    val logLevel: String,
 )
 
 @ConstructorBinding

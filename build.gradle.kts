@@ -109,22 +109,26 @@ subprojects {
 
         if (isApp) {
             api.let {
+                // ----- Logback -----
                 it(Libraries.LogbackCore)
                 it(Libraries.LogbackClassic)
                 it(Libraries.LogbackJackson)
             }
 
             implementation.let {
+                // ----- Kotlin -----
                 it(Libraries.KotlinAllOpen)
                 it(Libraries.KotlinReflect)
                 it(Libraries.KotlinStdlib)
                 it(Libraries.KotlinStdlibJdk8)
 
+                // ----- Jackson -----
                 it(Libraries.Jackson) {
                     exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
                 }
                 it(Libraries.JacksonHubspot)
 
+                // ----- Spring -----
                 it(Libraries.SpringBootDevTools)
                 it(Libraries.SpringBootActuator)
                 it(Libraries.SpringBootStartedJdbc)
@@ -132,7 +136,15 @@ subprojects {
                 it(Libraries.SpringBootStarterValidation)
                 it(Libraries.JavaxValidation)
 
+                // ----- Database -----
                 it(Libraries.Postgres)
+
+                // ----- Event Stream -----
+                it(Libraries.EventStreamCore)
+                it(Libraries.EventStreamApiModel)
+                it(Libraries.Moshi)
+                it(Libraries.MoshiKotlin)
+                it(Libraries.OkHttp)
 
                 // ----- Misc -----
                 it(Libraries.Swagger2)

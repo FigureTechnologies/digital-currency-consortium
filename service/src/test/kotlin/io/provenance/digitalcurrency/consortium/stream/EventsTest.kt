@@ -1,13 +1,21 @@
 package io.provenance.digitalcurrency.consortium.stream
 
+import io.provenance.eventstream.stream.models.Event
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import java.util.Base64
 
 class EventsTest {
 
+    private val base64Encoder = Base64.getEncoder()
+    private val base64Decoder = Base64.getDecoder()
+
+    private fun String.encodeString() = base64Encoder.encodeToString(toByteArray())
+    private fun String?.decodeString() = String(base64Decoder.decode(this ?: ""))
+
     @Test
     fun `empty split attributes`() {
-        val input = emptyList<Attribute>()
+        val input = emptyList<Event>()
 
         Assertions.assertEquals(listOf<MutableList<Attribute>>(mutableListOf()), input.splitAttributes())
     }
@@ -15,13 +23,13 @@ class EventsTest {
     @Test
     fun `simple split attributes`() {
         val input = listOf(
-            Attribute(key = "dupe".toByteArray(), value = "1".toByteArray()),
-            Attribute(key = "dupe".toByteArray(), value = "2".toByteArray()),
-            Attribute(key = "dupe".toByteArray(), value = "3".toByteArray()),
+            Event(key = "dupe".encodeString(), value = "1".encodeString()),
+            Event(key = "dupe".encodeString(), value = "2".encodeString()),
+            Event(key = "dupe".encodeString(), value = "3".encodeString()),
         )
 
         Assertions.assertEquals(
-            input.map { listOf(it) },
+            input.map { listOf(it.key.decodeString() to it.value.decodeString()) },
             input.splitAttributes(),
         )
     }
@@ -29,41 +37,41 @@ class EventsTest {
     @Test
     fun `marker example split attributes`() {
         val input = listOf(
-            Attribute(key = "amount".toByteArray(), value = "100".toByteArray()),
-            Attribute(key = "denom".toByteArray(), value = "usdf.c".toByteArray()),
-            Attribute(key = "from_address".toByteArray(), value = "tp1".toByteArray()),
-            Attribute(key = "to_address".toByteArray(), value = "tp2".toByteArray()),
-            Attribute(key = "amount".toByteArray(), value = "10000".toByteArray()),
-            Attribute(key = "denom".toByteArray(), value = "usdf.c".toByteArray()),
-            Attribute(key = "from_address".toByteArray(), value = "tp3".toByteArray()),
-            Attribute(key = "admin_address".toByteArray(), value = "tpadmin".toByteArray()),
-            Attribute(key = "amount".toByteArray(), value = "10000000".toByteArray()),
-            Attribute(key = "denom".toByteArray(), value = "stonk.cs".toByteArray()),
-            Attribute(key = "from_address".toByteArray(), value = "tp5".toByteArray()),
-            Attribute(key = "to_address".toByteArray(), value = "tp2".toByteArray()),
-            Attribute(key = "admin_address".toByteArray(), value = "tpadmin".toByteArray()),
+            Event(key = "amount".encodeString(), value = "100".encodeString()),
+            Event(key = "denom".encodeString(), value = "usdf.c".encodeString()),
+            Event(key = "from_address".encodeString(), value = "tp1".encodeString()),
+            Event(key = "to_address".encodeString(), value = "tp2".encodeString()),
+            Event(key = "amount".encodeString(), value = "10000".encodeString()),
+            Event(key = "denom".encodeString(), value = "usdf.c".encodeString()),
+            Event(key = "from_address".encodeString(), value = "tp3".encodeString()),
+            Event(key = "admin_address".encodeString(), value = "tpadmin".encodeString()),
+            Event(key = "amount".encodeString(), value = "10000000".encodeString()),
+            Event(key = "denom".encodeString(), value = "stonk.cs".encodeString()),
+            Event(key = "from_address".encodeString(), value = "tp5".encodeString()),
+            Event(key = "to_address".encodeString(), value = "tp2".encodeString()),
+            Event(key = "admin_address".encodeString(), value = "tpadmin".encodeString()),
         )
 
         Assertions.assertEquals(
             listOf(
                 mutableListOf(
-                    Attribute(key = "amount".toByteArray(), value = "100".toByteArray()),
-                    Attribute(key = "denom".toByteArray(), value = "usdf.c".toByteArray()),
-                    Attribute(key = "from_address".toByteArray(), value = "tp1".toByteArray()),
-                    Attribute(key = "to_address".toByteArray(), value = "tp2".toByteArray()),
+                    Pair("amount", "100"),
+                    Pair("denom", "usdf.c"),
+                    Pair("from_address", "tp1"),
+                    Pair("to_address", "tp2"),
                 ),
                 mutableListOf(
-                    Attribute(key = "amount".toByteArray(), value = "10000".toByteArray()),
-                    Attribute(key = "denom".toByteArray(), value = "usdf.c".toByteArray()),
-                    Attribute(key = "from_address".toByteArray(), value = "tp3".toByteArray()),
-                    Attribute(key = "admin_address".toByteArray(), value = "tpadmin".toByteArray()),
+                    Pair("amount", "10000"),
+                    Pair("denom", "usdf.c"),
+                    Pair("from_address", "tp3"),
+                    Pair("admin_address", "tpadmin"),
                 ),
                 mutableListOf(
-                    Attribute(key = "amount".toByteArray(), value = "10000000".toByteArray()),
-                    Attribute(key = "denom".toByteArray(), value = "stonk.cs".toByteArray()),
-                    Attribute(key = "from_address".toByteArray(), value = "tp5".toByteArray()),
-                    Attribute(key = "to_address".toByteArray(), value = "tp2".toByteArray()),
-                    Attribute(key = "admin_address".toByteArray(), value = "tpadmin".toByteArray()),
+                    Pair("amount", "10000000"),
+                    Pair("denom", "stonk.cs"),
+                    Pair("from_address", "tp5"),
+                    Pair("to_address", "tp2"),
+                    Pair("admin_address", "tpadmin"),
                 ),
             ),
             input.splitAttributes(),

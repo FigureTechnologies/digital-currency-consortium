@@ -29,7 +29,10 @@ import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
 import io.provenance.digitalcurrency.consortium.messages.QueryRequest
 import io.provenance.digitalcurrency.consortium.messages.toByteString
 import io.provenance.digitalcurrency.consortium.messages.toValueResponse
+import io.provenance.eventstream.stream.clients.TendermintServiceOpenApiClient
+import io.provenance.eventstream.stream.models.BlockResponse
 import io.provenance.marker.v1.MarkerTransferAuthorization
+import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 import javax.annotation.PreDestroy
@@ -38,6 +41,7 @@ import javax.annotation.PreDestroy
 class PbcService(
     private val pbClient: PbClient,
     private val provenanceProperties: ProvenanceProperties,
+    private val tendermintServiceOpenApiClient: TendermintServiceOpenApiClient,
     serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
@@ -71,6 +75,8 @@ class PbcService(
     init {
         log.info("manager address $managerAddress for contract address ${provenanceProperties.contractAddress}")
     }
+
+    fun getBlock(blockHeight: Long): BlockResponse = runBlocking { tendermintServiceOpenApiClient.block(blockHeight) }
 
     fun getCoinBalance(address: String = managerAddress, denom: String) =
         pbClient.bankClient.getAccountCoins(address)

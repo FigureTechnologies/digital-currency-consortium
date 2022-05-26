@@ -4,8 +4,6 @@ import cosmos.base.v1beta1.CoinOuterClass.Coin
 import io.provenance.digitalcurrency.consortium.api.GrantRequest
 import io.provenance.digitalcurrency.consortium.api.MemberResponse
 import io.provenance.digitalcurrency.consortium.config.logger
-import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
-import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -31,7 +29,7 @@ import javax.validation.Valid
     produces = MediaType.TEXT_PLAIN_VALUE,
     consumes = MediaType.APPLICATION_JSON_VALUE
 )
-class GovernanceController(private val rpcClient: RpcClient, private val pbcService: PbcService) {
+class GovernanceController(private val pbcService: PbcService) {
 
     private val log = logger()
 
@@ -46,7 +44,7 @@ class GovernanceController(private val rpcClient: RpcClient, private val pbcServ
                 MemberResponse(
                     id = it.id,
                     name = it.name,
-                    joined = OffsetDateTime.parse(rpcClient.fetchBlock(it.joined).block.header.time),
+                    joined = OffsetDateTime.parse(pbcService.getBlock(it.joined).result!!.block!!.header!!.time),
                     kycAttributes = it.kycAttributes
                 )
             }

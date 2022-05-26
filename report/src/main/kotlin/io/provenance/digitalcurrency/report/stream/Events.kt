@@ -35,9 +35,12 @@ private fun Attributes.getAttribute(key: String): String =
     // these are coming from the contract with double quotes on the value
     this.firstOrNull { (k, _) -> k == key }?.second ?: ""
 
+typealias TxEvents = List<TxEvent>
+
+fun BlockData.txEvents(): TxEvents = blockResult.txEvents(block.dateTime()) { block.txData(it) }
+
 fun BlockData.transfers(contractAddress: String): Transfers =
-    blockResult
-        .txEvents(block.dateTime()) { block.txData(it) }
+    txEvents()
         .filter { event ->
             val action = event.getAttribute(ATTRIBUTE_ACTION)
             val contractAddressAttr = event.getAttribute(ATTRIBUTE_CONTRACT_ADDRESS)
