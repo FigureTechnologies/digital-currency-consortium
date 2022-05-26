@@ -85,8 +85,8 @@ jobs:
           echo PRERELEASE=$PRERELEASE
 
           if [ "$PRERELEASE" == "false" ]; then
-              SERVICE_TAGS=$SERVICE_TAGS,SERVICE_IMAGE_ID:latest
-              REPORT_TAGS=$REPORT_TAGS,REPORT_IMAGE_ID:latest
+              SERVICE_TAGS=$SERVICE_TAGS,$SERVICE_IMAGE_ID:latest
+              REPORT_TAGS=$REPORT_TAGS,$REPORT_IMAGE_ID:latest
           fi
 
           echo ::set-output name=version::${VERSION}

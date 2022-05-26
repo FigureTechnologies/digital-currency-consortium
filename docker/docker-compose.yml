@@ -30,7 +30,7 @@ services:
       - GRPC_CHANNEL_URL=http://host.docker.internal:9090
       - EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1
       - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
-      - EVENT_STREAM_EPOCH=0
+      - EVENT_STREAM_EPOCH=1
       # TODO the mnemonic for your bank key
       - MANAGER_KEY=pond rebuild kick kitten taxi region burst people sadness man news young evil lemon decrease vault always daring dignity either van mandate celery taste
       - MANAGER_KEY_HARDEN=false
