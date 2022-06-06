@@ -5,4 +5,4 @@ COPY ./report/build/libs/*.jar /report.jar
 
 EXPOSE 5080/tcp 8080/tcp 443/tcp
 
-ENTRYPOINT ./docker-entrypoint.sh /report.jar
+ENTRYPOINT ["/bin/bash", "-c", "./docker-entrypoint.sh /report.jar"]

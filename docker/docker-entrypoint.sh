@@ -14,4 +14,4 @@ else
 	sed -i 's/CipherString = DEFAULT@SECLEVEL=./CipherString = DEFAULT@SECLEVEL='$SSL_SECLEVEL'/g' /etc/ssl/openssl.cnf
 fi
 
-java -jar ${JAVA_OPTS} $1
+exec java $JAVA_OPTS -jar $1 $JAVA_ARGS
