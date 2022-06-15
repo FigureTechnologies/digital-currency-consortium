@@ -6,8 +6,9 @@ import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationReco
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BalanceEntryTable
 import io.provenance.digitalcurrency.consortium.domain.BalanceReportTable
+import io.provenance.digitalcurrency.consortium.domain.CBT
 import io.provenance.digitalcurrency.consortium.domain.CMT
-import io.provenance.digitalcurrency.consortium.domain.CRBT
+import io.provenance.digitalcurrency.consortium.domain.CTT
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMovementTable
@@ -28,8 +29,9 @@ abstract class DatabaseTest {
     @AfterEach
     fun afterEach() {
         transaction {
+            CTT.deleteAll()
             ADT.deleteAll()
-            CRBT.deleteAll()
+            CBT.deleteAll()
             CMT.deleteAll()
             CoinMovementTable.deleteAll()
             ART.deleteAll()
@@ -75,19 +77,21 @@ abstract class DatabaseTest {
 
     fun insertMarkerTransfer(
         txHash: String,
-        toAddress: String = TEST_ADDRESS,
+        fromAddress: String = TEST_ADDRESS,
+        toAddress: String = TEST_MEMBER_ADDRESS,
+        status: TxStatus = TxStatus.QUEUED,
         denom: String
     ): MarkerTransferRecord =
         transaction {
             MarkerTransferRecord.new(UUID.randomUUID()) {
-                this.fromAddress = TEST_ADDRESS
+                this.fromAddress = fromAddress
                 this.toAddress = toAddress
                 this.denom = denom
                 this.coinAmount = DEFAULT_AMOUNT.toLong()
                 this.fiatAmount = DEFAULT_AMOUNT.toUSDAmount()
                 this.height = 50L
                 this.txHash = txHash
-                this.status = TxStatus.QUEUED
+                this.status = status
                 this.created = OffsetDateTime.now()
                 this.updated = OffsetDateTime.now()
             }

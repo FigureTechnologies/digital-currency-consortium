@@ -8,24 +8,16 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.hubspot.jackson.datatype.protobuf.ProtobufModule
-import com.tinder.scarlet.Scarlet
-import com.tinder.scarlet.messageadapter.moshi.MoshiMessageAdapter
-import com.tinder.scarlet.streamadapter.rxjava2.RxJava2StreamAdapterFactory
-import com.tinder.scarlet.websocket.okhttp.newWebSocketFactory
-import io.provenance.digitalcurrency.consortium.annotation.NotTest
+import io.provenance.client.grpc.GasEstimationMethod.MSG_FEE_CALCULATION
+import io.provenance.client.grpc.PbClient
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
-import io.provenance.digitalcurrency.consortium.pbclient.GrpcClientOpts
-import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
-import io.provenance.digitalcurrency.consortium.stream.EventStreamFactory
-import okhttp3.OkHttpClient
+import io.provenance.eventstream.stream.clients.TendermintServiceOpenApiClient
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-import java.net.URI
-import java.util.concurrent.TimeUnit
 
 @Configuration
 @EnableConfigurationProperties(
@@ -60,31 +52,12 @@ class AppConfig : WebMvcConfigurer {
     }
 
     @Bean
-    @NotTest
-    fun eventStreamFactory(rpcClient: RpcClient, eventStreamBuilder: Scarlet.Builder) =
-        EventStreamFactory(rpcClient, eventStreamBuilder)
+    fun tendermintService(eventStreamProperties: EventStreamProperties): TendermintServiceOpenApiClient =
+        TendermintServiceOpenApiClient(eventStreamProperties.rpcUri)
 
     @Bean
-    fun eventStreamBuilder(eventStreamProperties: EventStreamProperties): Scarlet.Builder {
-        val node = URI(eventStreamProperties.websocketUri)
-        return Scarlet.Builder()
-            .webSocketFactory(
-                OkHttpClient.Builder()
-                    .readTimeout(60, TimeUnit.SECONDS) // ~ 12 pbc block cuts
-                    .build()
-                    .newWebSocketFactory("${node.scheme}://${node.host}:${node.port}/websocket")
-            )
-            .addMessageAdapterFactory(MoshiMessageAdapter.Factory())
-            .addStreamAdapterFactory(RxJava2StreamAdapterFactory())
-    }
-
-    @Bean
-    fun rpcClient(mapper: ObjectMapper, eventStreamProperties: EventStreamProperties): RpcClient =
-        RpcClient.Builder(eventStreamProperties.rpcUri, mapper).build()
-
-    @Bean
-    fun grpcClientOpts(provenanceProperties: ProvenanceProperties): GrpcClientOpts =
-        GrpcClientOpts(provenanceProperties.chainId, provenanceProperties.uri())
+    fun pbClient(provenanceProperties: ProvenanceProperties): PbClient =
+        PbClient(provenanceProperties.chainId, provenanceProperties.uri(), MSG_FEE_CALCULATION)
 
     @Bean
     fun bankClient(mapper: ObjectMapper, bankClientProperties: BankClientProperties): BankClient =

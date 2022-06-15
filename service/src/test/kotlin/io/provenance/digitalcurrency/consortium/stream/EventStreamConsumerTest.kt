@@ -1,12 +1,10 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import io.mockk.every
-import io.mockk.mockkStatic
 import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.DEFAULT_AMOUNT
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.TEST_MEMBER_ADDRESS
-import io.provenance.digitalcurrency.consortium.config.BankClientProperties
+import io.provenance.digitalcurrency.consortium.TEST_OTHER_MEMBER_ADDRESS
 import io.provenance.digitalcurrency.consortium.config.EventStreamProperties
 import io.provenance.digitalcurrency.consortium.config.ProvenanceProperties
 import io.provenance.digitalcurrency.consortium.config.ServiceProperties
@@ -22,15 +20,11 @@ import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MigrationRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.frameworks.toOutput
+import io.provenance.digitalcurrency.consortium.getBurnEvent
 import io.provenance.digitalcurrency.consortium.getMarkerTransferEvent
 import io.provenance.digitalcurrency.consortium.getMigrationEvent
 import io.provenance.digitalcurrency.consortium.getMintEvent
 import io.provenance.digitalcurrency.consortium.getTransferEvent
-import io.provenance.digitalcurrency.consortium.pbclient.RpcClient
-import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockId
-import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.BlockResponse
-import io.provenance.digitalcurrency.consortium.pbclient.api.rpc.PartSetHeader
-import io.provenance.digitalcurrency.consortium.pbclient.fetchBlock
 import io.provenance.digitalcurrency.consortium.randomTxHash
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.provenance.digitalcurrency.consortium.service.TxRequestService
@@ -45,16 +39,12 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.mock.mockito.MockBean
 import java.time.OffsetDateTime
 import java.util.UUID
 
 class EventStreamConsumerTest : BaseIntegrationTest() {
     @Autowired
     private lateinit var eventStreamProperties: EventStreamProperties
-
-    @Autowired
-    private lateinit var bankClientProperties: BankClientProperties
 
     @Autowired
     private lateinit var provenanceProperties: ProvenanceProperties
@@ -65,22 +55,14 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     @Autowired
     private lateinit var txRequestService: TxRequestService
 
-    @MockBean
-    lateinit var eventStreamFactory: EventStreamFactory
-
     @Autowired
     lateinit var pbcServiceMock: PbcService
-
-    @MockBean
-    private lateinit var rpcClientMock: RpcClient
 
     private lateinit var eventStreamConsumer: EventStreamConsumer
 
     @BeforeEach
     fun beforeEach() {
-        reset(eventStreamFactory)
         reset(pbcServiceMock)
-        reset(rpcClientMock)
 
         whenever(pbcServiceMock.managerAddress).thenReturn(TEST_MEMBER_ADDRESS)
     }
@@ -88,9 +70,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     @BeforeAll
     fun beforeAll() {
         eventStreamConsumer = EventStreamConsumer(
-            eventStreamFactory,
             pbcServiceMock,
-            rpcClientMock,
             eventStreamProperties,
             serviceProperties,
             provenanceProperties,
@@ -101,12 +81,16 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
     @Nested
     inner class CoinMovementEvents {
         private val mint = getMintEvent(
-            dccDenom = serviceProperties.dccDenom,
-            bankDenom = bankClientProperties.denom
+            dccDenom = serviceProperties.dccDenom
         )
 
-        private val burn = getTransferEvent(
+        private val redeem = getTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
+            denom = serviceProperties.dccDenom
+        )
+
+        private val burn = getBurnEvent(
+            memberId = TEST_MEMBER_ADDRESS,
             denom = serviceProperties.dccDenom
         )
 
@@ -116,135 +100,99 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         )
 
         @Test
-        fun `coinMovement - events without bank parties are ignored`() {
+        fun `coinMovement - events without bank parties or member id are ignored`() {
             val blockTime = OffsetDateTime.now()
-            val blockResponse = BlockResponse(
-                block = Block(
-                    header = BlockHeader(0, blockTime.toString()),
-                    data = BlockData(emptyList()),
-                ),
-                blockId = BlockId("", PartSetHeader(0, ""))
-            )
-
-            mockkStatic(RpcClient::fetchBlock)
-            every { rpcClientMock.fetchBlock(0) } returns blockResponse
 
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
-                burns = listOf(burn),
-                transfers = listOf(transfer),
+                mints = listOf(mint.copy(memberId = "someotherbank")),
+                transfers = listOf(redeem),
+                burns = listOf(burn.copy(memberId = "someotherbank")),
+                markerTransfers = listOf(transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS, toAddress = "someotherbank")),
             )
 
             Assertions.assertEquals(0, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
-        fun `coinMovement - mints, burns, and transfers for bank parties are persisted`() {
+        fun `coinMovement - mints, redeems, burns and transfers for bank parties are persisted`() {
             val blockTime = OffsetDateTime.now()
-            val blockResponse = BlockResponse(
-                block = Block(
-                    header = BlockHeader(0, blockTime.toString()),
-                    data = BlockData(emptyList()),
-                ),
-                blockId = BlockId("", PartSetHeader(0, ""))
-            )
 
             transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
-            mockkStatic(RpcClient::fetchBlock)
-            every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
-                mints = listOf(mint),
+                mints = listOf(mint, mint.copy(withdrawAddress = TEST_MEMBER_ADDRESS)),
+                transfers = listOf(redeem, redeem.copy(sender = TEST_ADDRESS)),
                 burns = listOf(burn),
-                transfers = listOf(transfer),
+                markerTransfers = listOf(transfer, transfer.copy(fromAddress = TEST_OTHER_MEMBER_ADDRESS)),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(7, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
         fun `coinMovement - block reentry is ignored`() {
             val blockTime = OffsetDateTime.now()
-            val blockResponse = BlockResponse(
-                block = Block(
-                    header = BlockHeader(0, blockTime.toString()),
-                    data = BlockData(emptyList()),
-                ),
-                blockId = BlockId("", PartSetHeader(0, ""))
-            )
 
             transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
-            mockkStatic(RpcClient::fetchBlock)
-            every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
+                transfers = listOf(redeem),
                 burns = listOf(burn),
-                transfers = listOf(transfer),
+                markerTransfers = listOf(transfer),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
 
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
+                transfers = listOf(redeem),
                 burns = listOf(burn),
-                transfers = listOf(transfer),
+                markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
+                transfers = listOf(redeem),
                 burns = listOf(burn),
-                transfers = listOf(transfer),
+                markerTransfers = listOf(transfer),
             )
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
                 mints = listOf(mint),
+                transfers = listOf(redeem),
                 burns = listOf(burn),
-                transfers = listOf(transfer),
+                markerTransfers = listOf(transfer),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
         }
 
         @Test
         fun `coinMovement - batched messages in one tx are persisted`() {
             val blockTime = OffsetDateTime.now()
-            val blockResponse = BlockResponse(
-                block = Block(
-                    header = BlockHeader(0, blockTime.toString()),
-                    data = BlockData(emptyList()),
-                ),
-                blockId = BlockId("", PartSetHeader(0, ""))
-            )
-
             transaction { insertRegisteredAddress(bankAccountUuid = UUID.randomUUID(), address = TEST_ADDRESS) }
 
-            mockkStatic(RpcClient::fetchBlock)
-            every { rpcClientMock.fetchBlock(0) } returns blockResponse
-
             eventStreamConsumer.handleCoinMovementEvents(
-                blockHeight = blockResponse.block.header.height,
                 mints = listOf(
                     getMintEvent(
                         txHash = "tx1",
-                        dccDenom = serviceProperties.dccDenom,
-                        bankDenom = bankClientProperties.denom
+                        dccDenom = serviceProperties.dccDenom
                     )
                 ),
-                burns = listOf(
+                transfers = listOf(
                     getTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
                         denom = serviceProperties.dccDenom
                     )
                 ),
-                transfers = listOf(
+                burns = listOf(
+                    getBurnEvent(
+                        txHash = "tx1",
+                        memberId = TEST_MEMBER_ADDRESS,
+                        denom = serviceProperties.dccDenom
+                    )
+                ),
+                markerTransfers = listOf(
                     getMarkerTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
@@ -253,9 +201,9 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 ),
             )
 
-            Assertions.assertEquals(3, transaction { CoinMovementRecord.all().count() })
+            Assertions.assertEquals(4, transaction { CoinMovementRecord.all().count() })
             Assertions.assertEquals(
-                listOf("tx1-0", "tx1-1", "tx1-2"),
+                listOf("tx1-0", "tx1-1", "tx1-2", "tx1-3"),
                 transaction { CoinMovementRecord.all().toList() }.map { it.txHash() }.sorted(),
             )
         }
@@ -308,7 +256,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             }
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = emptyList(),
                 migrations = emptyList()
@@ -332,14 +279,16 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
         fun `event is not a migrate, tx hash does not exist, does not persist, does not process`() {
             val txHash = randomTxHash()
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(
                     Transfer(
                         denom = "dummyDenom",
                         amount = DEFAULT_AMOUNT.toString(),
                         height = 1L,
+                        dateTime = OffsetDateTime.now(),
                         txHash = txHash,
+                        fromMemberId = TEST_MEMBER_ADDRESS,
+                        toMemberId = TEST_MEMBER_ADDRESS,
                         sender = "sender",
                         recipient = "recipient"
                     )
@@ -359,7 +308,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val migrationEvent = getMigrationEvent(txHash)
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(),
                 migrations = listOf(migrationEvent)
@@ -376,7 +324,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val migrationEvent = getMigrationEvent(txHash)
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(),
                 migrations = listOf(migrationEvent)
@@ -395,12 +342,12 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val txHash = randomTxHash()
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(),
                 migrations = listOf(
                     Migration(
                         height = 1L,
+                        dateTime = OffsetDateTime.now(),
                         txHash = txHash,
                         codeId = "2"
                     )
@@ -419,7 +366,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val transferEvent = getTransferEvent(txHash, denom = serviceProperties.dccDenom)
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(transferEvent),
                 migrations = listOf()
@@ -436,7 +382,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val transfer = getTransferEvent(txHash, "invalidrecipient", denom = serviceProperties.dccDenom)
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
                 migrations = listOf()
@@ -453,7 +398,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val transfer = getTransferEvent(txHash, denom = "invaliddenom")
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
                 migrations = listOf()
@@ -470,7 +414,6 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             val transfer = getTransferEvent(txHash, toAddress = TEST_MEMBER_ADDRESS, denom = serviceProperties.dccDenom)
 
             eventStreamConsumer.handleEvents(
-                blockHeight = 50,
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
                 migrations = listOf()

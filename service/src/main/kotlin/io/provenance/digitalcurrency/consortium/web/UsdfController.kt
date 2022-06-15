@@ -1,8 +1,8 @@
 package io.provenance.digitalcurrency.consortium.web
 
+import io.provenance.digitalcurrency.consortium.api.BurnCoinRequest
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
-import io.provenance.digitalcurrency.consortium.api.RedeemBurnCoinRequest
-import io.provenance.digitalcurrency.consortium.config.logger
+import io.provenance.digitalcurrency.consortium.api.TransferRequest
 import io.provenance.digitalcurrency.consortium.service.BankService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
@@ -29,14 +29,10 @@ import javax.validation.Valid
 )
 class UsdfController(private val bankService: BankService) {
 
-    private val log = logger()
-
     @PostMapping(MINT_V1)
     @ApiOperation(
         value = "Mint coin to a registered address",
-        notes = """
-            Request that the middleware mint coin corresponding to a fiat deposit from a customer.
-            """
+        notes = "Request that the middleware mint coin corresponding to a fiat deposit from a customer."
     )
     fun mintCoin(
         @Valid
@@ -44,26 +40,33 @@ class UsdfController(private val bankService: BankService) {
         @RequestBody request: MintCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, amount) = request
-        log.info("Minting $uuid amount:$amount to bank:$bankAccountUuid")
         bankService.mintCoin(uuid, bankAccountUuid, amount)
         return ResponseEntity.ok(uuid)
     }
 
-    @PostMapping(REDEEM_BURN_V1)
+    @PostMapping(BURN_V1)
     @ApiOperation(
-        value = "Redeem and burn dcc/reserve token",
-        notes = """
-            Request that the middleware redeem and burn dcc and reserve token.
-            """
+        value = "Burn dcc token",
+        notes = "Request that the middleware burn dcc token held at member address."
     )
-    fun redeemBurn(
+    fun burnCoin(
         @Valid
-        @ApiParam(value = "RedeemBurnRequest")
-        @RequestBody request: RedeemBurnCoinRequest
+        @ApiParam(value = "BurnCoinRequest")
+        @RequestBody request: BurnCoinRequest
     ): ResponseEntity<UUID> {
         val (uuid, amount) = request
-        log.info("Redeem and burning $uuid amount:$amount")
-        bankService.redeemBurnCoin(uuid, amount)
+        bankService.burnCoin(uuid, amount)
+        return ResponseEntity.ok(uuid)
+    }
+
+    @PostMapping(TRANSFER_V1)
+    fun transfer(
+        @Valid
+        @ApiParam(value = "TransferRequest")
+        @RequestBody request: TransferRequest
+    ): ResponseEntity<UUID> {
+        val (uuid, bankAccountUuid, blockchainAddress, amount) = request
+        bankService.transferCoin(uuid, bankAccountUuid, blockchainAddress, amount)
         return ResponseEntity.ok(uuid)
     }
 }

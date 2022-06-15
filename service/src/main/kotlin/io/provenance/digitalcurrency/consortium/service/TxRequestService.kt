@@ -4,8 +4,9 @@ import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.BaseRequestRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxRequestType
 import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
@@ -18,8 +19,9 @@ class TxRequestService {
     private val log = logger()
 
     fun getBaseRequest(uuid: UUID, type: TxRequestType): BaseRequestRecord = when (type) {
+        TxRequestType.TRANSFER -> CoinTransferRecord.findById(uuid)!!
         TxRequestType.MINT -> CoinMintRecord.findById(uuid)!!
-        TxRequestType.REDEEM_BURN -> CoinRedeemBurnRecord.findById(uuid)!!
+        TxRequestType.BURN -> CoinBurnRecord.findById(uuid)!!
         TxRequestType.TAG -> AddressRegistrationRecord.findById(uuid)!!
         TxRequestType.DETAG -> AddressDeregistrationRecord.findById(uuid)!!
     }

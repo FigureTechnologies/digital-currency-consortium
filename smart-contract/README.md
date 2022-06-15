@@ -12,11 +12,11 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.7.5, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.10.0, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.7.5
+cd provenance && git checkout v1.10.0
 make install
 make localnet-start
 ```
@@ -266,7 +266,7 @@ provenanced tx wasm store dcc.wasm \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 1.4 \
     --broadcast-mode block \
     --yes \
     --testnet -o json | jq
@@ -277,12 +277,9 @@ provenanced tx wasm store dcc.wasm \
 Instantiate the contract with the following params:
 
 - Denom: `usdf.local`
-- Quorum Percent: `1%`
-- Vote Duration: `10000 blocks`
-- KYC Attributes: [`bank1.kyc.pb`, `bank2.kyc.pb`]
 
 ```bash
-provenanced tx wasm instantiate 1 '{"dcc_denom":"usdf.local","quorum_pct":"0.01","vote_duration":"10000","kyc_attrs":["bank1.kyc.pb","bank2.kyc.pb"]}' \
+provenanced tx wasm instantiate 1 '{"denom":"usdf.local"}' \
     --admin $(provenanced keys show -a node0 --keyring-backend test --home build/node0 --testnet) \
     --label dcc_poc_v1 \
     --from node0 \
@@ -306,9 +303,9 @@ Grant for bank 1
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
-    --transfer-limit 50000000usdf.local,50000000bank1.coin \
+    --transfer-limit 50000000usdf.local \
     --from bank1 \
     --keyring-backend test \
     --home build/node0 \
@@ -323,9 +320,9 @@ Grant for bank 2
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
-    --transfer-limit 50000000usdf.local,50000000bank2.coin \
+    --transfer-limit 50000000usdf.local \
     --from bank2 \
     --keyring-backend test \
     --home build/node0 \
@@ -340,7 +337,7 @@ Grant for user 1
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local \
     --from user1 \
@@ -357,7 +354,7 @@ Grant for user 2
 
 ```bash
 provenanced tx marker grant-authz \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     "transfer" \
     --transfer-limit 50000000usdf.local \
     --from user2 \
@@ -377,38 +374,12 @@ With grants in place, we can now start adding members to the consortium.
 Right now, there are zero members in the consortium. We will need to bootstrap the first member
 using the contract administrator.
 
-First, create a proposal to join the consortium as `bank1`.
+First, have admin add `bank1` to the consortium.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"join":{"denom":"bank1.coin","max_supply":"50000000","name":"Bank 1"}}' \
-    --from bank1 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-Query the join proposals to get the proposal id to vote on
-
-```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-   '{"get_join_proposals": {}}' \
-   --ascii \
-   -o json \
-   --chain-id chain-local -t | jq
-```
-
-Vote 'yes' as the admin user.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"vote":{"id":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa","choice":"yes"}}' \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"join":{"id":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa","name":"Bank 1","kyc_attrs":["bank1.kyc.pb"]}}' \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
@@ -419,33 +390,27 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-Accept membership as `bank1` (without minting any bank tokens).
+Query the members to see the single `bank1` is now available.
 
 ```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"accept":{}}' \
-    --from bank1 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
+provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+   '{"get_members": {}}' \
+   --ascii \
+   -o json \
+   --chain-id chain-local -t | jq
 ```
 
-There is now a single voting member in the consortium.
+There is now a single member in the consortium.
 
 ## Add a Second Member
 
-Create a proposal to join the consortium as `bank2`.
+Then, have admin add `bank2` to the consortium.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"join":{"denom":"bank2.coin","max_supply":"50000000","name":"Bank 2"}}' \
-    --from bank2 \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"join":{"id":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47","name":"Bank 2","kyc_attrs":["bank2.kyc.pb"]}}' \
+    --from node0 \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
@@ -455,42 +420,10 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-Vote 'yes' as the existing member, `bank1`.
+Query the members to see both `bank1` and `bank2` are now available.
 
 ```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"vote":{"id":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47","choice":"yes"}}' \
-    --from bank1 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-Accept membership as `bank2`
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"accept":{}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-Query to get the members' state.
-
-```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
    '{"get_members": {}}' \
    --ascii \
    -o json \
@@ -504,7 +437,7 @@ The required tokens can be minted and withdrawn directly to the `user1` account.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"mint":{"amount":"10000","address":"tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -544,20 +477,6 @@ provenanced q bank balances tp10nnm70y8zc5m8yje5zx5canyqq639j3ph7mj8p -t -o json
 }
 ```
 
-You can also see that the minted reserve tokens were escrowed in the marker for `bank1`
-
-```bash
-provenanced q marker escrow "bank1.coin" -t -o json | jq
-{
-  "escrow": [
-    {
-      "denom": "bank1.coin",
-      "amount": "10000"
-    }
-  ]
-}
-```
-
 ## Transfer
 
 Let's say `user1` owes `user2` $50. They can transfer the tokens through the smart contract.
@@ -565,7 +484,7 @@ NOTE: This is possible because both users have kyc attributes supported by the c
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
     --from user1 \
     --keyring-backend test \
@@ -612,7 +531,7 @@ the tokens to `bank2`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"}}' \
     --from user2 \
     --keyring-backend test \
@@ -652,129 +571,11 @@ provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json
 }
 ```
 
-However, `bank2` does not have sufficient reserve token to redeem `usdf.local` for `bank2.coin`.
-`bank2` must mint to cover before redemption.
-
-TODO: provide instructions on bank-to-bank settlement or holding `usdf.local` backed by `bank2.coin`.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"mint":{"amount":"5000","address":"tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-You can now see that `bank2` holds sufficient `bank2.coin` to back the available `usdf.local`.
-
-```bash
-provenanced q marker escrow "bank2.coin" -t -o json | jq
-{
-  "escrow": [
-    {
-      "denom": "bank2.coin",
-      "amount": "5000"
-    }
-  ]
-}
-```
-
-Then, `bank2` can then redeem the `usdf.local` tokens with the smart contract.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"redeem":{"amount":"5000"}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-You can now see that `bank2` holds reserve tokens.
-
-```bash
-provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
-{
-  "balances": [
-    {
-      "denom": "bank2.coin",
-      "amount": "5000"
-    },
-    {
-      "denom": "nhash",
-      "amount": "97500000000"
-    },
-    {
-      "denom": "usdf.local",
-      "amount": "5000"
-    }
-  ],
-  "pagination": {
-    "next_key": null,
-    "total": "0"
-  }
-}
-```
-
-Now, `bank2` can burn the reserve tokens held. They can also sit on the reserve tokens and swap them for
-`usdf.local` when another user provides cash/fiat.
-
-## Swap
-
-Let's say `user2` now wants $25 worth of tokens back from `bank2`. The bank can then swap the
-`bank2.coin` they hold back out for `usdf.local`, minting and withdrawing the tokens directly to
-`user2`.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"swap":{"amount":"2500","denom":"bank2.coin","address":"tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs"}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-You can now see that `user2` holds the minted `usdf.local`.
-
-```bash
-provenanced q bank balances tp1m4arun5y9jcwkatq2ey9wuftanm5ptzsg4ppfs -t -o json | jq
-{
-  "balances": [
-    {
-      "denom": "nhash",
-      "amount": "99000000000"
-    },
-    {
-      "denom": "usdf.local",
-      "amount": "2500"
-    }
-  ],
-  "pagination": {
-    "next_key": null,
-    "total": "0"
-  }
-}
-```
+The `usdf.local` can be burned by `bank2` or transferred to another address.
 
 ## Burn
 
-Let's say `bank1` wants to reduce their supply of reserve tokens. Members can burn their tokens,
+Let's say `bank1` wants to reduce their supply of `usdf.local` held. Members can burn their tokens,
 but only the amount they currently hold in their account.
 
 So, before burn, `user1` redeems their `usdf.local` for cash/fiat by transferring those tokens
@@ -782,7 +583,7 @@ to `bank1`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"transfer":{"amount":"5000","recipient":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa"}}' \
     --from user1 \
     --keyring-backend test \
@@ -794,28 +595,11 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-They redeem for `bank1.coin` against the smart contract.
+`bank1` can now burn its held `usdf.local`.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"redeem":{"amount":"5000","reserve_denom":"bank1.coin"}}' \
-    --from bank1 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-The reserve tokens are now held in the `bank1` member account. After delivering the cash/fiat to
-`user1` (off chain), they can burn the reserve tokens.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     '{"burn":{"amount":"5000"}}' \
     --from bank1 \
     --keyring-backend test \
@@ -827,188 +611,16 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-## Redeem and burn
-
-Let's say `bank2` wants to redeem `usdf.local` and burn `bank2.coin` at the same time.
-Members can redeem and burn reserve tokens in a single transaction.
-
-`bank2` currently has $25 in escrow available to be burned.
-`bank2` also has $50 of `usdf.local` available for redemption. The maximum allowable to be redeemed and burned
-in a single transaction is $25 or the minimum of bank held `usdf.local` and `bank2` reserve token escrowed.
-
-```bash
-provenanced q marker escrow "bank2.coin" -t -o json | jq
-{
-  "escrow": [
-    {
-      "denom": "bank2.coin",
-      "amount": "2500"
-    }
-  ]
-}
-
-provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
-{
-  "balances": [
-    {
-      "denom": "bank2.coin",
-      "amount": "2500"
-    },
-    {
-      "denom": "nhash",
-      "amount": "98000000000"
-    },
-    {
-      "denom": "usdf.local",
-      "amount": "5000"
-    }
-  ],
-  "pagination": {
-    "next_key": null,
-    "total": "0"
-  }
-```
-
-To redeem and burn $25
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"redeem_and_burn":{"amount":"2500"}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-The `bank2.coin` reserve tokens escrowed are removed and `bank2` balance of `usdf.local` has been reduced by $25.
-
-```bash
-provenanced q marker escrow "bank2.coin" -t -o json | jq
-{
-  "escrow": []
-}
-
-provenanced q bank balances tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47 -t -o json | jq
-{
-  "balances": [
-    {
-      "denom": "bank2.coin",
-      "amount": "2500"
-    },
-    {
-      "denom": "nhash",
-      "amount": "97000000000"
-    },
-    {
-      "denom": "usdf.local",
-      "amount": "2500"
-    }
-  ],
-  "pagination": {
-    "next_key": null,
-    "total": "0"
-  }
-}
-```
+The burned `usdf.local` is removed from circulation.
 
 ## Manage KYC attributes
 
-To add an attribute
+Member or admin can add a kyc attribute to a member.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"add_kyc":{"name":"bank3.kyc.pb"}}' \
-    --from node0 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-To remove the attribute
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"remove_kyc":{"name":"bank3.kyc.pb"}}' \
-    --from node0 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-## Cancel Join Proposal
-
-Let's say a new member, `bank3` wants to join.
-
-```bash
-provenanced keys add bank3 \
-    --home build/node0 --keyring-backend test --testnet --hd-path "44'/1'/0'/0/0" --output json | jq
-
-{
-  "name": "bank3",
-  "type": "local",
-  "address": "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3",
-  "pubkey": "tppub1addwnpepqfc3mt4yatqer39yqg4t3xqnhrl3mn5yr2uya49dqr0hp5fuhp82g4g6lev",
-  "mnemonic": "pond rebuild kick kitten taxi region burst people sadness man news young evil lemon decrease vault always daring dignity either van mandate celery taste"
-}
-```
-
-NOTE: Again, the mnemonic above can be used to recover the `bank3` keys, for use below.
-
-Let's give `bank3` hash for network fees.
-
-```bash
-provenanced tx bank send \
-    $(provenanced keys show -a node0 --home build/node0 --keyring-backend test --testnet) \
-    $(provenanced keys show -a bank3 --home build/node0 --keyring-backend test --testnet) \
-    100000000000nhash \
-    --from node0 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-They then add a proposal to join.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"join":{"denom":"bank3.coin","max_supply":"100000000"}}' \
-    --from bank3 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-But, both existing members vote 'no' because the `max_supply` is too big (shrug). This eliminates
-any chance of `bank3` being able to join.
-
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"vote":{"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3","choice":"no"}}' \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"add_kyc":{"kyc_attr":"bank1.omni.kyc.pb"}}' \
     --from bank1 \
     --keyring-backend test \
     --home build/node0 \
@@ -1019,54 +631,13 @@ provenanced tx wasm execute \
     --testnet -o json | jq
 ```
 
-```bash
-provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"vote":{"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3","choice":"no"}}' \
-    --from bank2 \
-    --keyring-backend test \
-    --home build/node0 \
-    --chain-id chain-local \
-    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
-    --broadcast-mode block \
-    --yes \
-    --testnet -o json | jq
-```
-
-The proposal can be queried to see the 'no' votes.
-
-```bash
-provenanced query wasm contract-state smart tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-   '{"get_join_proposal": {"id":"tp1zl388azlallp5rygath0kmpz6w2agpampukfc3"}}' \
-   --ascii \
-   -o json \
-   --chain-id chain-local -t | jq
-
-{
-  "data": {
-    "id": "tp1zl388azlallp5rygath0kmpz6w2agpampukfc3",
-    "max_supply": "100000000",
-    "denom": "bank3.coin",
-    "created": "165",
-    "expires": "10165",
-    "no": "1000000",
-    "yes": "0",
-    "voters": [
-      "tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa",
-      "tp145r6nt64rw2rr58r80chp70ejdyqenszpg4d47"
-    ],
-    "admin_vote": null
-  }
-}
-```
-
-The rejected proposal can then be cancelled by `bank3`
+Member or admin can remove a kyc attribute from a member.
 
 ```bash
 provenanced tx wasm execute \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
-    '{"cancel":{}}' \
-    --from bank3 \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"remove_kyc":{"kyc_attr":"bank1.omni.kyc.pb","id":"tp1fcfsfs847rneyaq93hz73m0wvudhktu9njtkfa"}}' \
+    --from node0 \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
@@ -1083,15 +654,14 @@ the step in the [Store the Consortium Wasm](#-store-the-consortium-wasm) section
 
 ```bash
 provenanced tx wasm migrate \
-    tp14hj2tavq8fpesdwxxcu44rty3hh90vhuz3ljwv \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     2 \
     '{}' \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
     --chain-id chain-local \
-    --gas auto \
-    --fees 500000000nhash \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
     --broadcast-mode block \
     --yes \
     --testnet
@@ -1099,3 +669,39 @@ provenanced tx wasm migrate \
 
 Note in this example that `2` is the new code id that was the output of the store command. Replace that with whatever
 code id is returned when you store the updated contract.
+
+## Set Admin
+
+Administrator can be reassigned to another key pair.
+
+Change the administrator in smart contract state.
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"set_admin":{"id":"tp1tqs43pw9ql44y24kx3sf9lzlanjafxydqx8ehf"}}' \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+Change the smart contract administrator. This can be the same or a different key pair than smart contract state admin.
+
+```bash
+provenanced tx wasm set-contract-admin \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    tp1tqs43pw9ql44y24kx3sf9lzlanjafxydqx8ehf \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```

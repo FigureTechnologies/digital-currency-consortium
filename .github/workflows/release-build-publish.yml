@@ -41,7 +41,14 @@ jobs:
         with:
           name: service
           path: service/build/libs/*.jar
-        # if: github.event_name == 'release'
+        if: github.event_name == 'release'
+
+      - name: Upload Report Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: report
+          path: report/build/libs/*.jar
+        if: github.event_name == 'release'
 
   docker_build:
     name: Build and Push to Docker Registry
@@ -49,7 +56,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v2
@@ -64,16 +71,27 @@ jobs:
           [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
 
           # Use Docker `latest` tag convention
-          if [[ "$VERSION" == "dev" || "$VERSION" == "main" ]]; then
-              VERSION=latest
-          fi
+          [ "$VERSION" == "main" ] && VERSION=latest
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-          TAGS=$VERSION
+          SERVICE_IMAGE_ID=provenanceio/digital-currency-consortium-service
+          REPORT_IMAGE_ID=provenanceio/digital-currency-consortium-report
+
+          SERVICE_TAGS=$SERVICE_IMAGE_ID:$VERSION
+          REPORT_TAGS=$REPORT_IMAGE_ID:$VERSION
+
+          PRERELEASE=${{ github.event.release.prerelease }}
+          echo PRERELEASE=$PRERELEASE
+
+          if [ "$PRERELEASE" == "false" ]; then
+              SERVICE_TAGS=$SERVICE_TAGS,$SERVICE_IMAGE_ID:latest
+              REPORT_TAGS=$REPORT_TAGS,$REPORT_IMAGE_ID:latest
+          fi
 
           echo ::set-output name=version::${VERSION}
-          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=service_tags::${SERVICE_TAGS}
+          echo ::set-output name=report_tags::${REPORT_TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
       - name: Set up Docker Buildx
@@ -100,13 +118,27 @@ jobs:
           file: docker/Dockerfile-service
           context: .
           push: true
-          tags: fin3technologies/hosted-node-dcc:${{ steps.prep.outputs.tags }}
+          tags: ${{ steps.prep.outputs.service_tags }}
+
+      - name: Download Report Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: report
+          path: report/build/libs
+
+      - name: Build and push report docker
+        uses: docker/build-push-action@v2
+        with:
+          file: docker/Dockerfile-report
+          context: .
+          push: true
+          tags: ${{ steps.prep.outputs.report_tags }}
 
       - name: Build and push database docker
         uses: docker/build-push-action@v2
-        if: env.VERSION == 'latest'
+        if: ${{ steps.prep.outputs.branch == github.event.repository.default_branch }}
         with:
           file: docker/Dockerfile-database
           context: .
           push: true
-          tags: fin3technologies/hosted-node-dcc-database:latest
+          tags: provenanceio/digital-currency-consortium-database:latest

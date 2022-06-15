@@ -29,10 +29,13 @@ data class MintCoinRequest(
     @get:NotNull val uuid: UUID,
 
     @ApiModelProperty(
-        value = "The uuid of the bank account that the bank passed to the middleware during the address registration.",
-        required = true
+        value = """
+            The uuid of the bank account that the bank passed to the middleware during the address registration. 
+            If not specified, will mint directly to member bank address.
+        """,
+        required = false
     )
-    @get:NotNull val bankAccountUUID: UUID,
+    val bankAccountUUID: UUID?,
 
     @ApiModelProperty(
         value = "The amount of fiat in USD to mint to the customer's address.",

@@ -1,14 +1,17 @@
 package io.provenance.digitalcurrency.consortium
 
+import io.provenance.digitalcurrency.consortium.stream.Burn
 import io.provenance.digitalcurrency.consortium.stream.MarkerTransfer
 import io.provenance.digitalcurrency.consortium.stream.Migration
 import io.provenance.digitalcurrency.consortium.stream.Mint
 import io.provenance.digitalcurrency.consortium.stream.Transfer
 import java.math.BigInteger
+import java.time.OffsetDateTime
 import kotlin.random.Random
 
-const val TEST_ADDRESS = "test-address"
+const val TEST_ADDRESS = "tp1a9xvl9gfljsdnanmn9rj38e2mcselp3r8q0qvg"
 const val TEST_MEMBER_ADDRESS = "test-member-address"
+const val TEST_OTHER_MEMBER_ADDRESS = "test-other-member-address"
 val DEFAULT_AMOUNT = BigInteger("1000")
 
 private val charPool: List<Char> = ('a'..'z') + ('0'..'9')
@@ -21,6 +24,7 @@ fun getMigrationEvent(txHash: String = randomTxHash()) =
     Migration(
         codeId = "2",
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )
 
@@ -30,8 +34,21 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         denom = denom,
         sender = TEST_ADDRESS,
         recipient = toAddress,
+        fromMemberId = TEST_MEMBER_ADDRESS,
+        toMemberId = TEST_MEMBER_ADDRESS,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
+    )
+
+fun getBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER_ADDRESS, denom: String) =
+    Burn(
+        amount = DEFAULT_AMOUNT.toString(),
+        denom = denom,
+        memberId = memberId,
+        height = 50,
+        dateTime = OffsetDateTime.now(),
+        txHash = txHash,
     )
 
 fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
@@ -41,16 +58,17 @@ fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = 
         amount = DEFAULT_AMOUNT.toString(),
         denom = denom,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )
 
-fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String, bankDenom: String) =
+fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
     Mint(
         amount = DEFAULT_AMOUNT.toString(),
-        denom = bankDenom,
-        withdrawDenom = dccDenom,
+        denom = dccDenom,
         withdrawAddress = TEST_ADDRESS,
         memberId = TEST_MEMBER_ADDRESS,
         height = 50,
+        dateTime = OffsetDateTime.now(),
         txHash = txHash
     )

@@ -10,6 +10,7 @@ import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.mdc
+import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -27,6 +28,7 @@ class MarkerTransferOutcome(
 @NotTest
 class MarkerTransferQueue(
     private val bankClient: BankClient,
+    private val pbcService: PbcService,
     coroutineProperties: CoroutineProperties,
 ) :
     ActorModel<MarkerTransferDirective, MarkerTransferOutcome> {
@@ -51,27 +53,38 @@ class MarkerTransferQueue(
             MarkerTransferRecord.findTxnCompletedForUpdate(message.id).first().let { transfer ->
                 withMdc(*transfer.mdc()) {
                     // TODO - handle if active address no longer exists due to deregistration
-                    val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)
-                    checkNotNull(registration) { "Address ${transfer.fromAddress} is not registered" }
-
-                    // Let bank know of dcc deposit to member bank.
-                    try {
-                        bankClient.depositFiat(
-                            DepositFiatRequest(
-                                uuid = transfer.id.value,
-                                bankAccountUUID = registration.bankAccountUuid,
-                                amount = transfer.fiatAmount
-                            )
-                        )
-
-                        MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ACTION_COMPLETE)
-                    } catch (e: Exception) {
-                        log.error("sending fiat deposit request to bank failed; it will retry.", e)
+                    when (val registration = AddressRegistrationRecord.findActiveByAddress(transfer.fromAddress)) {
+                        is AddressRegistrationRecord -> {
+                            // Let bank know of dcc deposit to member bank from registered account.
+                            transfer.sendAndComplete("fiat deposit") {
+                                bankClient.depositFiat(
+                                    DepositFiatRequest(
+                                        uuid = transfer.id.value,
+                                        bankAccountUUID = registration.bankAccountUuid,
+                                        amount = transfer.fiatAmount
+                                    )
+                                )
+                            }
+                        }
+                        null -> {
+                            // Marker transfer cannot be handled
+                            MarkerTransferRecord.updateStatus(transfer.id.value, TxStatus.ERROR)
+                            log.error("Address ${transfer.fromAddress} is not registered")
+                        }
                     }
                 }
             }
         }
         return MarkerTransferOutcome(message.id)
+    }
+
+    private fun MarkerTransferRecord.sendAndComplete(type: String, sendFun: () -> Unit) {
+        try {
+            sendFun()
+            MarkerTransferRecord.updateStatus(id.value, TxStatus.ACTION_COMPLETE)
+        } catch (e: Exception) {
+            log.error("sending $type request to bank failed; it will retry.", e)
+        }
     }
 
     override fun onMessageSuccess(result: MarkerTransferOutcome) {

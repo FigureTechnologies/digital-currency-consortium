@@ -4,6 +4,7 @@ import io.provenance.digitalcurrency.consortium.BaseIntegrationTest
 import io.provenance.digitalcurrency.consortium.TEST_ADDRESS
 import io.provenance.digitalcurrency.consortium.api.MintCoinRequest
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
+import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
 import io.provenance.digitalcurrency.consortium.service.BankService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -54,7 +55,8 @@ class UsdfControllerTest : BaseIntegrationTest() {
             transaction {
                 insertRegisteredAddress(
                     uuid,
-                    TEST_ADDRESS
+                    TEST_ADDRESS,
+                    TXN_COMPLETE
                 )
             }
 
@@ -85,7 +87,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
             assertTrue(responseError.statusCode.is4xxClientError, "Response is 400")
             assertNotNull(responseError.body, "Response must not be null")
 
-            val expected = "{\"errors\":[\"IllegalStateException: Coin mint request for uuid $uuid already exists for bank account $uuid and $amount\"]}"
+            val expected = "{\"errors\":[\"IllegalStateException: Tx request for uuid $uuid already exists for bank account $uuid and $amount\"]}"
 
             assertEquals(expected, responseError.body.toString())
         }

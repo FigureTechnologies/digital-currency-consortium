@@ -30,9 +30,7 @@ class ServiceProperties(
     val managerKey: String,
     val managerKeyHarden: Boolean,
     val dccDenom: String
-) {
-    fun isProd() = environment == "production"
-}
+)
 
 @ConstructorBinding
 @ConfigurationProperties(prefix = "provenance")
@@ -41,7 +39,10 @@ class ProvenanceProperties(
     val grpcChannelUrl: String,
     val chainId: String,
     val mainNet: Boolean,
-    val contractAddress: String
+    val contractAddress: String,
+    val gasAdjustment: Double,
+    val maxBatchSize: Int,
+    val blocksBeforeTimeout: Int,
 ) {
     fun uri() = URI(grpcChannelUrl)
 }
@@ -52,7 +53,6 @@ class ProvenanceProperties(
 class EventStreamProperties(
     val id: String,
     val coinMovementId: String,
-    val websocketUri: String,
     val rpcUri: String,
     val epoch: Long,
     val coinMovementEpoch: Long,
@@ -65,7 +65,6 @@ class BankClientProperties(
     val uri: String,
     val context: String,
     val kycTagName: String,
-    val denom: String
 )
 
 @ConstructorBinding

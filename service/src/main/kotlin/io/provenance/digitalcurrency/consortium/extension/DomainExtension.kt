@@ -6,12 +6,14 @@ import io.provenance.attribute.v1.MsgAddAttributeRequest
 import io.provenance.attribute.v1.MsgDeleteAttributeRequest
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.messages.AmountRequest
 import io.provenance.digitalcurrency.consortium.messages.ExecuteRequest
 import io.provenance.digitalcurrency.consortium.messages.MintRequest
+import io.provenance.digitalcurrency.consortium.messages.TransferRequest
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
@@ -19,6 +21,9 @@ import java.math.RoundingMode
 // convert coins to USD (100 coins == $1.00 USD)
 fun BigInteger.toUSDAmount(): BigDecimal =
     this.toBigDecimal().divide(100.toBigDecimal(), 2, RoundingMode.UNNECESSARY)
+
+fun Long.toUSDAmount(): BigDecimal = toBigInteger().toUSDAmount()
+fun String.toUSDAmount(): BigDecimal = toBigInteger().toUSDAmount()
 
 // convert USD amount to coins (100 coins == $1.00 USD)
 fun BigDecimal.toCoinAmount(): BigInteger =
@@ -40,25 +45,33 @@ fun MarkerTransferRecord.mdc() = listOf(
     "from" to fromAddress
 ).toTypedArray()
 
-fun CoinRedeemBurnRecord.mdc() = listOf(
+fun CoinBurnRecord.mdc() = listOf(
     "uuid" to id.value,
-    "type" to "Redeem",
+    "type" to "Burn",
     "status" to status,
-    "coin amount" to coinAmount
+    "coinAmount" to coinAmount
 ).toTypedArray()
 
 fun CoinMintRecord.getExecuteContractMessage() =
     ExecuteRequest(
         mint = MintRequest(
             amount = coinAmount.toString(),
-            address = addressRegistration.address
+            address = address
         )
     )
 
-fun CoinRedeemBurnRecord.getExecuteContractMessage() =
+fun CoinBurnRecord.getExecuteContractMessage() =
     ExecuteRequest(
-        redeemAndBurn = AmountRequest(
+        burn = AmountRequest(
             amount = coinAmount.toString(),
+        )
+    )
+
+fun CoinTransferRecord.getExecuteContractMessage() =
+    ExecuteRequest(
+        transfer = TransferRequest(
+            recipient = address,
+            amount = coinAmount.toString()
         )
     )
 

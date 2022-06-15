@@ -2,19 +2,21 @@ package io.provenance.digitalcurrency.consortium.web
 
 import cosmos.base.v1beta1.CoinOuterClass.Coin
 import io.provenance.digitalcurrency.consortium.api.GrantRequest
-import io.provenance.digitalcurrency.consortium.api.JoinConsortiumRequest
+import io.provenance.digitalcurrency.consortium.api.MemberResponse
 import io.provenance.digitalcurrency.consortium.config.logger
-import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.swagger.annotations.Api
 import io.swagger.annotations.ApiOperation
+import io.swagger.annotations.ApiParam
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
 import javax.validation.Valid
 
 @Validated
@@ -31,33 +33,30 @@ class GovernanceController(private val pbcService: PbcService) {
 
     private val log = logger()
 
-    @PostMapping(MEMBER_V1)
-    @ApiOperation(value = "Proposal to join the consortium as a member bank")
-    fun joinConsortium(
-        @Valid
-        @RequestBody request: JoinConsortiumRequest
-    ): ResponseEntity<String> {
-        log.info("Try joining consortium: $request")
-        val (name, maxSupplyUsd) = request
-        pbcService.join(name, maxSupplyUsd.toCoinAmount())
-        return ResponseEntity.ok("Join Proposal Created")
-    }
+    @GetMapping(MEMBER_V1, produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ApiOperation(value = "Get member banks of the consortium")
+    fun getMembers(): ResponseEntity<List<MemberResponse>> {
+        log.info("Retrieving members")
 
-    // TODO in the future this will accept the proposal id.
-    // TODO should validate the proposal exists but this is a hand jam to get this first bank through
-    // for now on start up we are accepting ourselves so the id is the bank address
-    @PostMapping(ACCEPTS_V1)
-    @ApiOperation(value = "Accept joining the consortium as a member bank")
-    fun acceptProposal(): ResponseEntity<String> {
-        log.info("Try accepting consortium proposal")
-        pbcService.accept()
-        return ResponseEntity.ok("Proposal Accepted")
+        return pbcService.getMembers()
+            .members
+            .map {
+                MemberResponse(
+                    id = it.id,
+                    name = it.name,
+                    joined = OffsetDateTime.parse(pbcService.getBlock(it.joined).result!!.block!!.header!!.time),
+                    kycAttributes = it.kycAttributes
+                )
+            }
+            .sortedBy { it.joined }
+            .let { ResponseEntity.ok(it) }
     }
 
     @PostMapping(GRANTS_V1)
     @ApiOperation(value = "Grant authz allowance so smart contract has permission to move restricted coins out of member bank address")
     fun grantAuth(
         @Valid
+        @ApiParam(value = "GrantRequest")
         @RequestBody request: GrantRequest
     ): ResponseEntity<String> {
         log.info("Trying to grant authz: $request")

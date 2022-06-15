@@ -5,8 +5,10 @@ import io.provenance.digitalcurrency.consortium.config.ServiceProperties
 import io.provenance.digitalcurrency.consortium.config.logger
 import io.provenance.digitalcurrency.consortium.domain.AddressDeregistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinBurnRecord
 import io.provenance.digitalcurrency.consortium.domain.CoinMintRecord
-import io.provenance.digitalcurrency.consortium.domain.CoinRedeemBurnRecord
+import io.provenance.digitalcurrency.consortium.domain.CoinTransferRecord
+import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.toCoinAmount
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -53,43 +55,66 @@ class BankService(
         }
     }
 
-    fun mintCoin(uuid: UUID, bankAccountUuid: UUID, amount: BigDecimal) =
+    fun mintCoin(uuid: UUID, bankAccountUuid: UUID?, amount: BigDecimal) =
         transaction {
             log.info("Minting coin for $uuid to bank account $bankAccountUuid for amount $amount")
-            check(CoinMintRecord.findById(uuid) == null) {
-                "Coin mint request for uuid $uuid already exists for bank account $bankAccountUuid and $amount"
+            check(TxRequestViewRecord.findById(uuid) == null) {
+                "Tx request for uuid $uuid already exists for bank account $bankAccountUuid and $amount"
             }
 
-            val registration = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
-            checkNotNull(registration) { "No registration found for bank account $bankAccountUuid for coin mint $uuid" }
+            if (bankAccountUuid == null) {
+                CoinMintRecord.insert(uuid = uuid, address = pbcService.managerAddress, fiatAmount = amount)
+            } else {
+                val registration = AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)
+                checkNotNull(registration) { "No registration found for bank account $bankAccountUuid for coin mint $uuid" }
+                check(registration.isActive()) { "Cannot mint to removed bank account $bankAccountUuid" }
 
-            CoinMintRecord.insert(
-                uuid = uuid,
-                addressRegistration = registration,
-                fiatAmount = amount
-            )
+                CoinMintRecord.insert(uuid = uuid, addressRegistration = registration, fiatAmount = amount)
+            }
         }
 
-    fun redeemBurnCoin(uuid: UUID, amount: BigDecimal) =
-        synchronized(CoinRedeemBurnRecord::class.java) {
+    private fun validateBalance(amount: BigDecimal) {
+        val coinAmount = amount.toCoinAmount()
+        // Account for any pending records in progress by netting out from balance lookups
+        val pendingAmount = CoinBurnRecord.findPendingAmount() + CoinTransferRecord.findPendingAmount()
+        val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
+            .toBigInteger() - pendingAmount
+        check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
+    }
+
+    fun burnCoin(uuid: UUID, amount: BigDecimal) =
+        synchronized(TxRequestViewRecord::class.java) {
             transaction {
-                log.info("Redeem burning coin for $uuid for amount $amount")
-                check(CoinRedeemBurnRecord.findById(uuid) == null) { "Coin redeem burn request for uuid $uuid already exists" }
+                log.info("Burning coin for $uuid for amount $amount")
+                check(TxRequestViewRecord.findById(uuid) == null) { "Tx request for uuid $uuid already exists" }
+                validateBalance(amount)
 
-                val coinAmount = amount.toCoinAmount()
-                // Account for any pending records in progress by netting out from balance lookups
-                val pendingAmount = CoinRedeemBurnRecord.findPending()
-                    .fold(0L) { acc, record -> acc + record.coinAmount }
-                    .toBigInteger()
+                CoinBurnRecord.insert(uuid, amount)
+            }
+        }
 
-                val dccBalance = pbcService.getCoinBalance(pbcService.managerAddress, serviceProperties.dccDenom)
-                    .toBigInteger() - pendingAmount
-                check(coinAmount <= dccBalance) { "Insufficient dcc coin $dccBalance" }
+    fun transferCoin(uuid: UUID, bankAccountUuid: UUID?, blockchainAddress: String?, amount: BigDecimal) =
+        synchronized(TxRequestViewRecord::class.java) {
+            transaction {
+                log.info("Transferring coin for $uuid to bank account $bankAccountUuid or address $blockchainAddress for amount $amount")
+                check(TxRequestViewRecord.findById(uuid) == null) { "Tx request for uuid $uuid already exists" }
+                validateBalance(amount)
 
-                val markerEscrowBalance = pbcService.getMarkerEscrowBalance().toBigInteger() - pendingAmount
-                check(coinAmount <= markerEscrowBalance) { "Insufficient bank reserve coin escrowed $markerEscrowBalance" }
+                val registration = when {
+                    bankAccountUuid != null -> checkNotNull(AddressRegistrationRecord.findByBankAccountUuid(bankAccountUuid)) {
+                        "No registration found for bank account $bankAccountUuid for transfer $uuid"
+                    }
+                    blockchainAddress != null -> AddressRegistrationRecord.findLatestByAddress(blockchainAddress)
+                    else -> throw IllegalStateException("Blockchain address cannot be null when bank account uuid is not set")
+                }
 
-                CoinRedeemBurnRecord.insert(uuid, amount)
+                when {
+                    registration != null -> {
+                        check(registration.isActive()) { "Cannot transfer to removed bank account $bankAccountUuid" }
+                        CoinTransferRecord.insert(uuid, registration, amount)
+                    }
+                    else -> throw IllegalStateException("No valid address found for transfer $uuid this should not happen")
+                }
             }
         }
 }

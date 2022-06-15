@@ -29,21 +29,44 @@ services:
       # Hits the locally running node
       - GRPC_CHANNEL_URL=http://host.docker.internal:9090
       - EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1
-      - EVENT_STREAM_WEBSOCKET_URI=ws://host.docker.internal:26657
       - EVENT_STREAM_RPC_URI=http://host.docker.internal:26657
-      - EVENT_STREAM_EPOCH=0
-      # the mnemonic for your bank key
-      - MANAGER_KEY=TODO
-      # the url of your bank middleware
-      - BANK_URI=TODO
-      # the name that you bound for your kyc tage
-      - KYC_TAG_NAME=TODO
-      # the address of the stored/initiated smart contract
-      - CONTRACT_ADDRESS=TODO
-      # the name of the digital currency denom
-      - DCC_DENOM=TODO
-      # your desired bank denom
-      - BANK_DENOM=TODO
+      - EVENT_STREAM_EPOCH=1
+      # TODO the mnemonic for your bank key
+      - MANAGER_KEY=pond rebuild kick kitten taxi region burst people sadness man news young evil lemon decrease vault always daring dignity either van mandate celery taste
+      - MANAGER_KEY_HARDEN=false
+      # TODO the url of your bank middleware
+      - BANK_URI=http://host.docker.internal:8888/service-omnibus-ops
+      - BANK_CONTEXT=/bank
+      # TODO the name that you bound for your kyc tag
+      - KYC_TAG_NAME=bank3.kyc.pb
+      # TODO the address of the stored/initiated smart contract
+      - CONTRACT_ADDRESS=tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8
+      # TODO the name of the digital currency denom
+      - DCC_DENOM=usdf.local
+    depends_on:
+      - digital-currency-consortium-postgres
+    links:
+      - "digital-currency-consortium-postgres"
+
+  digital-currency-consortium-report:
+    image: provenanceio/digital-currency-consortium-report:latest
+    container_name: digital-currency-consortium-report
+    ports:
+      - 8081:8080
+    environment:
+      - SPRING_PROFILES_ACTIVE=container
+      - DB_USER=postgres
+      - DB_PASS=password1
+      - DB_HOST=digital-currency-consortium-postgres
+      - DB_URL=jdbc:postgresql://digital-currency-consortium-postgres:5432/digital_currency_report
+      - DB_PORT=5432
+      - DB_NAME=digital_currency_report
+      - DB_SCHEMA=digital_currency_report
+      - DB_CONNECTION_POOL_SIZE=5
+      - EVENT_STREAM_ID=C84041F9-5E7F-40C6-AD55-B0FDB7317BE1
+      - EVENT_STREAM_URI=http://host.docker.internal:26657
+      - EVENT_STREAM_FROM_HEIGHT=1
+      - CONTRACT_ADDRESS=tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8
     depends_on:
       - digital-currency-consortium-postgres
     links:

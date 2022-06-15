@@ -9,4 +9,4 @@ RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/re
 
 EXPOSE 5080/tcp 8080/tcp 443/tcp
 
-ENTRYPOINT ./docker-entrypoint.sh /service.jar
+ENTRYPOINT ["/bin/bash", "-c", "./docker-entrypoint.sh /service.jar"]
