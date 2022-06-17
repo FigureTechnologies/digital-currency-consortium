@@ -1,0 +1,60 @@
+name: Build and Deploy
+on:
+  # Trigger analysis when pushing in main or pull requests, and when creating
+  # a pull request.
+  push:
+    branches: [main]
+  pull_request:
+      types: [opened, synchronize, reopened, closed]
+
+jobs:
+  sonarscan:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+    uses: Fin3-Technologies-Inc/fin3-workflows/.github/workflows/gradleSonarscan.yaml@main
+    secrets:
+      sonar_token: ${{ secrets.SONAR_TOKEN }}
+      dockerhub_user: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      fin3_github_token: ${{ secrets.REPO_GITHUB_TOKEN }}
+  release-on-push:
+    if: github.event.pull_request.merged && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+          server-id: github
+      - name: Build jar with Gradle
+        run: |
+          ./gradlew clean build -x test
+        env:
+          GITHUB_TOKEN: ${{ secrets.REPO_GITHUB_TOKEN }}
+      - id: release
+        uses: Fin3-Technologies-Inc/gh-action-release-on-push@main
+        with:
+          bump_version_scheme: patch
+          tag_prefix: "v"
+      - name: Check Output Parameters
+        run: |
+          echo "Got tag name ${{ steps.release.outputs.tag_name }}"
+          echo "Got release version ${{ steps.release.outputs.version }}"
+
+  build_and_publish:
+    needs: [sonarscan, release-on-push]
+    uses: Fin3-Technologies-Inc/fin3-workflows/.github/workflows/gradleBuildAndPublish.yaml@main
+    with:
+      image_name: hosted-node-orchestration-service
+      tag: ${{ needs.release-on-push.outputs.tag_name }}
+    secrets:
+      dockerhub_user: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      fin3_github_token: ${{ secrets.REPO_GITHUB_TOKEN }}
+      fin3_docker_sign_passwd: ${{ secrets.FIN3_DOCKER_SIGN_PASSWD }}
+      fin3_docker_sign_priv_key: ${{ secrets.AWSKMS_DOCKER_IMAGE_SIGN_KEY }}
