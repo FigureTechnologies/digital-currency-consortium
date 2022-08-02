@@ -4,8 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
 import java.net.URI
-import javax.validation.constraints.NotNull
-import javax.validation.constraints.Pattern
 
 @ConstructorBinding
 @ConfigurationProperties(prefix = "database")
@@ -18,7 +16,11 @@ class DatabaseProperties(
     val hostname: String,
     val port: Int,
     val schema: String,
-    @NotNull @Pattern(regexp = "\\d{1,2}") val connectionPoolSize: String
+    val connectionPoolSize: Int,
+    val connectionTimeout: Long,
+    val leakDetectionThreshold: Long,
+    val idleTimeout: Long,
+    val maxLifetime: Long,
 )
 
 @ConstructorBinding

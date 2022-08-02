@@ -26,7 +26,11 @@ class DataConfig {
             username = databaseProperties.username
             password = databaseProperties.password
             schema = databaseProperties.schema
-            maximumPoolSize = databaseProperties.connectionPoolSize.toInt()
+            maximumPoolSize = databaseProperties.connectionPoolSize
+            connectionTimeout = databaseProperties.connectionTimeout
+            leakDetectionThreshold = databaseProperties.leakDetectionThreshold
+            idleTimeout = databaseProperties.idleTimeout
+            maxLifetime = databaseProperties.maxLifetime
         }
 
         return ShutdownHookHikariDataSource(emptyList(), config).also {
