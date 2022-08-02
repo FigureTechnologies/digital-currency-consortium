@@ -3,7 +3,6 @@ package io.provenance.digitalcurrency.report.config
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.validation.annotation.Validated
-import javax.validation.constraints.Pattern
 
 @ConstructorBinding
 @ConfigurationProperties(prefix = "database")
@@ -16,8 +15,11 @@ class DatabaseProperties(
     val hostname: String,
     val port: Int,
     val schema: String,
-    @Pattern(regexp = "\\d{1,2}") val connectionPoolSize: String,
-    @Pattern(regexp = "\\d{1,2}") val maxLifetimeMinutes: String,
+    val connectionPoolSize: Int,
+    val connectionTimeout: Long,
+    val leakDetectionThreshold: Long,
+    val idleTimeout: Long,
+    val maxLifetime: Long,
 )
 
 @ConstructorBinding

@@ -9,7 +9,6 @@ import org.jetbrains.exposed.sql.Table
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 class HikariDataSourceBuilder {
@@ -21,7 +20,10 @@ class HikariDataSourceBuilder {
     private var username: String? = null
     private var password: String? = null
     private var connectionPoolSize: Int? = null
-    private var maxLifetimeMinutes: Long? = null
+    private var connectionTimeout: Long? = null
+    private var leakDetectionThreshold: Long? = null
+    private var idleTimeout: Long? = null
+    private var maxLifetime: Long? = null
     private var properties: MutableMap<String, String> = mutableMapOf()
     private val shutdownHooks: MutableList<Runnable> = mutableListOf()
 
@@ -65,8 +67,23 @@ class HikariDataSourceBuilder {
         return this
     }
 
-    fun maxLifetimeMinutes(maxLifetimeMinutes: Long): HikariDataSourceBuilder {
-        this.maxLifetimeMinutes = maxLifetimeMinutes
+    fun connectionTimeout(connectionTimeout: Long): HikariDataSourceBuilder {
+        this.connectionTimeout = connectionTimeout
+        return this
+    }
+
+    fun idleTimeout(idleTimeout: Long): HikariDataSourceBuilder {
+        this.idleTimeout = idleTimeout
+        return this
+    }
+
+    fun leakDetectionThreshold(leakDetectionThreshold: Long): HikariDataSourceBuilder {
+        this.leakDetectionThreshold = leakDetectionThreshold
+        return this
+    }
+
+    fun maxLifetime(maxLifetime: Long): HikariDataSourceBuilder {
+        this.maxLifetime = maxLifetime
         return this
     }
 
@@ -84,9 +101,10 @@ class HikariDataSourceBuilder {
             config.minimumIdle = if (minimumIdle > 0) minimumIdle else 1
             config.maximumPoolSize = this
         }
-        maxLifetimeMinutes?.run {
-            config.maxLifetime = TimeUnit.MINUTES.toMillis(this)
-        }
+        connectionTimeout?.run { config.connectionTimeout = this }
+        idleTimeout?.run { config.idleTimeout = this }
+        leakDetectionThreshold?.run { config.leakDetectionThreshold = this }
+        maxLifetime?.run { config.maxLifetime = this }
 
         return ShutdownHookHikariDataSource(shutdownHooks, config)
     }
