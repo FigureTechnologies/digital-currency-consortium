@@ -28,6 +28,7 @@ class DataConfig {
             .password(databaseProperties.password)
             .schema(databaseProperties.schema)
             .connectionPoolSize(databaseProperties.connectionPoolSize.toInt())
+            .maxLifetimeMinutes(databaseProperties.maxLifetimeMinutes.toLong())
             .build()
             .also {
                 Database.connect(it)

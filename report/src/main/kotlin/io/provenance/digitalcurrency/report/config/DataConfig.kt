@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import java.sql.Connection
+import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 @Configuration
@@ -27,6 +28,7 @@ class DataConfig {
             password = databaseProperties.password
             schema = databaseProperties.schema
             maximumPoolSize = databaseProperties.connectionPoolSize.toInt()
+            maxLifetime = TimeUnit.MINUTES.toMillis(databaseProperties.maxLifetimeMinutes.toLong())
         }
 
         return ShutdownHookHikariDataSource(emptyList(), config).also {

@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.Table
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.util.concurrent.TimeUnit
 import javax.sql.DataSource
 
 class HikariDataSourceBuilder {
@@ -20,6 +21,7 @@ class HikariDataSourceBuilder {
     private var username: String? = null
     private var password: String? = null
     private var connectionPoolSize: Int? = null
+    private var maxLifetimeMinutes: Long? = null
     private var properties: MutableMap<String, String> = mutableMapOf()
     private val shutdownHooks: MutableList<Runnable> = mutableListOf()
 
@@ -63,6 +65,11 @@ class HikariDataSourceBuilder {
         return this
     }
 
+    fun maxLifetimeMinutes(maxLifetimeMinutes: Long): HikariDataSourceBuilder {
+        this.maxLifetimeMinutes = maxLifetimeMinutes
+        return this
+    }
+
     fun build(): DataSource {
         val config = HikariConfig()
 
@@ -76,6 +83,9 @@ class HikariDataSourceBuilder {
             val minimumIdle = this.div(2)
             config.minimumIdle = if (minimumIdle > 0) minimumIdle else 1
             config.maximumPoolSize = this
+        }
+        maxLifetimeMinutes?.run {
+            config.maxLifetime = TimeUnit.MINUTES.toMillis(this)
         }
 
         return ShutdownHookHikariDataSource(shutdownHooks, config)
