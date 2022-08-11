@@ -131,6 +131,7 @@ fn try_join(
         .iter()
         .map(|kyc_attr| kyc_attr.trim().into())
         .collect();
+    valid_attrs.sort();
     valid_attrs.dedup();
     if valid_attrs.len() != kyc_attrs.len() {
         return Err(contract_err("duplicate kyc attributes in args"));
@@ -150,7 +151,7 @@ fn try_join(
     // Verify kyc attribute does not already exist
     let curr_kyc_attrs = get_attributes(deps.as_ref())?;
     for kyc_attr in &valid_attrs {
-        if curr_kyc_attrs.contains(&kyc_attr) {
+        if curr_kyc_attrs.contains(kyc_attr) {
             return Err(contract_err("duplicate kyc attribute"));
         }
     }
@@ -166,7 +167,7 @@ fn try_join(
         &MemberV2 {
             id: address.clone(),
             joined: Uint128::from(env.block.height),
-            name: name.clone(),
+            name,
             kyc_attrs: valid_attrs.clone(),
         },
     )?;
@@ -177,7 +178,7 @@ fn try_join(
     Ok(res)
 }
 
-// Proposers can choose to cancel as long as they aren't a member.
+// Remove a member from the consortium.
 fn try_remove(
     deps: DepsMut<ProvenanceQuery>,
     info: MessageInfo,
@@ -505,9 +506,14 @@ fn try_set_admin(
     }
 
     let address = deps.api.addr_validate(&id)?;
-
-    // Load state and address is changed.
     let mut state = config_read(deps.storage).load()?;
+
+    // Ensure message sender is admin.
+    if info.sender != state.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Ensure address is changed.
     if state.admin == address {
         return Err(contract_err("admin address is unchanged"));
     }
@@ -839,7 +845,12 @@ mod tests {
             ExecuteMsg::Join {
                 id: "bank".into(),
                 name: "bank".into(),
-                kyc_attrs: vec!["bank.kyc.pb".into(), "bank.kyc.pb".into()],
+                kyc_attrs: vec![
+                    "bank.kyc.pb".into(),
+                    "bank2.kyc.pb".into(),
+                    "bank3.kyc.pb".into(),
+                    "bank.kyc.pb".into(),
+                ],
             },
         )
         .unwrap_err();
@@ -2338,6 +2349,23 @@ mod tests {
             ContractError::Std(StdError::GenericErr { msg, .. }) => {
                 assert_eq!(msg, "no funds should be sent during set admin")
             }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to set name by user not admin
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("notadmin", &[]),
+            ExecuteMsg::SetAdmin {
+                id: "newadmin".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Unauthorized {} => {}
             _ => panic!("unexpected execute error"),
         }
 
