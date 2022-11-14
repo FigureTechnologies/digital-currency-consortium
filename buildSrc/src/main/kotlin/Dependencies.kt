@@ -6,6 +6,7 @@ object PluginIds {
     const val Idea = "idea"
     const val Jacoco = "jacoco"
     const val ProjectReport = "project-report"
+    const val Protobuf = "com.google.protobuf"
 
     const val SpringBoot = "org.springframework.boot"
     const val KotlinAllOpen = "org.jetbrains.kotlin.plugin.allopen"

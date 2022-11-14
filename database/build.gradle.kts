@@ -8,6 +8,7 @@ apply {
 
 dependencies {
     implementation(Libraries.Flyway)
+    implementation(Libraries.Postgres)
 }
 
 flyway {
