@@ -1,7 +1,7 @@
 # Digital Currency Consortium (DCC) Smart Contact
 
 This contract manages a consortium of banks that control the supply of a stablecoin marker on the
-provenance blockchain.
+Provenance Blockchain.
 
 ## Assumptions
 
@@ -12,7 +12,7 @@ for details.
 
 ## Blockchain Quickstart
 
-Checkout provenance v1.10.0, install the `provenanced` command and start a 4-node localnet.
+Checkout provenance v1.11.0, install the `provenanced` command and start a 4-node localnet.
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
@@ -696,6 +696,41 @@ Change the smart contract administrator. This can be the same or a different key
 provenanced tx wasm set-contract-admin \
     tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
     tp1tqs43pw9ql44y24kx3sf9lzlanjafxydqx8ehf \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+## Manage Executors
+
+Admin can add executors to authorize other smart contracts to transfer coin on signer's behalf via smart contract to smart contract
+requests.
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"add_executor":{"id":"tp1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqf06p2p"}}' \
+    --from node0 \
+    --keyring-backend test \
+    --home build/node0 \
+    --chain-id chain-local \
+    --gas auto --gas-prices 1905nhash --gas-adjustment 2 \
+    --broadcast-mode block \
+    --yes \
+    --testnet -o json | jq
+```
+
+Admin can also remove executor
+
+```bash
+provenanced tx wasm execute \
+    tp14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9s96lrg8 \
+    '{"remove_executor":{"id":"tp1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrqf06p2p"}}' \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
