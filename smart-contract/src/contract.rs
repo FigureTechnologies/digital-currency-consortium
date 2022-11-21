@@ -559,14 +559,16 @@ fn try_add_executor(
         return Err(contract_err("executor already exists"));
     }
 
+    let response = Response::new()
+        .add_attribute("action", "add_executor")
+        .add_attribute("executor", &address);
+
     // Add the executor and save
-    state.executors.push(address.clone());
+    state.executors.push(address);
     config(deps.storage).save(&state)?;
 
     // Add wasm event attributes
-    Ok(Response::new()
-        .add_attribute("action", "add_executor")
-        .add_attribute("executor", address))
+    Ok(response)
 }
 
 fn try_remove_executor(
@@ -589,7 +591,7 @@ fn try_remove_executor(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Ensure kyc attribute exists
+    // Ensure executor exists
     if !state.executors.contains(&address) {
         return Err(contract_err("executor does not exist"));
     }
