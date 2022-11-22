@@ -2,6 +2,11 @@
 
 This contract is used for the bilateral settlement of an asset against a DCC token on the Provenance Blockchain.
 
+## Assumptions
+
+This README assumes you are familiar with the DCC smart contract and all prerequisites. See the DCC smart contract
+[README](https://github.com/FigureTechnologies/digital-currency-consortium/blob/main/smart-contract/README.md) for details.
+
 ## Store the Sale Wasm
 
 Store the optimized smart contract Wasm on-chain. This assumes you've copied `artifacts/dcc_sale.wasm`

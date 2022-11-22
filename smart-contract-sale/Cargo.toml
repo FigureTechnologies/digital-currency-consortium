@@ -31,14 +31,12 @@ backtraces = ["cosmwasm-std/backtraces"]
 cosmwasm-std = { version = "1.1.5", features = ["iterator"] }
 cosmwasm-storage = { version = "1.1.5", features = ["iterator"] }
 cw2 = "0.16"
-# cw-storage-plus = { version = "0.16.0" }
 provwasm-std = { version = "1.1.0" }
 schemars = "0.8.11"
 semver = "1.0.14"
 serde = { version = "1.0.147", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.37" }
 uuid = { version= "0.8.2" }
-# validator = { version = "0.16", features = ["derive"] }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.1.5" }

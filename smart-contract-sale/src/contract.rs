@@ -55,7 +55,7 @@ fn create_sale(
     // only unrestricted markers are supported
     let asset = info.funds.first().unwrap();
     let is_unrestricted = matches!(
-        ProvenanceQuerier::new(&deps.querier).get_marker_by_denom(asset.denom.clone()),
+        ProvenanceQuerier::new(&deps.querier).get_marker_by_denom(&asset.denom),
         Ok(Marker {
             marker_type: MarkerType::Coin,
             ..
@@ -223,12 +223,12 @@ fn cancel_sale(
 
     response = response.add_attributes(vec![
         attr("action", "cancel_sale"),
-        attr("owner", &sale.owner),
-        attr("buyer", &sale.buyer),
-        attr("asset_denom", &sale.asset.denom),
-        attr("asset_amount", &sale.asset.amount.to_string()),
-        attr("price_denom", &sale.price.denom),
-        attr("price_amount", &sale.price.amount.to_string()),
+        attr("owner", sale.owner),
+        attr("buyer", sale.buyer),
+        attr("asset_denom", sale.asset.denom),
+        attr("asset_amount", sale.asset.amount),
+        attr("price_denom", sale.price.denom),
+        attr("price_amount", sale.price.amount),
     ]);
 
     Ok(response)
@@ -303,7 +303,7 @@ mod tests {
             buyer: BUYER_ADDRESS.into(),
         };
 
-        let create_response = execute(deps.as_mut(), mock_env(), sender_info.clone(), create_msg);
+        let create_response = execute(deps.as_mut(), mock_env(), sender_info, create_msg);
 
         match create_response {
             Ok(response) => {
@@ -312,22 +312,10 @@ mod tests {
                 assert_eq!(response.attributes[0], attr("action", "create_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
                 assert_eq!(response.attributes[2], attr("buyer", BUYER_ADDRESS));
-                assert_eq!(
-                    response.attributes[3],
-                    attr("asset_denom", asset.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[4],
-                    attr("asset_amount", asset.clone().amount)
-                );
-                assert_eq!(
-                    response.attributes[5],
-                    attr("price_denom", price.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[6],
-                    attr("price_amount", price.clone().amount)
-                );
+                assert_eq!(response.attributes[3], attr("asset_denom", &asset.denom));
+                assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
+                assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
+                assert_eq!(response.attributes[6], attr("price_amount", price.amount));
             }
             Err(error) => {
                 panic!("failed to create asset sale: {:?}", error)
@@ -469,7 +457,7 @@ mod tests {
             _ => panic!("unexpected execute error"),
         }
 
-        let funds = vec![asset.clone()];
+        let funds = vec![asset];
 
         // try to create sale with wrong dcc denom price
         let err = execute(
@@ -516,7 +504,7 @@ mod tests {
             mock_info(OWNER_ADDRESS, &funds),
             ExecuteMsg::CreateSale {
                 id: ID.into(),
-                price: price.clone(),
+                price,
                 buyer: BUYER_ADDRESS.into(),
             },
         )
@@ -567,7 +555,7 @@ mod tests {
 
         let sender_info = mock_info(OWNER_ADDRESS, &[]);
         let cancel_msg = ExecuteMsg::CancelSale { id: ID.into() };
-        let cancel_response = execute(deps.as_mut(), mock_env(), sender_info.clone(), cancel_msg);
+        let cancel_response = execute(deps.as_mut(), mock_env(), sender_info, cancel_msg);
 
         match cancel_response {
             Ok(response) => {
@@ -576,22 +564,10 @@ mod tests {
                 assert_eq!(response.attributes[0], attr("action", "cancel_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
                 assert_eq!(response.attributes[2], attr("buyer", BUYER_ADDRESS));
-                assert_eq!(
-                    response.attributes[3],
-                    attr("asset_denom", asset.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[4],
-                    attr("asset_amount", asset.clone().amount)
-                );
-                assert_eq!(
-                    response.attributes[5],
-                    attr("price_denom", price.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[6],
-                    attr("price_amount", price.clone().amount)
-                );
+                assert_eq!(response.attributes[3], attr("asset_denom", &asset.denom));
+                assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
+                assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
+                assert_eq!(response.attributes[6], attr("price_amount", price.amount));
             }
             Err(error) => {
                 panic!("failed to cancel asset sale: {:?}", error)
@@ -662,7 +638,7 @@ mod tests {
                 asset: asset.clone(),
                 owner: Addr::unchecked(OWNER_ADDRESS),
                 buyer: Addr::unchecked(BUYER_ADDRESS),
-                price: price.clone(),
+                price,
                 status: Status::Canceled,
             },
         );
@@ -671,7 +647,7 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info(OWNER_ADDRESS, &vec![asset.clone()]),
+            mock_info(OWNER_ADDRESS, &vec![asset]),
             ExecuteMsg::CancelSale { id: ID.into() },
         )
         .unwrap_err();
@@ -769,8 +745,7 @@ mod tests {
 
         let sender_info = mock_info(BUYER_ADDRESS, &[]);
         let complete_msg = ExecuteMsg::CompleteSale { id: ID.into() };
-        let complete_response =
-            execute(deps.as_mut(), mock_env(), sender_info.clone(), complete_msg);
+        let complete_response = execute(deps.as_mut(), mock_env(), sender_info, complete_msg);
 
         match complete_response {
             Ok(response) => {
@@ -779,22 +754,10 @@ mod tests {
                 assert_eq!(response.attributes[0], attr("action", "complete_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
                 assert_eq!(response.attributes[2], attr("buyer", BUYER_ADDRESS));
-                assert_eq!(
-                    response.attributes[3],
-                    attr("asset_denom", asset.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[4],
-                    attr("asset_amount", asset.clone().amount)
-                );
-                assert_eq!(
-                    response.attributes[5],
-                    attr("price_denom", price.clone().denom)
-                );
-                assert_eq!(
-                    response.attributes[6],
-                    attr("price_amount", price.clone().amount)
-                );
+                assert_eq!(response.attributes[3], attr("asset_denom", &asset.denom));
+                assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
+                assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
+                assert_eq!(response.attributes[6], attr("price_amount", price.amount));
             }
             Err(error) => {
                 panic!("failed to complete asset sale: {:?}", error)
@@ -865,7 +828,7 @@ mod tests {
                 asset: asset.clone(),
                 owner: Addr::unchecked(OWNER_ADDRESS),
                 buyer: Addr::unchecked(BUYER_ADDRESS),
-                price: price.clone(),
+                price,
                 status: Status::Canceled,
             },
         );
@@ -874,7 +837,7 @@ mod tests {
         let err = execute(
             deps.as_mut(),
             mock_env(),
-            mock_info(OWNER_ADDRESS, &vec![asset.clone()]),
+            mock_info(OWNER_ADDRESS, &vec![asset]),
             ExecuteMsg::CompleteSale { id: ID.into() },
         )
         .unwrap_err();
