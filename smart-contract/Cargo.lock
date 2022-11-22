@@ -449,9 +449,9 @@ dependencies = [
 
 [[package]]
 name = "provwasm-mocks"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b90b0dc19138397cabf8050dc4a7ddbb47dc3e7ba5e1a50cae23a014f436c4f1"
+checksum = "437d462df52174a128d50f80bd4f05cd415e53de0f74496974d40ae1c72b4683"
 dependencies = [
  "cosmwasm-std",
  "provwasm-std",
@@ -461,9 +461,9 @@ dependencies = [
 
 [[package]]
 name = "provwasm-std"
-version = "1.1.0"
+version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6af27a7939f7a89df3937d9eb05de442154dc29e51716e5704af2019705b1593"
+checksum = "484f032a11686a33faeaee060dcc8c995b61f6f9000a9745fcfa929108eb2500"
 dependencies = [
  "cosmwasm-std",
  "schemars",
