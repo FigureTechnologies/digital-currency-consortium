@@ -38,6 +38,8 @@ pub struct StateV2 {
     pub admin: Addr,
     // The token denomination.
     pub denom: String,
+    // Addresses that are authorized to transfer token by proxy.
+    pub executors: Vec<String>,
 }
 
 #[allow(deprecated)]
@@ -46,6 +48,7 @@ impl From<State> for StateV2 {
         StateV2 {
             admin: state.admin,
             denom: state.dcc_denom,
+            executors: vec![],
         }
     }
 }
@@ -123,6 +126,7 @@ mod tests {
             StateV2 {
                 admin: Addr::unchecked("id"),
                 denom: "test.dcc".to_string(),
+                executors: vec![],
             }
         );
 

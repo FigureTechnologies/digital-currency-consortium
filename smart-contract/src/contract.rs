@@ -39,6 +39,7 @@ pub fn instantiate(
     let state = StateV2 {
         admin: info.sender.clone(),
         denom: msg.denom.clone(),
+        executors: vec![],
     };
     config(deps.storage).save(&state)?;
 
@@ -99,6 +100,13 @@ pub fn execute(
         ExecuteMsg::AddKyc { id, kyc_attr } => try_add_kyc(deps, info, id, kyc_attr),
         ExecuteMsg::RemoveKyc { id, kyc_attr } => try_remove_kyc(deps, info, id, kyc_attr),
         ExecuteMsg::SetAdmin { id } => try_set_admin(deps, info, id),
+        ExecuteMsg::AddExecutor { id } => try_add_executor(deps, info, id),
+        ExecuteMsg::RemoveExecutor { id } => try_remove_executor(deps, info, id),
+        ExecuteMsg::ExecutorTransfer {
+            amount,
+            sender,
+            recipient,
+        } => try_executor_transfer(deps, info, amount, sender, recipient),
     }
 }
 
@@ -528,6 +536,107 @@ fn try_set_admin(
         .add_attribute("admin", &state.admin))
 }
 
+fn try_add_executor(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    id: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Validate params.
+    if !info.funds.is_empty() {
+        return Err(contract_err("no funds should be sent during add executor"));
+    }
+
+    let address = deps.api.addr_validate(&id)?.into_string();
+    let mut state = config_read(deps.storage).load()?;
+
+    // Ensure message sender is admin.
+    if info.sender != state.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Ensure executor wasn't already added
+    if state.executors.contains(&address) {
+        return Err(contract_err("executor already exists"));
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "add_executor")
+        .add_attribute("executor", &address);
+
+    // Add the executor and save
+    state.executors.push(address);
+    config(deps.storage).save(&state)?;
+
+    // Add wasm event attributes
+    Ok(response)
+}
+
+fn try_remove_executor(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    id: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Validate params.
+    if !info.funds.is_empty() {
+        return Err(contract_err(
+            "no funds should be sent during remove executor",
+        ));
+    }
+
+    let address = deps.api.addr_validate(&id)?.into_string();
+    let mut state = config_read(deps.storage).load()?;
+
+    // Ensure message sender is admin.
+    if info.sender != state.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Ensure executor exists
+    if !state.executors.contains(&address) {
+        return Err(contract_err("executor does not exist"));
+    }
+
+    // Remove the executor and save
+    state.executors.retain(|executor| *executor != address);
+    config(deps.storage).save(&state)?;
+
+    // Add wasm event attributes
+    Ok(Response::new()
+        .add_attribute("action", "remove_executor")
+        .add_attribute("executor", address))
+}
+
+// Transfer token from sender to recipient with sender specified by executor.
+// Both accounts must either be member accounts, or have the required kyc attributes.
+fn try_executor_transfer(
+    deps: DepsMut<ProvenanceQuery>,
+    info: MessageInfo,
+    amount: Uint128,
+    sender: String,
+    recipient: String,
+) -> Result<Response<ProvenanceMsg>, ContractError> {
+    // Read state
+    let state = config_read(deps.storage).load()?;
+
+    // Ensure sender is a valid executor
+    if !state.executors.contains(&info.sender.into_string()) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Validate sender address
+    let sender = deps.api.addr_validate(&sender)?;
+
+    try_transfer(
+        deps,
+        MessageInfo {
+            sender,
+            funds: info.funds,
+        },
+        amount,
+        recipient,
+    )
+}
+
 // A helper function for creating generic contract errors.
 fn contract_err(s: &str) -> ContractError {
     ContractError::Std(StdError::generic_err(s))
@@ -569,6 +678,8 @@ pub fn query(
     match msg {
         QueryMsg::GetMembers {} => try_get_members(deps),
         QueryMsg::GetMember { id } => try_get_member(deps, id),
+        QueryMsg::GetContractInfo {} => try_get_contract_info(deps),
+        QueryMsg::GetVersionInfo {} => try_get_version_info(deps),
     }
 }
 
@@ -585,6 +696,20 @@ fn try_get_member(deps: Deps<ProvenanceQuery>, id: String) -> Result<QueryRespon
     let key = address.as_bytes();
     let member = members_read(deps.storage).load(key)?;
     let bin = to_binary(&member)?;
+    Ok(bin)
+}
+
+// Query contract state
+fn try_get_contract_info(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
+    let state = &config_read(deps.storage).load()?;
+    let bin = to_binary(state)?;
+    Ok(bin)
+}
+
+// Get contract version
+fn try_get_version_info(deps: Deps<ProvenanceQuery>) -> Result<QueryResponse, ContractError> {
+    let version = &cw2::get_contract_version(deps.storage)?;
+    let bin = to_binary(version)?;
     Ok(bin)
 }
 
@@ -2388,6 +2513,401 @@ mod tests {
     }
 
     #[test]
+    fn add_executor() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure admin is changed.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.executors, vec!["executor"]);
+    }
+
+    #[test]
+    fn add_executor_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Add single executor
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap();
+
+        // Try to send funds w/ the kyc message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[funds]),
+            ExecuteMsg::AddExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during add executor")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to add executor by user not admin
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("notadmin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to add executor already exists.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "executor already exists")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn remove_executor() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Add executors
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor1".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::RemoveExecutor {
+                id: "executor1".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure admin is changed.
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.executors, vec!["executor2"]);
+    }
+
+    #[test]
+    fn remove_executor_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Add executors
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor1".into(),
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap();
+
+        // Try to send funds w/ the kyc message.
+        let funds = coin(1000, "nhash");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[funds]),
+            ExecuteMsg::RemoveExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "no funds should be sent during remove executor")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to remove executor by user not admin
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("notadmin", &[]),
+            ExecuteMsg::RemoveExecutor {
+                id: "executor2".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("unexpected execute error"),
+        }
+
+        // Try to remove executor does not exist.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::RemoveExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Std(StdError::GenericErr { msg, .. }) => {
+                assert_eq!(msg, "executor does not exist")
+            }
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
+    fn executor_transfer_test() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        // Add executor
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap();
+
+        // Assume the customer has a balance of tokens + the required attribute.
+        let dcc = coin(1000, "dcc.coin");
+        deps.querier
+            .base
+            .update_balance(Addr::unchecked("customer"), vec![dcc]);
+        deps.querier
+            .with_attributes("customer", &[("bank.kyc.pb", "ok", "string")]);
+
+        // Transfer dcc from the customer to a member bank.
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("executor", &[]),
+            ExecuteMsg::ExecutorTransfer {
+                amount: Uint128::new(500),
+                sender: "customer".into(),
+                recipient: "bank".into(),
+            },
+        )
+        .unwrap();
+
+        // Ensure message was created.
+        // TODO: validate marker transfer message...
+        assert_eq!(1, res.messages.len());
+    }
+
+    #[test]
+    fn executor_transfer_param_errors() {
+        // Create mock deps.
+        let mut deps = mock_dependencies(&[]);
+
+        // Init
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            InitMsg {
+                denom: "dcc.coin".into(),
+            },
+        )
+        .unwrap();
+
+        // Create join member
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::Join {
+                id: "bank".into(),
+                name: "bank".into(),
+                kyc_attrs: vec!["bank.kyc.pb".into()],
+            },
+        )
+        .unwrap();
+
+        // Add executor
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("admin", &[]),
+            ExecuteMsg::AddExecutor {
+                id: "executor".into(),
+            },
+        )
+        .unwrap();
+
+        // Assume the customer has a balance of tokens + the required attribute.
+        let dcc = coin(1000, "dcc.coin");
+        deps.querier
+            .base
+            .update_balance(Addr::unchecked("customer"), vec![dcc]);
+        deps.querier
+            .with_attributes("customer", &[("bank.kyc.pb", "ok", "string")]);
+
+        // Try to execute transfer without permission.
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("notexecutor", &[]),
+            ExecuteMsg::ExecutorTransfer {
+                amount: Uint128::new(500),
+                sender: "customer".into(),
+                recipient: "bank".into(),
+            },
+        )
+        .unwrap_err();
+
+        // Ensure the expected error was returned.
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("unexpected execute error"),
+        }
+    }
+
+    #[test]
     #[allow(deprecated)]
     fn migrate_version() {
         // Create mock deps
@@ -2488,6 +3008,7 @@ mod tests {
             .save(&StateV2 {
                 admin: Addr::unchecked("id"),
                 denom: "dcc.coin".to_string(),
+                executors: vec![],
             })
             .unwrap();
 

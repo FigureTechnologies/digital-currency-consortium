@@ -44,18 +44,33 @@ pub enum ExecuteMsg {
     Burn {
         amount: Uint128,
     },
-    // Set the kyc attribute for member.
+    // Add a kyc attribute for member.
     AddKyc {
         id: Option<String>, // If admin, can set the kyc attribute for another member id
         kyc_attr: String,
     },
-    // Set the kyc attribute for member.
+    // Remove a kyc attribute for member.
     RemoveKyc {
         id: Option<String>, // If admin, can set the kyc attribute for another member id
         kyc_attr: String,
     },
+    // Set the smart contract admin address.
     SetAdmin {
         id: String,
+    },
+    // Add an executor to state.
+    AddExecutor {
+        id: String,
+    },
+    // Remove an executor to state.
+    RemoveExecutor {
+        id: String,
+    },
+    // Transfer dcc by executor.
+    ExecutorTransfer {
+        amount: Uint128,
+        sender: String,
+        recipient: String,
     },
 }
 
@@ -66,6 +81,10 @@ pub enum QueryMsg {
     GetMembers {},
     // Query a member by ID.
     GetMember { id: String },
+    // Get contract state data.
+    GetContractInfo {},
+    // Get contract version data.
+    GetVersionInfo {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
