@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InitMsg",
+  "type": "object",
+  "required": [
+    "dcc_address",
+    "dcc_denom"
+  ],
+  "properties": {
+    "dcc_address": {
+      "type": "string"
+    },
+    "dcc_denom": {
+      "type": "string"
+    }
+  }
+}
