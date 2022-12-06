@@ -97,6 +97,7 @@ fn create_sale(
 
     let response = Response::new().add_attributes(vec![
         attr("action", "create_sale"),
+        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
@@ -166,6 +167,7 @@ fn complete_sale(
 
     response = response.add_attributes(vec![
         attr("action", "complete_sale"),
+        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
@@ -223,6 +225,7 @@ fn cancel_sale(
 
     response = response.add_attributes(vec![
         attr("action", "cancel_sale"),
+        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
