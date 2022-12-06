@@ -310,7 +310,7 @@ mod tests {
 
         match create_response {
             Ok(response) => {
-                assert_eq!(response.attributes.len(), 8;
+                assert_eq!(response.attributes.len(), 8);
 
                 assert_eq!(response.attributes[0], attr("action", "create_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
