@@ -97,13 +97,13 @@ fn create_sale(
 
     let response = Response::new().add_attributes(vec![
         attr("action", "create_sale"),
-        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
         attr("asset_amount", sale.asset.amount),
         attr("price_denom", sale.price.denom),
         attr("price_amount", sale.price.amount),
+        attr("id", sale.id),
     ]);
 
     Ok(response)
@@ -167,13 +167,13 @@ fn complete_sale(
 
     response = response.add_attributes(vec![
         attr("action", "complete_sale"),
-        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
         attr("asset_amount", sale.asset.amount),
         attr("price_denom", sale.price.denom),
         attr("price_amount", sale.price.amount),
+        attr("id", sale.id),
     ]);
 
     Ok(response)
@@ -225,13 +225,13 @@ fn cancel_sale(
 
     response = response.add_attributes(vec![
         attr("action", "cancel_sale"),
-        attr("id", sale.id),
         attr("owner", sale.owner),
         attr("buyer", sale.buyer),
         attr("asset_denom", sale.asset.denom),
         attr("asset_amount", sale.asset.amount),
         attr("price_denom", sale.price.denom),
         attr("price_amount", sale.price.amount),
+        attr("id", sale.id),
     ]);
 
     Ok(response)
@@ -310,7 +310,7 @@ mod tests {
 
         match create_response {
             Ok(response) => {
-                assert_eq!(response.attributes.len(), 7);
+                assert_eq!(response.attributes.len(), 8;
 
                 assert_eq!(response.attributes[0], attr("action", "create_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
@@ -319,6 +319,7 @@ mod tests {
                 assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
                 assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
                 assert_eq!(response.attributes[6], attr("price_amount", price.amount));
+                assert_eq!(response.attributes[7], attr("id", ID));
             }
             Err(error) => {
                 panic!("failed to create asset sale: {:?}", error)
@@ -562,7 +563,7 @@ mod tests {
 
         match cancel_response {
             Ok(response) => {
-                assert_eq!(response.attributes.len(), 7);
+                assert_eq!(response.attributes.len(), 8);
 
                 assert_eq!(response.attributes[0], attr("action", "cancel_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
@@ -571,6 +572,7 @@ mod tests {
                 assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
                 assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
                 assert_eq!(response.attributes[6], attr("price_amount", price.amount));
+                assert_eq!(response.attributes[7], attr("id", ID));
             }
             Err(error) => {
                 panic!("failed to cancel asset sale: {:?}", error)
@@ -752,7 +754,7 @@ mod tests {
 
         match complete_response {
             Ok(response) => {
-                assert_eq!(response.attributes.len(), 7);
+                assert_eq!(response.attributes.len(), 8);
 
                 assert_eq!(response.attributes[0], attr("action", "complete_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
@@ -761,6 +763,7 @@ mod tests {
                 assert_eq!(response.attributes[4], attr("asset_amount", asset.amount));
                 assert_eq!(response.attributes[5], attr("price_denom", &price.denom));
                 assert_eq!(response.attributes[6], attr("price_amount", price.amount));
+                assert_eq!(response.attributes[7], attr("id", ID));
             }
             Err(error) => {
                 panic!("failed to complete asset sale: {:?}", error)
