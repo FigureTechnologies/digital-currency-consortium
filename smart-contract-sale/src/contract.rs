@@ -157,7 +157,7 @@ fn complete_sale(
 
     // transfer asset to buyer
     response = response.add_message(BankMsg::Send {
-        to_address: sale.owner.to_string(),
+        to_address: sale.buyer.to_string(),
         amount: vec![sale.asset.clone()],
     });
 
