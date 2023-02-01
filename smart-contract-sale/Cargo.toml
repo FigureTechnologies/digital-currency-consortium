@@ -40,4 +40,4 @@ uuid = { version= "0.8.2" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.1.5" }
-provwasm-mocks = { version = "1.1.1" }
+provwasm-mocks = { version = "1.1.2" }

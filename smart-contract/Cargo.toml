@@ -38,5 +38,5 @@ serde = { version = "1.0.147", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.37" }
 
 [dev-dependencies]
-provwasm-mocks = { version = "1.1.1" }
+provwasm-mocks = { version = "1.1.2" }
 cosmwasm-schema = { version = "1.1.5" }
