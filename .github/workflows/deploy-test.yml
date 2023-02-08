@@ -33,16 +33,13 @@ jobs:
           path: shared-actions
 
       - name: Run ktlint
-        run: |
-          ./gradlew ktlint --parallel
+        run: ./gradlew ktlint --parallel
 
       - name: Build
-        run: |
-          ./gradlew --console=plain --refresh-dependencies clean build -x test
+        run: ./gradlew --console=plain --refresh-dependencies clean build
 
       - name: Publish
-        run: |
-          ./gradlew publish -PartifactVersion=$DOCKER_BUILD_TAG
+        run: ./gradlew publish -PartifactVersion=$DOCKER_BUILD_TAG
 
       - name: Build image
         uses: ./shared-actions/docker-image-action
