@@ -1,0 +1,95 @@
+apiVersion: ctl.figure.com/v1
+kind: FigureDeployment
+metadata:
+  name: service-dcc
+  namespace: figuretech
+  labels:
+    fd: service-dcc
+spec:
+  selector:
+    matchLabels:
+      fd: service-dcc
+  template:
+    metadata:
+      labels:
+        fd: service-dcc
+    spec:
+      kong:
+        enabled: true
+        services:
+          - name: digital-currency-consortium
+            proxy:
+              path: /digital-currency-consortium
+            route:
+              path: /digital-currency-consortium
+              strip_path: true
+              preserve_host: true
+            jwt:
+              enabled: false
+      deployment:
+        business_unit: figure-tech
+        business_product: dcc
+        replicas:
+          prod: 0
+          test: 1
+        image:
+          prod: us-east1-docker.pkg.dev/figure-development/figure-docker-repo/digital-currency-consortium:latest
+          test: us-east1-docker.pkg.dev/figure-development/figure-docker-repo/digital-currency-consortium:latest
+        db:
+          enabled: true
+          version: "13"
+          enablePgBouncer: true
+          name:
+            prod: service-dcc-db
+            test: service-dcc
+          schema:
+            prod: service-dcc
+            test: service-dcc
+          user:
+            prod: service-dcc
+            test: service-dcc
+          connectionPoolSize:
+            prod: 40
+            test: 40
+        dbMigration:
+          enabled: false
+        spring:
+          enabled: true
+        configMap:
+          test:
+            SPRING_PROFILES_ACTIVE: "container"
+            PROVENANCE_MAINNET: "false"
+            PROVENANCE_CHAIN_ID: "pio-testnet-1"
+            PROVENANCE_MAX_BATCH_SIZE: "10"
+            PROVENANCE_BLOCKS_BEFORE_TIMEOUT: "15"
+            GRPC_CHANNEL_URL: "grpcs://grpc.test.provenance.io:443"
+            EVENT_STREAM_ID: "C84041F9-5E7F-40C6-AD55-B0FDB7317BE1"
+            EVENT_STREAM_RPC_URI: "https://rpc.test.provenance.io:443"
+            EVENT_STREAM_EPOCH: "2930929"
+            BANK_URI: "http://cme-omnibus-ops.cme-core/service-omnibus-ops"
+            KYC_TAG_NAME: "figuretest.kyc.pb"
+            CONTRACT_ADDRESS: "tp15qkf84uddc0zjpkjrn64rln75w40plrtcq4kp3"
+            DCC_DENOM: "usdf.test"
+        readinessProbe:
+          path: /digital-currency-consortium/actuator/health
+          periodSeconds: 3
+          initialDelaySeconds: 60
+          timeoutSeconds: 3
+        livenessProbe:
+          path: /digital-currency-consortium/actuator/health
+          periodSeconds: 3
+          initialDelaySeconds: 100
+          timeoutSeconds: 5
+        env:
+          - name: JAVA_OPTS
+            value: -XX:MaxRAMPercentage=75
+        resources:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        vault:
+          enabled: true
+          vault.hashicorp.com/agent-inject: true 
