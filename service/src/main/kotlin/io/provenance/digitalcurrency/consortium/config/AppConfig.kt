@@ -11,13 +11,13 @@ import com.hubspot.jackson.datatype.protobuf.ProtobufModule
 import io.provenance.client.grpc.GasEstimationMethod.MSG_FEE_CALCULATION
 import io.provenance.client.grpc.PbClient
 import io.provenance.digitalcurrency.consortium.bankclient.BankClient
-import io.provenance.eventstream.stream.clients.TendermintServiceOpenApiClient
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import tech.figure.eventstream.stream.clients.TendermintServiceOpenApiClient
 
 @Configuration
 @EnableConfigurationProperties(

@@ -29,7 +29,7 @@ object Versions {
     const val PbcProto = "1.8.0"
     const val PbcClient = "1.0.5"
     const val PbcHDWallet = "0.1.15"
-    const val EventStream = "0.6.3"
+    const val EventStream = "0.8.0"
 
     const val CommonsCsv = "1.9.0"
     const val Exposed = "0.38.2"
@@ -71,8 +71,9 @@ object Libraries {
     const val PbcClient = "io.provenance.client:pb-grpc-client-kotlin:${Versions.PbcClient}"
     const val PbcHDWallet = "io.provenance.hdwallet:hdwallet:${Versions.PbcHDWallet}"
 
-    const val EventStreamCore = "io.provenance.eventstream:es-core:${Versions.EventStream}"
-    const val EventStreamApiModel = "io.provenance.eventstream:es-api-model:${Versions.EventStream}"
+    const val EventStreamCore = "tech.figure.eventstream:es-core:${Versions.EventStream}"
+    const val EventStreamApi = "tech.figure.eventstream:es-api:${Versions.EventStream}"
+    const val EventStreamApiModel = "tech.figure.eventstream:es-api-model:${Versions.EventStream}"
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"

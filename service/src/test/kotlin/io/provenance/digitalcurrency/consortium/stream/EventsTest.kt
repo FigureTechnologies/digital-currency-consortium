@@ -1,8 +1,8 @@
 package io.provenance.digitalcurrency.consortium.stream
 
-import io.provenance.eventstream.stream.models.Event
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import tech.figure.eventstream.stream.models.Event
 import java.util.Base64
 
 class EventsTest {
