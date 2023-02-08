@@ -32,12 +32,6 @@ jobs:
           token: ${{secrets.PAT}}
           path: shared-actions
 
-      - name: Set env
-        uses: ./shared-actions/set-env-action
-        with:
-          run_offset: $BUILD_OFFSET
-          prod_ref: refs/heads/master
-
       - name: Run ktlint
         run: |
           ./gradlew ktlint --parallel
@@ -67,27 +61,13 @@ jobs:
           docker push $DOCKER_BASE_URL$REPO:latest
 
       - name: Deploy
-        if: ${{ env.BRANCH == 'develop' || env.BRANCH == 'master' }}
+        if: ${{ env.BRANCH == 'develop' }}
         uses: ./shared-actions/deploy-action
         with:
           deployment_path: './deployment.yaml'
           gcp_auth_json: ${{secrets.GCP_AUTH_JSON}}
           deployinator_auth_json: ${{secrets.DEPLOYINATOR_AUTH_JSON}}
 
-      - name: Set Git Tag
-        if: ${{ env.BRANCH == 'master' }}
-        run: |
-          TAG=$((${{ github.run_number }} + $BUILD_OFFSET))
-          echo "TAG=v$TAG" | tee -a $GITHUB_ENV
-
-      - name: Git Tag
-        if: ${{ env.BRANCH == 'master' }}
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.TAG }}
-          release_name: Release ${{ env.TAG }}
   slack:
     name: Slack
     runs-on: [ linux, self-hosted ]
