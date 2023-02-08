@@ -29,11 +29,11 @@ import io.provenance.digitalcurrency.consortium.messages.MemberListResponse
 import io.provenance.digitalcurrency.consortium.messages.QueryRequest
 import io.provenance.digitalcurrency.consortium.messages.toByteString
 import io.provenance.digitalcurrency.consortium.messages.toValueResponse
-import io.provenance.eventstream.stream.clients.TendermintServiceOpenApiClient
-import io.provenance.eventstream.stream.models.BlockResponse
 import io.provenance.marker.v1.MarkerTransferAuthorization
 import kotlinx.coroutines.runBlocking
 import org.springframework.stereotype.Service
+import tech.figure.eventstream.stream.clients.TendermintServiceOpenApiClient
+import tech.figure.eventstream.stream.models.BlockResponse
 import java.time.OffsetDateTime
 import javax.annotation.PreDestroy
 

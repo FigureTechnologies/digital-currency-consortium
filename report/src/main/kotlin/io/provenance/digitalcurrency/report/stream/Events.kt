@@ -1,11 +1,11 @@
 package io.provenance.digitalcurrency.report.stream
 
-import io.provenance.eventstream.stream.clients.BlockData
-import io.provenance.eventstream.stream.models.Event
-import io.provenance.eventstream.stream.models.TxEvent
-import io.provenance.eventstream.stream.models.extensions.dateTime
-import io.provenance.eventstream.stream.models.extensions.txData
-import io.provenance.eventstream.stream.models.extensions.txEvents
+import tech.figure.eventstream.stream.clients.BlockData
+import tech.figure.eventstream.stream.models.Event
+import tech.figure.eventstream.stream.models.TxEvent
+import tech.figure.eventstream.stream.models.dateTime
+import tech.figure.eventstream.stream.models.txData
+import tech.figure.eventstream.stream.models.txEvents
 import java.time.OffsetDateTime
 import java.util.Base64
 

@@ -5,14 +5,14 @@ import io.provenance.digitalcurrency.report.config.EventStreamProperties
 import io.provenance.digitalcurrency.report.config.logger
 import io.provenance.digitalcurrency.report.domain.CoinMovementRecord
 import io.provenance.digitalcurrency.report.domain.EventStreamRecord
-import io.provenance.eventstream.decoder.moshiDecoderAdapter
-import io.provenance.eventstream.net.okHttpNetAdapter
-import io.provenance.eventstream.stream.flows.blockDataFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import tech.figure.eventstream.decoder.moshiDecoderAdapter
+import tech.figure.eventstream.net.okHttpNetAdapter
+import tech.figure.eventstream.stream.flows.blockDataFlow
 import java.util.UUID
 
 @Component

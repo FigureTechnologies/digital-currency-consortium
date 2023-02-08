@@ -18,13 +18,13 @@ import io.provenance.digitalcurrency.consortium.domain.TxRequestViewRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.service.PbcService
 import io.provenance.digitalcurrency.consortium.service.TxRequestService
-import io.provenance.eventstream.decoder.moshiDecoderAdapter
-import io.provenance.eventstream.net.okHttpNetAdapter
-import io.provenance.eventstream.stream.flows.blockDataFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import tech.figure.eventstream.decoder.moshiDecoderAdapter
+import tech.figure.eventstream.net.okHttpNetAdapter
+import tech.figure.eventstream.stream.flows.blockDataFlow
 import java.util.UUID
 
 @Component
