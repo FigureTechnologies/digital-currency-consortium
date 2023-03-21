@@ -22,11 +22,11 @@ import org.springframework.web.bind.annotation.RestController
     tags = ["Reporting API"],
     description = "Endpoints for the bank middleware to call for reporting and data queries.",
     produces = MediaType.TEXT_PLAIN_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE
+    consumes = MediaType.APPLICATION_JSON_VALUE,
 )
 class ReportingController(
     private val balanceReportService: BalanceReportService,
-    private val pbcService: PbcService
+    private val pbcService: PbcService,
 ) {
 
     private val log = logger()

@@ -26,7 +26,7 @@ class EventStreamConsumer(
 
     @Scheduled(
         initialDelayString = "\${event_stream.connect.initial_delay.ms}",
-        fixedDelayString = "\${event_stream.connect.delay.ms}"
+        fixedDelayString = "\${event_stream.connect.delay.ms}",
     )
     fun consumeEventStream() {
         // Initialize event stream state and determine start height
@@ -40,7 +40,7 @@ class EventStreamConsumer(
             blockDataFlow(
                 netAdapter = netAdapter,
                 decoderAdapter = moshiDecoderAdapter(),
-                from = lastHeight
+                from = lastHeight,
             ).collect { blockData ->
                 val transfers = blockData.transfers(contractProperties.address)
 

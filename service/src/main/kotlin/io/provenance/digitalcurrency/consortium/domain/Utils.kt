@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.transactions.TransactionManager
 class InsertUpdateOnConflictDoNothing<T : Any>(
     private val constraint: String?,
     table: Table,
-    isIgnore: Boolean = false // does nothing on postgres dialect
+    isIgnore: Boolean = false, // does nothing on postgres dialect
 ) : InsertStatement<T>(table, isIgnore) {
 
     override fun prepareSQL(transaction: Transaction): String {
@@ -20,7 +20,7 @@ class InsertUpdateOnConflictDoNothing<T : Any>(
 
 fun <T : Table> T.upsertDoNothing(
     constraint: String?,
-    body: T.(InsertStatement<ResultRow>) -> Unit
+    body: T.(InsertStatement<ResultRow>) -> Unit,
 ) = InsertUpdateOnConflictDoNothing<ResultRow>(constraint, this).apply {
     body(this)
     execute(TransactionManager.current())

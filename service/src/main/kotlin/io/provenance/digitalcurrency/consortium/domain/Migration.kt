@@ -22,7 +22,7 @@ open class MigrationEntity : UUIDEntityClass<MigrationRecord>(MT) {
     fun insert(
         codeId: String,
         txHash: String,
-        created: OffsetDateTime = OffsetDateTime.now()
+        created: OffsetDateTime = OffsetDateTime.now(),
     ) = new {
         this.codeId = codeId
         this.txHash = txHash
@@ -45,8 +45,9 @@ class MigrationRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {
     var sent by MT.sent
 
     fun markSent() {
-        if (sent == null)
+        if (sent == null) {
             sent = OffsetDateTime.now()
+        }
     }
 }
 
@@ -54,5 +55,5 @@ fun MigrationRecord.toAlertRequest() = AlertRequest(
     uuid = id.value,
     alertLevel = AlertLevel.INFO,
     message = "Contract migrated to code id ${this.codeId} with tx hash $txHash",
-    timestamp = created
+    timestamp = created,
 )

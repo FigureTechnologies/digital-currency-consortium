@@ -17,7 +17,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 
 @Configuration
 @EnableConfigurationProperties(
-    value = [ContractProperties::class, EventStreamProperties::class, ServiceProperties::class]
+    value = [ContractProperties::class, EventStreamProperties::class, ServiceProperties::class],
 )
 class AppConfig : WebMvcConfigurer {
 

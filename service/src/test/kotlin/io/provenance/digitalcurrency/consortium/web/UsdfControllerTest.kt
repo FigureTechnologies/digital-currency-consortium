@@ -45,7 +45,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
                 "http://localhost:$port/dcc-test$MINT_V1",
                 HttpMethod.POST,
                 HttpEntity(this, defaultHeaders),
-                clazz
+                clazz,
             )
 
         @Test
@@ -56,7 +56,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
                 insertRegisteredAddress(
                     uuid,
                     TEST_ADDRESS,
-                    TXN_COMPLETE
+                    TXN_COMPLETE,
                 )
             }
 
@@ -65,7 +65,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
             val request = MintCoinRequest(
                 uuid = uuid,
                 bankAccountUUID = uuid,
-                amount = amount
+                amount = amount,
             )
 
             val response = request.execute(UUID::class.java)
@@ -100,7 +100,7 @@ class UsdfControllerTest : BaseIntegrationTest() {
             val request = MintCoinRequest(
                 uuid = uuid,
                 bankAccountUUID = uuid,
-                amount = amount
+                amount = amount,
             )
 
             val responseError = request.execute(String::class.java)

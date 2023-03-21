@@ -8,32 +8,36 @@ import javax.validation.constraints.NotNull
 data class AlertRequest(
     @ApiModelProperty(
         value = "A unique id for the alert.",
-        required = true
+        required = true,
     )
-    @get:NotNull val uuid: UUID,
+    @get:NotNull
+    val uuid: UUID,
 
     @ApiModelProperty(
         value = "The severity of the alert.",
-        required = true
+        required = true,
     )
-    @get:NotNull val alertLevel: AlertLevel,
+    @get:NotNull
+    val alertLevel: AlertLevel,
 
     @ApiModelProperty(
         value = "The details of the alert.",
-        required = true
+        required = true,
     )
-    @get:NotNull val message: String,
+    @get:NotNull
+    val message: String,
 
     @ApiModelProperty(
         value = "The timestamp of the alert.",
-        required = true
+        required = true,
     )
-    @get:NotNull val timestamp: OffsetDateTime,
+    @get:NotNull
+    val timestamp: OffsetDateTime,
 )
 
 enum class AlertLevel {
     INFO,
     WARNING,
     ERROR,
-    CRITICAL
+    CRITICAL,
 }

@@ -29,7 +29,7 @@ import tech.figure.eventstream.stream.clients.TendermintServiceOpenApiClient
         CoroutineProperties::class,
         CoinMovementProperties::class,
         BalanceReportProperties::class,
-    ]
+    ],
 )
 class AppConfig : WebMvcConfigurer {
     @Primary

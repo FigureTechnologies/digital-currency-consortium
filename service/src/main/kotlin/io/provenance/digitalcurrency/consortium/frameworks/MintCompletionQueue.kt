@@ -13,17 +13,17 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 class CoinMintDirective(
-    override val id: UUID
+    override val id: UUID,
 ) : Directive()
 
 class CoinMintOutcome(
-    override val id: UUID
+    override val id: UUID,
 ) : Outcome()
 
 @Component
 class CoinMintQueue(
     coroutineProperties: CoroutineProperties,
-    private val bankClient: BankClient
+    private val bankClient: BankClient,
 ) : ActorModel<CoinMintDirective, CoinMintOutcome> {
     private val log = logger()
 

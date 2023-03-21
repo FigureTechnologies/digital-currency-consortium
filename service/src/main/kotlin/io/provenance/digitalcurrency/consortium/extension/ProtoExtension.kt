@@ -4,15 +4,11 @@ import com.google.protobuf.Any
 import com.google.protobuf.ByteString
 import com.google.protobuf.Message
 import com.google.protobuf.Timestamp
-import cosmos.base.query.v1beta1.Pagination.PageRequest
 import cosmos.tx.v1beta1.TxOuterClass.TxBody
 import java.nio.ByteBuffer
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.UUID
-
-fun newPaginationBuilder(offset: Int, limit: Int): PageRequest.Builder =
-    PageRequest.newBuilder().setOffset(offset.toLong()).setLimit(limit.toLong()).setCountTotal(true)
 
 fun Message.toAny(typeUrlPrefix: String = ""): Any = Any.pack(this, typeUrlPrefix)
 

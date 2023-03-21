@@ -74,29 +74,29 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamProperties,
             serviceProperties,
             provenanceProperties,
-            txRequestService
+            txRequestService,
         )
     }
 
     @Nested
     inner class CoinMovementEvents {
         private val mint = getMintEvent(
-            dccDenom = serviceProperties.dccDenom
+            dccDenom = serviceProperties.dccDenom,
         )
 
         private val redeem = getTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
-            denom = serviceProperties.dccDenom
+            denom = serviceProperties.dccDenom,
         )
 
         private val burn = getBurnEvent(
             memberId = TEST_MEMBER_ADDRESS,
-            denom = serviceProperties.dccDenom
+            denom = serviceProperties.dccDenom,
         )
 
         private val transfer = getMarkerTransferEvent(
             toAddress = TEST_MEMBER_ADDRESS,
-            denom = serviceProperties.dccDenom
+            denom = serviceProperties.dccDenom,
         )
 
         @Test
@@ -175,29 +175,29 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                 mints = listOf(
                     getMintEvent(
                         txHash = "tx1",
-                        dccDenom = serviceProperties.dccDenom
-                    )
+                        dccDenom = serviceProperties.dccDenom,
+                    ),
                 ),
                 transfers = listOf(
                     getTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
-                        denom = serviceProperties.dccDenom
-                    )
+                        denom = serviceProperties.dccDenom,
+                    ),
                 ),
                 burns = listOf(
                     getBurnEvent(
                         txHash = "tx1",
                         memberId = TEST_MEMBER_ADDRESS,
-                        denom = serviceProperties.dccDenom
-                    )
+                        denom = serviceProperties.dccDenom,
+                    ),
                 ),
                 markerTransfers = listOf(
                     getMarkerTransferEvent(
                         txHash = "tx1",
                         toAddress = TEST_MEMBER_ADDRESS,
-                        denom = serviceProperties.dccDenom
-                    )
+                        denom = serviceProperties.dccDenom,
+                    ),
                 ),
             )
 
@@ -245,7 +245,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                     bankAccountUuid = UUID.randomUUID(),
                     address = TEST_ADDRESS,
                     status = TxStatus.PENDING,
-                    txHash = txHash
+                    txHash = txHash,
                 )
             }
             transaction {
@@ -258,17 +258,17 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = emptyList(),
-                migrations = emptyList()
+                migrations = emptyList(),
             )
 
             Assertions.assertEquals(
                 1,
-                transaction { AddressRegistrationRecord.find { ART.status eq TxStatus.TXN_COMPLETE }.count() }
+                transaction { AddressRegistrationRecord.find { ART.status eq TxStatus.TXN_COMPLETE }.count() },
             )
 
             Assertions.assertEquals(
                 1,
-                transaction { CoinMintRecord.find { CMT.status eq TxStatus.TXN_COMPLETE }.count() }
+                transaction { CoinMintRecord.find { CMT.status eq TxStatus.TXN_COMPLETE }.count() },
             )
         }
     }
@@ -290,10 +290,10 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                         fromMemberId = TEST_MEMBER_ADDRESS,
                         toMemberId = TEST_MEMBER_ADDRESS,
                         sender = "sender",
-                        recipient = "recipient"
-                    )
+                        recipient = "recipient",
+                    ),
                 ),
-                migrations = listOf()
+                migrations = listOf(),
             )
 
             transaction {
@@ -310,7 +310,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(),
-                migrations = listOf(migrationEvent)
+                migrations = listOf(migrationEvent),
             )
 
             transaction {
@@ -326,7 +326,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(),
-                migrations = listOf(migrationEvent)
+                migrations = listOf(migrationEvent),
             )
 
             transaction {
@@ -349,9 +349,9 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                         height = 1L,
                         dateTime = OffsetDateTime.now(),
                         txHash = txHash,
-                        codeId = "2"
-                    )
-                )
+                        codeId = "2",
+                    ),
+                ),
             )
 
             transaction {
@@ -368,7 +368,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(transferEvent),
-                migrations = listOf()
+                migrations = listOf(),
             )
 
             transaction {
@@ -384,7 +384,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                migrations = listOf()
+                migrations = listOf(),
             )
 
             transaction {
@@ -400,7 +400,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                migrations = listOf()
+                migrations = listOf(),
             )
 
             transaction {
@@ -416,7 +416,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
             eventStreamConsumer.handleEvents(
                 txHashes = listOf(txHash),
                 transfers = listOf(transfer),
-                migrations = listOf()
+                migrations = listOf(),
             )
 
             transaction {
@@ -424,7 +424,7 @@ class EventStreamConsumerTest : BaseIntegrationTest() {
                     MarkerTransferRecord.find {
                         (MTT.txHash eq txHash) and (MTT.status eq TxStatus.TXN_COMPLETE)
                     }.count(),
-                    1
+                    1,
                 )
             }
         }

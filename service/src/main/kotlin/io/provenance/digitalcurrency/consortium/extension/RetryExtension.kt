@@ -8,7 +8,7 @@ fun <T> retry(
     times: Int = 3,
     log: Logger = logger("retry-logger"),
     backoffMillis: Long = 100,
-    block: () -> T
+    block: () -> T,
 ): T {
     for (i in 0 until times) {
         try {

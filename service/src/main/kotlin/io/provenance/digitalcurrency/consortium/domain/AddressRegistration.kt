@@ -30,7 +30,7 @@ open class AddressRegistrationEntityClass : BaseRequestEntityClass<ART, AddressR
 
     fun insert(
         bankAccountUuid: UUID,
-        address: String
+        address: String,
     ) = super.insert(UUID.randomUUID()).apply {
         this.bankAccountUuid = bankAccountUuid
         this.address = address

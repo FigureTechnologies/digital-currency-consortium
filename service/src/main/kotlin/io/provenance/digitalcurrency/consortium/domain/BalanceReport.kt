@@ -33,12 +33,14 @@ class BalanceReportRecord(uuid: EntityID<UUID>) : UUIDEntity(uuid) {
     var sent by BalanceReportTable.sent
 
     fun markCompleted() {
-        if (completed == null)
+        if (completed == null) {
             completed = OffsetDateTime.now()
+        }
     }
 
     fun markSent() {
-        if (sent == null)
+        if (sent == null) {
             sent = OffsetDateTime.now()
+        }
     }
 }

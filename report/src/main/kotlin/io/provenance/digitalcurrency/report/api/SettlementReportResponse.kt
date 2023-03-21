@@ -7,5 +7,5 @@ class SettlementReportResponse(
     val uuid: UUID,
     val fromBlockHeight: Long,
     val toBlockHeight: Long,
-    val created: OffsetDateTime
+    val created: OffsetDateTime,
 )

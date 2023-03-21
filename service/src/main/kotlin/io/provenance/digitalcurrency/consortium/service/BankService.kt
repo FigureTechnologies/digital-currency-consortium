@@ -20,7 +20,7 @@ import java.util.UUID
 class BankService(
     private val bankClientProperties: BankClientProperties,
     private val pbcService: PbcService,
-    private val serviceProperties: ServiceProperties
+    private val serviceProperties: ServiceProperties,
 ) {
     private val log = logger()
 
@@ -38,7 +38,7 @@ class BankService(
 
             AddressRegistrationRecord.insert(
                 bankAccountUuid = bankAccountUuid,
-                address = blockchainAddress
+                address = blockchainAddress,
             )
         }
     }

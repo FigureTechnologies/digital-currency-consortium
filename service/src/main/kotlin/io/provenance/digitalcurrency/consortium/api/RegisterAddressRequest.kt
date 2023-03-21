@@ -20,20 +20,22 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "RegisterAddressRequest",
-    description = "Register a blockchain address associated with an existing bank account. This address will be used for minting/burning coin."
+    description = "Register a blockchain address associated with an existing bank account. This address will be used for minting/burning coin.",
 )
 data class RegisterAddressRequest(
     @ApiModelProperty(
         value = "A unique uuid generated and persisted by the bank. " +
             "This will be used for subsequent coin mints (fiat deposits from the customer) and redemptions (fiat deposits to the customer).",
-        required = true
+        required = true,
     )
-    @get:NotNull val bankAccountUuid: UUID,
+    @get:NotNull
+    val bankAccountUuid: UUID,
     @ApiModelProperty(
         value = "The blockchain address associated with the wallet for this bank account.",
-        required = true
+        required = true,
     )
-    @get:NotNull val blockchainAddress: String
+    @get:NotNull
+    val blockchainAddress: String,
 ) {
 
     @JsonIgnore

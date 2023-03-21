@@ -27,7 +27,7 @@ import javax.validation.Valid
     tags = ["Governance API"],
     description = "Endpoints for the bank middleware to call for governance actions.",
     produces = MediaType.TEXT_PLAIN_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE
+    consumes = MediaType.APPLICATION_JSON_VALUE,
 )
 class GovernanceController(private val pbcService: PbcService) {
 
@@ -45,7 +45,7 @@ class GovernanceController(private val pbcService: PbcService) {
                     id = it.id,
                     name = it.name,
                     joined = OffsetDateTime.parse(pbcService.getBlock(it.joined).result!!.block!!.header!!.time),
-                    kycAttributes = it.kycAttributes
+                    kycAttributes = it.kycAttributes,
                 )
             }
             .sortedBy { it.joined }
@@ -57,7 +57,8 @@ class GovernanceController(private val pbcService: PbcService) {
     fun grantAuth(
         @Valid
         @ApiParam(value = "GrantRequest")
-        @RequestBody request: GrantRequest
+        @RequestBody
+        request: GrantRequest,
     ): ResponseEntity<String> {
         log.info("Trying to grant authz: $request")
         val (coinRequests, expiration) = request

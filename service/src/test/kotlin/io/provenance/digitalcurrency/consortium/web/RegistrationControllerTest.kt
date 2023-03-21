@@ -46,7 +46,7 @@ class RegistrationControllerTest : BaseIntegrationTest() {
                 "http://localhost:$port/dcc-test$REGISTRATION_V1",
                 HttpMethod.POST,
                 HttpEntity(this, defaultHeaders),
-                clazz
+                clazz,
             )
 
         @Test
@@ -55,7 +55,7 @@ class RegistrationControllerTest : BaseIntegrationTest() {
 
             val response = RegisterAddressRequest(
                 bankAccountUuid = uuid,
-                blockchainAddress = TEST_ADDRESS
+                blockchainAddress = TEST_ADDRESS,
             ).execute(UUID::class.java)
 
             assertTrue(response.statusCode.is2xxSuccessful, "Response is 200")
@@ -80,7 +80,7 @@ class RegistrationControllerTest : BaseIntegrationTest() {
             val uuid = UUID.randomUUID()
             val request = RegisterAddressRequest(
                 bankAccountUuid = uuid,
-                blockchainAddress = TEST_ADDRESS
+                blockchainAddress = TEST_ADDRESS,
             )
 
             val response = request.execute(UUID::class.java)
@@ -116,7 +116,7 @@ class RegistrationControllerTest : BaseIntegrationTest() {
             val uuid = UUID.randomUUID()
             val request = RegisterAddressRequest(
                 bankAccountUuid = uuid,
-                blockchainAddress = TEST_ADDRESS
+                blockchainAddress = TEST_ADDRESS,
             )
 
             whenever(bankService.registerAddress(uuid, TEST_ADDRESS)).doAnswer { throw Exception() }

@@ -45,11 +45,11 @@ abstract class DatabaseTest {
         bankAccountUuid: UUID,
         address: String,
         status: TxStatus = TxStatus.QUEUED,
-        txHash: String? = null
+        txHash: String? = null,
     ) =
         AddressRegistrationRecord.insert(
             bankAccountUuid = bankAccountUuid,
-            address = address
+            address = address,
         ).apply {
             this.status = status
             this.txHash = txHash
@@ -58,7 +58,7 @@ abstract class DatabaseTest {
     fun insertDeregisteredAddress(
         addressRegistrationRecord: AddressRegistrationRecord,
         status: TxStatus = TxStatus.QUEUED,
-        txHash: String? = null
+        txHash: String? = null,
     ) =
         AddressDeregistrationRecord.insert(addressRegistrationRecord).apply {
             this.status = status
@@ -66,12 +66,12 @@ abstract class DatabaseTest {
         }
 
     fun insertMigration(
-        txHash: String
+        txHash: String,
     ): MigrationRecord =
         transaction {
             MigrationRecord.insert(
                 codeId = "2",
-                txHash = txHash
+                txHash = txHash,
             )
         }
 
@@ -80,7 +80,7 @@ abstract class DatabaseTest {
         fromAddress: String = TEST_ADDRESS,
         toAddress: String = TEST_MEMBER_ADDRESS,
         status: TxStatus = TxStatus.QUEUED,
-        denom: String
+        denom: String,
     ): MarkerTransferRecord =
         transaction {
             MarkerTransferRecord.new(UUID.randomUUID()) {
@@ -107,14 +107,14 @@ abstract class DatabaseTest {
                 amount = DEFAULT_AMOUNT.toString(),
                 blockTime = OffsetDateTime.now(),
                 denom = denom,
-                type = type
+                type = type,
             )
         }
 
     fun insertCoinMint(uuid: UUID = UUID.randomUUID(), address: String = "testaddress"): CoinMintRecord =
         insertRegisteredAddress(
             bankAccountUuid = uuid,
-            address = address
+            address = address,
         ).let {
             CoinMintRecord.insert(UUID.randomUUID(), addressRegistration = it, fiatAmount = BigDecimal("1000"))
         }

@@ -13,10 +13,10 @@ dependencies {
         it(Libraries.PbcHDWallet)
 
         // websocket
-        it(Libraries.Scarlet)
-        it(Libraries.ScarletStreamAdapter)
-        it(Libraries.ScarletWebsocket)
-        it(Libraries.ScarletMessageAdapter)
+//        it(Libraries.Scarlet)
+//        it(Libraries.ScarletStreamAdapter)
+//        it(Libraries.ScarletWebsocket)
+//        it(Libraries.ScarletMessageAdapter)
     }
 }
 

@@ -22,7 +22,7 @@ open class CoinTransferEntityClass : BaseCoinRequestEntityClass<CTT, CoinTransfe
     fun insert(
         uuid: UUID,
         addressRegistration: AddressRegistrationRecord,
-        fiatAmount: BigDecimal
+        fiatAmount: BigDecimal,
     ) = insert(uuid, addressRegistration.address, fiatAmount).apply {
         this.addressRegistration = addressRegistration
     }
@@ -30,7 +30,7 @@ open class CoinTransferEntityClass : BaseCoinRequestEntityClass<CTT, CoinTransfe
     fun insert(
         uuid: UUID,
         address: String,
-        fiatAmount: BigDecimal
+        fiatAmount: BigDecimal,
     ) = super.insert(uuid, fiatAmount).apply {
         this.address = address
     }

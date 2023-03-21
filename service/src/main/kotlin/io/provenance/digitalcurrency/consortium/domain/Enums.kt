@@ -5,7 +5,7 @@ enum class TxRequestType {
     BURN,
     TRANSFER,
     TAG,
-    DETAG
+    DETAG,
 }
 
 enum class TxStatus {
@@ -13,5 +13,5 @@ enum class TxStatus {
     PENDING, // blockchain transaction has been broadcast, waiting to make sure it is done
     TXN_COMPLETE, // blockchain txn is complete - may be final status for most requests
     ACTION_COMPLETE, // final status for requests that need to do another activity after blockchain status is complete
-    ERROR // not processable
+    ERROR, // not processable
 }

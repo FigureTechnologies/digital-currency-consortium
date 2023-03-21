@@ -50,7 +50,7 @@ class EventStreamConsumer(
     // we'll attempt to re-connect after a fixed delay.
     @Scheduled(
         initialDelayString = "\${event_stream.connect.initial_delay.ms}",
-        fixedDelayString = "\${event_stream.connect.delay.ms}"
+        fixedDelayString = "\${event_stream.connect.delay.ms}",
     )
     fun consumeEventStream() {
         // Initialize event stream state and determine start height
@@ -66,7 +66,7 @@ class EventStreamConsumer(
             blockDataFlow(
                 netAdapter = netAdapter,
                 decoderAdapter = moshiDecoderAdapter(),
-                from = lastHeight
+                from = lastHeight,
             ).collect { blockData ->
                 val txEvents = blockData.txEvents()
                 val txErrors = blockData.txErrors()
@@ -75,7 +75,7 @@ class EventStreamConsumer(
                     handleEvents(
                         txHashes = txEvents.map { it.txHash }.distinct(),
                         migrations = txEvents.migrations(provenanceProperties.contractAddress),
-                        transfers = txEvents.transfers(provenanceProperties.contractAddress)
+                        transfers = txEvents.transfers(provenanceProperties.contractAddress),
                     )
                 }
 
@@ -94,7 +94,7 @@ class EventStreamConsumer(
     // we'll attempt to re-connect after a fixed delay.
     @Scheduled(
         initialDelayString = "\${event_stream.connect.initial_delay.ms}",
-        fixedDelayString = "\${event_stream.connect.delay.ms}"
+        fixedDelayString = "\${event_stream.connect.delay.ms}",
     )
     fun consumeCoinMovementEventStream() {
         // Initialize event stream state and determine start height
@@ -103,7 +103,7 @@ class EventStreamConsumer(
             ?: transaction {
                 EventStreamRecord.insert(
                     coinMovementEventStreamId,
-                    coinMovementEpochHeight
+                    coinMovementEpochHeight,
                 )
             }.lastBlockHeight
 
@@ -115,7 +115,7 @@ class EventStreamConsumer(
             blockDataFlow(
                 netAdapter = netAdapter,
                 decoderAdapter = moshiDecoderAdapter(),
-                from = lastHeight
+                from = lastHeight,
             ).collect { blockData ->
                 val txEvents = blockData.txEvents()
 
@@ -165,9 +165,8 @@ class EventStreamConsumer(
         mints: Mints,
         transfers: Transfers,
         burns: Burns,
-        markerTransfers: MarkerTransfers
+        markerTransfers: MarkerTransfers,
     ) {
-
         // SC Mint events denote the "on ramp" for a bank user to get coin
         val filteredMints = mints.filter { it.withdrawAddress.isNotEmpty() && it.memberId.isNotEmpty() }
             .mapNotNull { event ->
@@ -344,7 +343,7 @@ class EventStreamConsumer(
         log.info("persisting migration record for txhash ${migration.txHash}")
         MigrationRecord.insert(
             codeId = migration.codeId,
-            txHash = migration.txHash
+            txHash = migration.txHash,
         )
     }
 
@@ -357,7 +356,7 @@ class EventStreamConsumer(
             amount = transfer.amount,
             height = transfer.height,
             txHash = transfer.txHash,
-            txStatus = TxStatus.TXN_COMPLETE
+            txStatus = TxStatus.TXN_COMPLETE,
         )
     }
 

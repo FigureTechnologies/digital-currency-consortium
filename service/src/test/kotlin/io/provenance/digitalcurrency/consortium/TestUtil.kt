@@ -25,7 +25,7 @@ fun getMigrationEvent(txHash: String = randomTxHash()) =
         codeId = "2",
         height = 50,
         dateTime = OffsetDateTime.now(),
-        txHash = txHash
+        txHash = txHash,
     )
 
 fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_MEMBER_ADDRESS, denom: String) =
@@ -38,7 +38,7 @@ fun getTransferEvent(txHash: String = randomTxHash(), toAddress: String = TEST_M
         toMemberId = TEST_MEMBER_ADDRESS,
         height = 50,
         dateTime = OffsetDateTime.now(),
-        txHash = txHash
+        txHash = txHash,
     )
 
 fun getBurnEvent(txHash: String = randomTxHash(), memberId: String = TEST_MEMBER_ADDRESS, denom: String) =
@@ -59,7 +59,7 @@ fun getMarkerTransferEvent(txHash: String = randomTxHash(), toAddress: String = 
         denom = denom,
         height = 50,
         dateTime = OffsetDateTime.now(),
-        txHash = txHash
+        txHash = txHash,
     )
 
 fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
@@ -70,5 +70,5 @@ fun getMintEvent(txHash: String = randomTxHash(), dccDenom: String) =
         memberId = TEST_MEMBER_ADDRESS,
         height = 50,
         dateTime = OffsetDateTime.now(),
-        txHash = txHash
+        txHash = txHash,
     )

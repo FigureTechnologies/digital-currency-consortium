@@ -39,11 +39,11 @@ import javax.validation.constraints.Min
     tags = ["Settlement API"],
     description = "Endpoints for generating settlement reports.",
     produces = MediaType.APPLICATION_JSON_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE
+    consumes = MediaType.APPLICATION_JSON_VALUE,
 )
 class SettlementController(
     eventStreamProperties: EventStreamProperties,
-    private val settlementReportService: SettlementReportService
+    private val settlementReportService: SettlementReportService,
 ) {
 
     private val log = logger()
@@ -53,7 +53,7 @@ class SettlementController(
     @ApiOperation(value = "Get paginated settlement reports")
     fun getSettlementReports(
         @RequestParam(required = false, value = "page") page: Int?,
-        @RequestParam(required = false, value = "size") size: Int?
+        @RequestParam(required = false, value = "size") size: Int?,
     ): PaginatedResponse<List<SettlementReportResponse>> = transaction {
         val pagination = Page(page ?: 1, size ?: 50)
         val query = SettlementReportRecord.all()
@@ -91,8 +91,12 @@ class SettlementController(
     @PostMapping
     @ApiOperation(value = "Generate a settlement report")
     fun createSettlementReport(
-        @RequestParam("from_block") @Min(1) fromBlockHeight: Long,
-        @RequestParam("to_block") @Min(1) toBlockHeight: Long
+        @RequestParam("from_block")
+        @Min(1)
+        fromBlockHeight: Long,
+        @RequestParam("to_block")
+        @Min(1)
+        toBlockHeight: Long,
     ): SettlementReportResponse {
         require(fromBlockHeight < toBlockHeight) { "To block must be after from block" }
         transaction {

@@ -14,7 +14,7 @@ class TransferRequestTest {
             uuid = UUID.randomUUID(),
             blockchainAddress = "tp1a9xvl9gfljsdnanmn9rj38e2mcselp3r8q0qvg",
             bankAccountUuid = null,
-            amount = BigDecimal.ONE
+            amount = BigDecimal.ONE,
         )
 
         assertTrue(request.hasValidAddress(), "Invalid address:${request.blockchainAddress}")
@@ -26,7 +26,7 @@ class TransferRequestTest {
             uuid = UUID.randomUUID(),
             blockchainAddress = null,
             bankAccountUuid = UUID.randomUUID(),
-            amount = BigDecimal.ONE
+            amount = BigDecimal.ONE,
         )
 
         assertTrue(request.hasValidAddress(), "Invalid address:${request.blockchainAddress}")
@@ -38,7 +38,7 @@ class TransferRequestTest {
             uuid = UUID.randomUUID(),
             blockchainAddress = "tp1gj4j5evfx0xpcs0rke6ydty0hwr4v4dss2vpac",
             bankAccountUuid = null,
-            amount = BigDecimal.ONE
+            amount = BigDecimal.ONE,
         )
 
         assertFalse(request.hasValidAddress(), "Valid address:${request.blockchainAddress}")

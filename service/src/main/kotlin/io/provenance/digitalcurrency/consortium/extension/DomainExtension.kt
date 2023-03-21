@@ -33,7 +33,7 @@ fun CoinMintRecord.mdc() = listOf(
     "uuid" to id.value,
     "type" to "Mint/Swap",
     "status" to status,
-    "coinAmount" to coinAmount
+    "coinAmount" to coinAmount,
 ).toTypedArray()
 
 fun MarkerTransferRecord.mdc() = listOf(
@@ -42,42 +42,42 @@ fun MarkerTransferRecord.mdc() = listOf(
     "status" to status,
     "coinAmount" to coinAmount,
     "denom" to denom,
-    "from" to fromAddress
+    "from" to fromAddress,
 ).toTypedArray()
 
 fun CoinBurnRecord.mdc() = listOf(
     "uuid" to id.value,
     "type" to "Burn",
     "status" to status,
-    "coinAmount" to coinAmount
+    "coinAmount" to coinAmount,
 ).toTypedArray()
 
 fun CoinMintRecord.getExecuteContractMessage() =
     ExecuteRequest(
         mint = MintRequest(
             amount = coinAmount.toString(),
-            address = address
-        )
+            address = address,
+        ),
     )
 
 fun CoinBurnRecord.getExecuteContractMessage() =
     ExecuteRequest(
         burn = AmountRequest(
             amount = coinAmount.toString(),
-        )
+        ),
     )
 
 fun CoinTransferRecord.getExecuteContractMessage() =
     ExecuteRequest(
         transfer = TransferRequest(
             recipient = address,
-            amount = coinAmount.toString()
-        )
+            amount = coinAmount.toString(),
+        ),
     )
 
 fun AddressRegistrationRecord.getAddAttributeMessage(
     managerAddress: String,
-    tag: String
+    tag: String,
 ) = MsgAddAttributeRequest.newBuilder()
     .setOwner(managerAddress)
     .setAccount(address)
@@ -88,7 +88,7 @@ fun AddressRegistrationRecord.getAddAttributeMessage(
 
 fun AddressDeregistrationRecord.getDeleteAttributeMessage(
     managerAddress: String,
-    tag: String
+    tag: String,
 ) = MsgDeleteAttributeRequest.newBuilder()
     .setOwner(managerAddress)
     .setAccount(addressRegistration.address)

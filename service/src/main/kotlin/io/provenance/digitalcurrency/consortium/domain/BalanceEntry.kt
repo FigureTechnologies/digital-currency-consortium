@@ -24,7 +24,7 @@ open class BalanceEntryEntity : UUIDEntityClass<BalanceEntryRecord>(BalanceEntry
         address: String,
         denom: String,
         amount: String,
-        created: OffsetDateTime = OffsetDateTime.now()
+        created: OffsetDateTime = OffsetDateTime.now(),
     ) = new {
         this.report = report
         this.address = address

@@ -8,5 +8,5 @@ fun SettlementReportRecord.toSettlementReportResponse() =
         uuid = id.value,
         fromBlockHeight = fromBlockHeight,
         toBlockHeight = toBlockHeight,
-        created = created
+        created = created,
     )

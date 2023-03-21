@@ -45,13 +45,13 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         val balanceReportProperties = BalanceReportProperties(
             pageSize = 1,
             pollingDelayMs = 1000,
-            addressesWhitelist = ""
+            addressesWhitelist = "",
         )
         val balanceReportQueue = BalanceReportQueue(
             balanceReportProperties = balanceReportProperties,
             serviceProperties = serviceProperties,
             coroutineProperties = coroutineProperties,
-            pbcService = pbcServiceMock
+            pbcService = pbcServiceMock,
         )
 
         val balanceReport: BalanceReportRecord = transaction {
@@ -59,7 +59,7 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         }
 
         balanceReportQueue.processMessage(
-            BalanceReportDirective(balanceReport.id.value)
+            BalanceReportDirective(balanceReport.id.value),
         )
 
         verify(pbcServiceMock, never()).getCoinBalance(any(), any())
@@ -76,13 +76,13 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         val balanceReportProperties = BalanceReportProperties(
             pageSize = 1,
             pollingDelayMs = 1000,
-            addressesWhitelist = TEST_ADDRESS
+            addressesWhitelist = TEST_ADDRESS,
         )
         val balanceReportQueue = BalanceReportQueue(
             balanceReportProperties = balanceReportProperties,
             serviceProperties = serviceProperties,
             coroutineProperties = coroutineProperties,
-            pbcService = pbcServiceMock
+            pbcService = pbcServiceMock,
         )
 
         val balanceReport: BalanceReportRecord = transaction {
@@ -90,7 +90,7 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         }
 
         balanceReportQueue.processMessage(
-            BalanceReportDirective(balanceReport.id.value)
+            BalanceReportDirective(balanceReport.id.value),
         )
 
         transaction {
@@ -98,7 +98,7 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
                 BalanceEntryRecord.find {
                     (BalanceEntryTable.report eq balanceReport.id) and (BalanceEntryTable.address eq TEST_ADDRESS)
                 }.count(),
-                1
+                1,
             )
         }
     }
@@ -109,24 +109,24 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         val balanceReportProperties = BalanceReportProperties(
             pageSize = 1,
             pollingDelayMs = 1000,
-            addressesWhitelist = TEST_ADDRESS
+            addressesWhitelist = TEST_ADDRESS,
         )
         val balanceReportQueue = BalanceReportQueue(
             balanceReportProperties = balanceReportProperties,
             serviceProperties = serviceProperties,
             coroutineProperties = coroutineProperties,
-            pbcService = pbcServiceMock
+            pbcService = pbcServiceMock,
         )
 
         transaction {
             AddressRegistrationRecord.insert(
                 bankAccountUuid = UUID.randomUUID(),
-                address = "dummyAddress1"
+                address = "dummyAddress1",
             )
 
             AddressRegistrationRecord.insert(
                 bankAccountUuid = UUID.randomUUID(),
-                address = "dummyAddress2"
+                address = "dummyAddress2",
             )
         }
 
@@ -135,7 +135,7 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
         }
 
         balanceReportQueue.processMessage(
-            BalanceReportDirective(balanceReport.id.value)
+            BalanceReportDirective(balanceReport.id.value),
         )
 
         verify(pbcServiceMock, times(3)).getCoinBalance(any(), any())
@@ -145,28 +145,28 @@ class BalanceReportQueueTest : BaseIntegrationTest() {
                 BalanceEntryRecord.find {
                     (BalanceEntryTable.report eq balanceReport.id) and (BalanceEntryTable.address eq TEST_ADDRESS)
                 }.count(),
-                1
+                1,
             )
 
             Assertions.assertEquals(
                 BalanceEntryRecord.find {
                     (BalanceEntryTable.report eq balanceReport.id) and (BalanceEntryTable.address eq "dummyAddress1")
                 }.count(),
-                1
+                1,
             )
 
             Assertions.assertEquals(
                 BalanceEntryRecord.find {
                     (BalanceEntryTable.report eq balanceReport.id) and (BalanceEntryTable.address eq "dummyAddress2")
                 }.count(),
-                1
+                1,
             )
 
             Assertions.assertEquals(
                 BalanceEntryRecord.find {
                     (BalanceEntryTable.report eq balanceReport.id)
                 }.count(),
-                3
+                3,
             )
         }
     }

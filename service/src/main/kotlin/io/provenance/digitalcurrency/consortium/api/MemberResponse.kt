@@ -11,34 +11,34 @@ import java.time.OffsetDateTime
  * @param name A member bank name.
  * @param joined Timestamp member bank joined consortium.
  * @param weight A member bank's weight for member voting.
- * @param kycAttributes KYC attributes attributed to this membber.
+ * @param kycAttributes KYC attributes attributed to this member.
  */
 @ApiModel(
     value = "MemberResponse",
-    description = "Response for member bank details."
+    description = "Response for member bank details.",
 )
 data class MemberResponse(
     @ApiModelProperty(
         value = "A member bank address and identifier.",
-        required = true
+        required = true,
     )
     val id: String,
 
     @ApiModelProperty(
         value = "A member bank name.",
-        required = true
+        required = true,
     )
     val name: String,
 
     @ApiModelProperty(
         value = "Timestamp member bank joined consortium.",
-        required = true
+        required = true,
     )
     val joined: OffsetDateTime,
 
     @ApiModelProperty(
         value = "A member bank's KYC attributes.",
-        required = true
+        required = true,
     )
-    val kycAttributes: List<String>
+    val kycAttributes: List<String>,
 )

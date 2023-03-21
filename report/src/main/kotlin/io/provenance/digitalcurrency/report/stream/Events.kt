@@ -66,7 +66,7 @@ data class Transfer(
     val toMemberId: String,
     val height: Long,
     val dateTime: OffsetDateTime?,
-    val txHash: String
+    val txHash: String,
 )
 
 private fun TxEvent.toTransfer(): Transfer =
@@ -79,5 +79,5 @@ private fun TxEvent.toTransfer(): Transfer =
         toMemberId = getAttribute(ATTRIBUTE_TO_MEMBER),
         height = blockHeight,
         dateTime = blockDateTime,
-        txHash = txHash
+        txHash = txHash,
     )

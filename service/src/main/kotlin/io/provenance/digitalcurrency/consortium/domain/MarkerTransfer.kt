@@ -22,7 +22,7 @@ open class MarkerTransferEntityClass : BaseCoinRequestEntityClass<MTT, MarkerTra
         toAddress: String,
         height: Long,
         txHash: String,
-        txStatus: TxStatus
+        txStatus: TxStatus,
     ) =
         super.insert(UUID.randomUUID(), amount.toBigInteger().toUSDAmount()).also {
             it.fromAddress = fromAddress

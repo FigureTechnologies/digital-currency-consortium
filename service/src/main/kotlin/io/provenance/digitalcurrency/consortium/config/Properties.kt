@@ -31,7 +31,7 @@ class ServiceProperties(
     val environment: String,
     val managerKey: String,
     val managerKeyHarden: Boolean,
-    val dccDenom: String
+    val dccDenom: String,
 )
 
 @ConstructorBinding

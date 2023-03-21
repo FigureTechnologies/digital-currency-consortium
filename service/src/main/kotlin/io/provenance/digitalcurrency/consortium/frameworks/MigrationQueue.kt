@@ -12,18 +12,18 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 class MigrationDirective(
-    override val id: UUID
+    override val id: UUID,
 ) : Directive()
 
 class MigrationOutcome(
-    override val id: UUID
+    override val id: UUID,
 ) : Outcome()
 
 @Component
 @NotTest
 class MigrationQueue(
     coroutineProperties: CoroutineProperties,
-    private val bankClient: BankClient
+    private val bankClient: BankClient,
 ) : ActorModel<MigrationDirective, MigrationOutcome> {
 
     private val log = logger()
