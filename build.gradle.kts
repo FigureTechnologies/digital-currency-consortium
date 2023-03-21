@@ -197,7 +197,7 @@ subprojects {
         group = "verification"
         description = "Check Kotlin code style."
         classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
+        mainClass.set("com.pinterest.ktlint.Main")
         args("src/**/*.kt")
         // to generate report in checkstyle format prepend following args:
         // "--reporter=plain", "--reporter=checkstyle,output=${buildDir}/ktlint.xml"
@@ -212,7 +212,7 @@ subprojects {
         group = "formatting"
         description = "Fix Kotlin code style deviations."
         classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
+        mainClass.set("com.pinterest.ktlint.Main")
         args("-F", "src/**/*.kt")
     }
 }
