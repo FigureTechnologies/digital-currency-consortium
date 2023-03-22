@@ -6,17 +6,10 @@ dependencies {
 
         it(Libraries.FeignCore)
         it(Libraries.FeignJackson)
-        it(Libraries.FeignSlf4j)
 
         it(Libraries.PbcProto)
         it(Libraries.PbcClient)
         it(Libraries.PbcHDWallet)
-
-        // websocket
-//        it(Libraries.Scarlet)
-//        it(Libraries.ScarletStreamAdapter)
-//        it(Libraries.ScarletWebsocket)
-//        it(Libraries.ScarletMessageAdapter)
     }
 }
 

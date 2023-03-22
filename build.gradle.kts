@@ -138,13 +138,12 @@ subprojects {
 
                 // ----- Database -----
                 it(Libraries.Postgres)
+                it(Libraries.Hikari)
 
                 // ----- Event Stream -----
                 it(Libraries.EventStreamCore)
                 it(Libraries.EventStreamApiModel)
                 it(Libraries.Moshi)
-//                it(Libraries.MoshiKotlin)
-//                it(Libraries.OkHttp)
 
                 // ----- Misc -----
                 it(Libraries.Swagger2)
@@ -177,7 +176,7 @@ subprojects {
             exclude(group = "log4j")
             resolutionStrategy.eachDependency {
                 if (requested.group == "org.apache.logging.log4j") {
-                    useVersion("2.17.0")
+                    useVersion(Versions.Log4J)
                     because("CVE-2021-44228")
                 }
             }

@@ -34,10 +34,12 @@ object Versions {
     const val Exposed = "0.41.1"
     const val Feign = "12.2"
     const val Flyway = PluginVersions.Flyway
+    const val HikariCP = "5.0.1"
     const val Jackson = "2.12.7"
     const val JacksonHubspot = "0.9.13"
     const val JavaxValidation = "2.0.1.Final"
     const val Logback = "0.1.5"
+    const val Log4J = "2.20.0"
     const val Moshi = "1.14.0"
     const val Postgres = "42.6.0"
     const val Swagger = "3.0.0"
@@ -49,7 +51,7 @@ object Versions {
     const val JunitCommons = "1.9.2"
     const val Mockito = "4.1.0"
     const val Mockk = "1.13.4"
-    const val TestContainers = "1.17.6"
+    const val TestContainers = "1.16.2"
 
     const val KtLint = "0.48.2"
 }
@@ -74,13 +76,13 @@ object Libraries {
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
-    const val FeignSlf4j = "io.github.openfeign:feign-slf4j:${Versions.Feign}"
     const val Jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
     const val JacksonHubspot = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonHubspot}"
 
     const val CommonsCsv = "org.apache.commons:commons-csv:${Versions.CommonsCsv}"
 
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
+    const val Hikari = "com.zaxxer:HikariCP:${Versions.HikariCP}"
 
     const val Moshi = "com.squareup.moshi:moshi:${Versions.Moshi}"
 
