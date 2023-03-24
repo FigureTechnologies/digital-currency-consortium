@@ -159,3 +159,9 @@ database/bin
 dataSources
 
 docker/temp.env
+
+######################
+# Wasm
+######################
+*.wasm
+checksums.txt

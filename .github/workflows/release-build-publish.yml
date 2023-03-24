@@ -145,11 +145,10 @@ jobs:
 
   wasm_build:
     name: Build and Release Wasm
-    # needs: docker_build
 
     runs-on: ubuntu-latest
 
-    # if: github.event_name == 'release'
+    if: github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v2
@@ -176,5 +175,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: "smart-contract/artifacts/*.wasm;smart-contract/artifacts/checksums-dcc.txt;smart-contract-sale/artifacts/*wasm;smart-contract-sale/artifacts/checksums-dcc_sale.txt"
-          verbose: true
-          draft: true
