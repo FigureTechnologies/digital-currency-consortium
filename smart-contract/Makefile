@@ -1,3 +1,9 @@
+UNAME_M = $(shell uname -m)
+ARCH = ''
+ifeq ($(UNAME_M),arm64)
+	ARCH='-arm64'
+endif
+
 .PHONY: all
 all: fmt build test lint schema
 
@@ -34,4 +40,4 @@ optimize:
 	@docker run --rm -v $(CURDIR):/code \
 		--mount type=volume,source=dcc_cache,target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-		cosmwasm/rust-optimizer:0.12.6
+		cosmwasm/rust-optimizer$(ARCH):0.12.6

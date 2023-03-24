@@ -94,7 +94,7 @@ jobs:
           echo ::set-output name=report_tags::${REPORT_TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Build
         id: buildx
         uses: docker/setup-buildx-action@v2
         with:
@@ -142,3 +142,39 @@ jobs:
           context: .
           push: true
           tags: figuretechnologies/digital-currency-consortium-database:latest
+
+  wasm_build:
+    name: Build and Release Wasm
+    # needs: docker_build
+
+    runs-on: ubuntu-latest
+
+    # if: github.event_name == 'release'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Optimize smart contract
+        working-directory: ./smart-contract
+        run: make optimize
+
+      - name: Rename smart contract checksum
+        working-directory: ./smart-contract/artifacts
+        run: mv checksums.txt checksums-dcc.txt
+
+      - name: Optimize smart contract sale
+        working-directory: ./smart-contract-sale
+        run: make optimize
+
+      - name: Rename smart contract sale checksum
+        working-directory: ./smart-contract-sale/artifacts
+        run: mv checksums.txt checksums-dcc_sale.txt
+
+      - name: Release smart contracts
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "smart-contract/artifacts/*.wasm;smart-contract/artifacts/checksums-dcc.txt;smart-contract-sale/artifacts/*wasm;smart-contract-sale/artifacts/checksums-dcc_sale.txt"
+          verbose: true
+          draft: true
