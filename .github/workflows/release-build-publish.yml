@@ -5,6 +5,8 @@ on:
     types:
       - created
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -167,8 +169,8 @@ jobs:
           ls -al smart-contract/artifacts
           ls -al smart-contract-sale/artifacts
           # TODO end removal block
-          mv smart-contract/artifacts/checksums{,-dcc}.txt
-          mv smart-contract-sale/artifacts/checksums{,-dcc_sale}.txt
+          sudo mv smart-contract/artifacts/checksums{,-dcc}.txt
+          sudo mv smart-contract-sale/artifacts/checksums{,-dcc_sale}.txt
 
       - name: Release smart contracts
         uses: xresloader/upload-to-github-release@v1
