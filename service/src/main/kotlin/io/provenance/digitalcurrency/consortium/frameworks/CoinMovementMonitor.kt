@@ -83,5 +83,5 @@ fun List<CoinMovementRecord>.toOutput() = CoinMovementRequest(
             denom = coinMovement.denom,
             transactionType = coinMovement.type,
         )
-    }
+    },
 )

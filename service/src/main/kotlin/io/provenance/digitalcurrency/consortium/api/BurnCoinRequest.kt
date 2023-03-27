@@ -16,23 +16,24 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "BurnCoinRequest",
-    description = "Request to the middleware to burn dcc token. Must have sufficient dcc coin at bank address."
+    description = "Request to the middleware to burn dcc token. Must have sufficient dcc coin at bank address.",
 )
 data class BurnCoinRequest(
 
     @ApiModelProperty(
         value = "A unique uuid for this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val uuid: UUID,
+    @get:NotNull
+    val uuid: UUID,
 
     @ApiModelProperty(
         value = "The amount of fiat in USD to burn.",
         required = true,
-        allowableValues = "Greater than 0"
+        allowableValues = "Greater than 0",
     )
     @get:NotNull
     @get:DecimalMin("0")
     @get:Digits(integer = 12, fraction = 2)
-    val amount: BigDecimal
+    val amount: BigDecimal,
 )

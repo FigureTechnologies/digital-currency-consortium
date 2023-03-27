@@ -93,8 +93,9 @@ class HikariDataSourceBuilder {
         config.jdbcUrl = "${this.prefix}:postgresql://${this.hostname}:${this.port}/${this.name}?prepareThreshold=0"
         config.username = this.username
         config.password = this.password
-        if (this.schema != null)
+        if (this.schema != null) {
             config.schema = this.schema
+        }
         this.properties.forEach { config.addDataSourceProperty(it.key, it.value) }
         connectionPoolSize?.run {
             val minimumIdle = this.div(2)

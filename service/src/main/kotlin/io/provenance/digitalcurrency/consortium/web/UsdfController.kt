@@ -25,19 +25,20 @@ import javax.validation.Valid
     tags = ["USDF API"],
     description = "Endpoints for the bank middleware to call to execute USDF-based actions.",
     produces = MediaType.TEXT_PLAIN_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE
+    consumes = MediaType.APPLICATION_JSON_VALUE,
 )
 class UsdfController(private val bankService: BankService) {
 
     @PostMapping(MINT_V1)
     @ApiOperation(
         value = "Mint coin to a registered address",
-        notes = "Request that the middleware mint coin corresponding to a fiat deposit from a customer."
+        notes = "Request that the middleware mint coin corresponding to a fiat deposit from a customer.",
     )
     fun mintCoin(
         @Valid
         @ApiParam(value = "MintCoinRequest")
-        @RequestBody request: MintCoinRequest
+        @RequestBody
+        request: MintCoinRequest,
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, amount) = request
         bankService.mintCoin(uuid, bankAccountUuid, amount)
@@ -47,12 +48,13 @@ class UsdfController(private val bankService: BankService) {
     @PostMapping(BURN_V1)
     @ApiOperation(
         value = "Burn dcc token",
-        notes = "Request that the middleware burn dcc token held at member address."
+        notes = "Request that the middleware burn dcc token held at member address.",
     )
     fun burnCoin(
         @Valid
         @ApiParam(value = "BurnCoinRequest")
-        @RequestBody request: BurnCoinRequest
+        @RequestBody
+        request: BurnCoinRequest,
     ): ResponseEntity<UUID> {
         val (uuid, amount) = request
         bankService.burnCoin(uuid, amount)
@@ -63,7 +65,8 @@ class UsdfController(private val bankService: BankService) {
     fun transfer(
         @Valid
         @ApiParam(value = "TransferRequest")
-        @RequestBody request: TransferRequest
+        @RequestBody
+        request: TransferRequest,
     ): ResponseEntity<UUID> {
         val (uuid, bankAccountUuid, blockchainAddress, amount) = request
         bankService.transferCoin(uuid, bankAccountUuid, blockchainAddress, amount)

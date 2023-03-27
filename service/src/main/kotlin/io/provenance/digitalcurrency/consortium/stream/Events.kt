@@ -130,7 +130,7 @@ private fun TxEvent.toMint(): Mint =
         memberId = getAttribute(ATTRIBUTE_MEMBER_ID),
         height = blockHeight,
         dateTime = blockDateTime,
-        txHash = txHash
+        txHash = txHash,
     )
 
 fun TxEvents.burns(contractAddress: String): Burns =
@@ -151,7 +151,7 @@ data class Burn(
     val memberId: String,
     val height: Long,
     val dateTime: OffsetDateTime?,
-    val txHash: String
+    val txHash: String,
 )
 
 private fun TxEvent.toBurn(): Burn =
@@ -185,7 +185,7 @@ data class Transfer(
     val toMemberId: String,
     val height: Long,
     val dateTime: OffsetDateTime?,
-    val txHash: String
+    val txHash: String,
 )
 
 private fun TxEvent.toTransfer(): Transfer =
@@ -198,7 +198,7 @@ private fun TxEvent.toTransfer(): Transfer =
         toMemberId = getAttribute(ATTRIBUTE_TO_MEMBER),
         height = blockHeight,
         dateTime = blockDateTime,
-        txHash = txHash
+        txHash = txHash,
     )
 
 fun TxEvents.migrations(contractAddress: String): Migrations =
@@ -215,7 +215,7 @@ data class Migration(
     val codeId: String,
     val height: Long,
     val dateTime: OffsetDateTime?,
-    val txHash: String
+    val txHash: String,
 )
 
 private fun TxEvent.toMigration(): Migration =
@@ -223,5 +223,5 @@ private fun TxEvent.toMigration(): Migration =
         codeId = getAttribute(ATTRIBUTE_CODE_ID),
         height = blockHeight,
         dateTime = blockDateTime,
-        txHash = txHash
+        txHash = txHash,
     )

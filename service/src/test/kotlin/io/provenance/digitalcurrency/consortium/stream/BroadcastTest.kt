@@ -26,14 +26,14 @@ class BroadcastTest {
     private val user3Signer = fromMnemonic(
         prefix = NetworkType.TESTNET.prefix,
         path = NetworkType.TESTNET.path,
-        mnemonic = "oyster borrow survey cake puzzle trash train isolate spy this average bacon spare health toast girl regular muffin calm rain forget throw exit ring"
+        mnemonic = "oyster borrow survey cake puzzle trash train isolate spy this average bacon spare health toast girl regular muffin calm rain forget throw exit ring",
     )
 
     private val mapper = ObjectMapper()
     private val grpcClient = PbClient(
         chainId = "chain-local",
         channelUri = URI("http://localhost:9090"),
-        gasEstimationMethod = MSG_FEE_CALCULATION
+        gasEstimationMethod = MSG_FEE_CALCULATION,
     )
 
     @Test
@@ -44,21 +44,21 @@ class BroadcastTest {
                 ExecuteRequest(
                     transfer = TransferRequest(
                         amount = "350",
-                        recipient = bank3Address
-                    )
+                        recipient = bank3Address,
+                    ),
                 ),
                 ExecuteRequest(
                     transfer = TransferRequest(
                         amount = "100",
-                        recipient = user1Address
-                    )
+                        recipient = user1Address,
+                    ),
                 ),
                 ExecuteRequest(
                     transfer = TransferRequest(
                         amount = "500",
-                        recipient = bank3Address
-                    )
-                )
+                        recipient = bank3Address,
+                    ),
+                ),
             )
                 .map { message ->
                     MsgExecuteContract.newBuilder()

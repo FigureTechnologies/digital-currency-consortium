@@ -9,7 +9,7 @@ import java.util.TimeZone
 
 @SpringBootApplication(
     scanBasePackages = ["io.provenance.digitalcurrency.report"],
-    exclude = [SecurityAutoConfiguration::class, ManagementWebSecurityAutoConfiguration::class]
+    exclude = [SecurityAutoConfiguration::class, ManagementWebSecurityAutoConfiguration::class],
 )
 @EnableScheduling
 class Application

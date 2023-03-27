@@ -22,37 +22,38 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "TransferRequest",
-    description = "Request to the middleware to transfer "
+    description = "Request to the middleware to transfer ",
 )
 data class TransferRequest(
 
     @ApiModelProperty(
         value = "A unique uuid for this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val uuid: UUID,
+    @get:NotNull
+    val uuid: UUID,
 
     @ApiModelProperty(
         value = "The uuid of the bank account that the bank passed to the middleware during the address registration to transfer to.",
-        required = false
+        required = false,
     )
     val bankAccountUuid: UUID?,
 
     @ApiModelProperty(
         value = "The blockchain address to transfer to.",
-        required = false
+        required = false,
     )
     val blockchainAddress: String?,
 
     @ApiModelProperty(
         value = "The amount of fiat in USD to transfer to.",
         required = true,
-        allowableValues = "Greater than 0"
+        allowableValues = "Greater than 0",
     )
     @get:NotNull
     @get:DecimalMin("0")
     @get:Digits(integer = 12, fraction = 2)
-    val amount: BigDecimal
+    val amount: BigDecimal,
 ) {
 
     @JsonIgnore

@@ -13,7 +13,6 @@ import io.provenance.digitalcurrency.consortium.domain.TxStatus.ERROR
 import io.provenance.digitalcurrency.consortium.domain.TxStatus.TXN_COMPLETE
 import io.provenance.digitalcurrency.consortium.extension.toUSDAmount
 import io.provenance.digitalcurrency.consortium.randomTxHash
-import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -30,9 +29,6 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
     lateinit var bankClientMock: BankClient
 
     @Autowired
-    lateinit var pbcServiceMock: PbcService
-
-    @Autowired
     private lateinit var coroutineProperties: CoroutineProperties
 
     @Autowired
@@ -43,12 +39,10 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
     @BeforeEach
     fun beforeAll() {
         reset(bankClientMock)
-        reset(pbcServiceMock)
 
         markerTransferQueue = MarkerTransferQueue(
             bankClient = bankClientMock,
-            pbcService = pbcServiceMock,
-            coroutineProperties = coroutineProperties
+            coroutineProperties = coroutineProperties,
         )
     }
 
@@ -61,7 +55,7 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
             fromAddress = TEST_ADDRESS,
             toAddress = TEST_MEMBER_ADDRESS,
             status = TXN_COMPLETE,
-            denom = serviceProperties.dccDenom
+            denom = serviceProperties.dccDenom,
         ).id.value
 
         markerTransferQueue.processMessage(MarkerTransferDirective(uuid))
@@ -70,8 +64,8 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
             DepositFiatRequest(
                 uuid = uuid,
                 bankAccountUUID = bankAccountUuid,
-                amount = DEFAULT_AMOUNT.toUSDAmount()
-            )
+                amount = DEFAULT_AMOUNT.toUSDAmount(),
+            ),
         )
     }
 
@@ -82,7 +76,7 @@ class MarkerTransferQueueTest : BaseIntegrationTest() {
             fromAddress = "somebadfromaddress",
             toAddress = TEST_MEMBER_ADDRESS,
             status = TXN_COMPLETE,
-            denom = serviceProperties.dccDenom
+            denom = serviceProperties.dccDenom,
         ).id.value
 
         markerTransferQueue.processMessage(MarkerTransferDirective(uuid))

@@ -17,28 +17,30 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "DepositFiatRequest",
-    description = "Request that the bank send fiat to the registered bank account"
+    description = "Request that the bank send fiat to the registered bank account",
 )
 data class DepositFiatRequest(
     @ApiModelProperty(
         value = "A unique uuid for this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val uuid: UUID,
+    @get:NotNull
+    val uuid: UUID,
 
     @ApiModelProperty(
         value = "The uuid of the bank account that the bank passed to the middleware during the address registration.",
-        required = true
+        required = true,
     )
-    @get:NotNull val bankAccountUUID: UUID,
+    @get:NotNull
+    val bankAccountUUID: UUID,
 
     @ApiModelProperty(
         value = "The amount of fiat in USD to send to the customer.",
         required = true,
-        allowableValues = "Greater than 0"
+        allowableValues = "Greater than 0",
     )
     @get:NotNull
     @get:DecimalMin("0")
     @get:Digits(integer = 12, fraction = 2)
-    val amount: BigDecimal
+    val amount: BigDecimal,
 )

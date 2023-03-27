@@ -39,7 +39,7 @@ class RegisterAddressRequestTest {
         validAddresses.forEach { address ->
             val request = RegisterAddressRequest(
                 bankAccountUuid = UUID.randomUUID(),
-                blockchainAddress = address
+                blockchainAddress = address,
             )
 
             assertTrue(request.hasValidAddress(), "Invalid address:$address")
@@ -50,7 +50,7 @@ class RegisterAddressRequestTest {
         "tp1gj4j5evfx0xpcs0rke6ydty0hwr4v4dss2vpac",
         "tp1mk0ftdt2a0ds7zaw09aajf33cp07r35p2f39ha",
         "tp1gj4j5evfx0xpcs0rke6ydty0hwr4v4dss2vpab",
-        "pb1fed5ymhr8nwaf54x6envudl9lug73uw8jyqayt"
+        "pb1fed5ymhr8nwaf54x6envudl9lug73uw8jyqayt",
     )
 
     @Test
@@ -58,7 +58,7 @@ class RegisterAddressRequestTest {
         invalidAddresses.forEach { address ->
             val request = RegisterAddressRequest(
                 bankAccountUuid = UUID.randomUUID(),
-                blockchainAddress = address
+                blockchainAddress = address,
             )
 
             assertFalse(request.hasValidAddress(), "Valid address:$address")

@@ -10,25 +10,23 @@ import io.provenance.digitalcurrency.consortium.domain.AddressRegistrationRecord
 import io.provenance.digitalcurrency.consortium.domain.MarkerTransferRecord
 import io.provenance.digitalcurrency.consortium.domain.TxStatus
 import io.provenance.digitalcurrency.consortium.extension.mdc
-import io.provenance.digitalcurrency.consortium.service.PbcService
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import java.util.UUID
 
 class MarkerTransferDirective(
-    override val id: UUID
+    override val id: UUID,
 ) : Directive()
 
 class MarkerTransferOutcome(
-    override val id: UUID
+    override val id: UUID,
 ) : Outcome()
 
 @Component
 @NotTest
 class MarkerTransferQueue(
     private val bankClient: BankClient,
-    private val pbcService: PbcService,
     coroutineProperties: CoroutineProperties,
 ) :
     ActorModel<MarkerTransferDirective, MarkerTransferOutcome> {
@@ -61,8 +59,8 @@ class MarkerTransferQueue(
                                     DepositFiatRequest(
                                         uuid = transfer.id.value,
                                         bankAccountUUID = registration.bankAccountUuid,
-                                        amount = transfer.fiatAmount
-                                    )
+                                        amount = transfer.fiatAmount,
+                                    ),
                                 )
                             }
                         }

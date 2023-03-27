@@ -43,7 +43,7 @@ class DataConfig {
                     databaseProperties.hostname,
                     databaseProperties.port,
                     databaseProperties.name,
-                    databaseProperties.schema
+                    databaseProperties.schema,
                 )
             }
 }

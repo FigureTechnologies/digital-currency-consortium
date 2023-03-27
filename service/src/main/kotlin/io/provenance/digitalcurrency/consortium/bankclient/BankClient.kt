@@ -40,7 +40,7 @@ interface BankClient {
     class Builder(
         private val url: String,
         private val context: String,
-        private val objectMapper: ObjectMapper
+        private val objectMapper: ObjectMapper,
     ) {
         fun build(): BankClient = Feign.builder()
             .encoder(JacksonEncoder(objectMapper))

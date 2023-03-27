@@ -29,8 +29,10 @@ class AddressRegistrationTest : BaseIntegrationTest() {
         repeat(3) {
             transaction {
                 val registration = insertRegisteredAddress(
-                    UUID.randomUUID(), TEST_ADDRESS,
-                    TxStatus.TXN_COMPLETE, randomTxHash()
+                    UUID.randomUUID(),
+                    TEST_ADDRESS,
+                    TxStatus.TXN_COMPLETE,
+                    randomTxHash(),
                 )
                 registration.deleted = insertDeregisteredAddress(registration).created
             }

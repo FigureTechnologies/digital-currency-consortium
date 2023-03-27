@@ -20,7 +20,7 @@ private const val AVG_BLOCK_CUT_TIME = 7
 class ExpiredEventReaper(
     private val pbcService: PbcService,
     private val txRequestService: TxRequestService,
-    provenanceProperties: ProvenanceProperties
+    provenanceProperties: ProvenanceProperties,
 ) {
 
     private val expiredSecondsTimeout = provenanceProperties.blocksBeforeTimeout.toLong() * AVG_BLOCK_CUT_TIME
@@ -28,7 +28,7 @@ class ExpiredEventReaper(
 
     @Scheduled(
         initialDelayString = "\${event_stream.expiration.initial_delay.ms}",
-        fixedDelayString = "\${event_stream.expiration.delay.ms}"
+        fixedDelayString = "\${event_stream.expiration.delay.ms}",
     )
     fun pollExpiredTransactions() {
         transaction { TxRequestViewRecord.findExpired(expiredSecondsTimeout).groupBy { it.txHash } }.forEach { (txHash, uuids) ->

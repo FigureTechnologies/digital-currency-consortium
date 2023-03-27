@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 class BalanceReportDirective(
-    override val id: UUID
+    override val id: UUID,
 ) : Directive()
 
 class BalanceReportOutcome(
-    override val id: UUID
+    override val id: UUID,
 ) : Outcome()
 
 @Component
@@ -52,8 +52,9 @@ class BalanceReportQueue(
     override fun processMessage(message: BalanceReportDirective): BalanceReportOutcome {
         transaction {
             val balanceReport = BalanceReportRecord.findForUpdate(message.id).first()
-            if (balanceReport.completed != null)
+            if (balanceReport.completed != null) {
                 return@transaction // already processed
+            }
 
             // TODO - paginate addresses query
             val addresses = AddressRegistrationRecord.all().map { it.address }
@@ -64,7 +65,7 @@ class BalanceReportQueue(
                     address = address,
                     denom = denom,
                     // TODO - retryable?
-                    amount = pbcService.getCoinBalance(address, serviceProperties.dccDenom)
+                    amount = pbcService.getCoinBalance(address, serviceProperties.dccDenom),
                 )
             }
 

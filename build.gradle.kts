@@ -138,13 +138,12 @@ subprojects {
 
                 // ----- Database -----
                 it(Libraries.Postgres)
+                it(Libraries.Hikari)
 
                 // ----- Event Stream -----
                 it(Libraries.EventStreamCore)
                 it(Libraries.EventStreamApiModel)
                 it(Libraries.Moshi)
-                it(Libraries.MoshiKotlin)
-                it(Libraries.OkHttp)
 
                 // ----- Misc -----
                 it(Libraries.Swagger2)
@@ -177,7 +176,7 @@ subprojects {
             exclude(group = "log4j")
             resolutionStrategy.eachDependency {
                 if (requested.group == "org.apache.logging.log4j") {
-                    useVersion("2.17.0")
+                    useVersion(Versions.Log4J)
                     because("CVE-2021-44228")
                 }
             }
@@ -197,7 +196,7 @@ subprojects {
         group = "verification"
         description = "Check Kotlin code style."
         classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
+        mainClass.set("com.pinterest.ktlint.Main")
         args("src/**/*.kt")
         // to generate report in checkstyle format prepend following args:
         // "--reporter=plain", "--reporter=checkstyle,output=${buildDir}/ktlint.xml"
@@ -212,7 +211,7 @@ subprojects {
         group = "formatting"
         description = "Fix Kotlin code style deviations."
         classpath = ktlint
-        main = "com.pinterest.ktlint.Main"
+        mainClass.set("com.pinterest.ktlint.Main")
         args("-F", "src/**/*.kt")
     }
 }

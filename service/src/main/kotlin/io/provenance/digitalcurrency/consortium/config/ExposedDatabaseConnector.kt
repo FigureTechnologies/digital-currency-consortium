@@ -13,7 +13,7 @@ import javax.sql.DataSource
 @Component
 class ExposedDatabaseConnector(
     private val dataSource: DataSource,
-    private val applicationEventPublisher: ApplicationEventPublisher
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     private val log = logger()
 

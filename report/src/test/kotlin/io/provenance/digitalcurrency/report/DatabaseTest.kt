@@ -29,7 +29,7 @@ abstract class DatabaseTest {
         toAddress: String = "to-address",
         toMemberId: String = "bank2",
         blockHeight: Long = 1,
-        amount: Long
+        amount: Long,
     ) = CoinMovementRecord.insert(
         txHash = randomTxHash(),
         fromAddress = fromAddress,
@@ -38,6 +38,6 @@ abstract class DatabaseTest {
         toMemberId = toMemberId,
         blockHeight = blockHeight,
         blockTime = OffsetDateTime.now(),
-        amount = amount
+        amount = amount,
     )
 }

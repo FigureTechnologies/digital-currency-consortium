@@ -13,48 +13,47 @@ object PluginIds {
 }
 
 object PluginVersions {
-    const val Kotlin = "1.6.21"
-    const val DependencyAnalysis = "1.2.1"
+    const val Kotlin = "1.8.10"
+    const val DependencyAnalysis = "1.19.0"
     const val Flyway = "7.15.0"
-    const val SpringBoot = "2.5.13"
+    // TODO - upgrading spring boot requires switching from swagger2 to open api deps
+    const val SpringBoot = "2.5.7"
 }
 
 object Versions {
     const val Kotlin = PluginVersions.Kotlin
 
-    const val Jacoco = "0.8.7"
+    const val Jacoco = "0.8.8"
 
-    // upgrading this to 0.1.12 causes moshi/reflect errors that I did not try to resolve
-    const val ScarletForEventStream = "0.1.11"
     const val PbcProto = "1.8.0"
-    const val PbcClient = "1.0.5"
+    const val PbcClient = "1.3.0"
     const val PbcHDWallet = "0.1.15"
-    const val EventStream = "0.8.0"
+    const val EventStream = "0.8.1"
 
-    const val CommonsCsv = "1.9.0"
-    const val Exposed = "0.38.2"
-    const val Feign = "11.8"
+    const val CommonsCsv = "1.10.0"
+    const val Exposed = "0.41.1"
+    const val Feign = "12.2"
     const val Flyway = PluginVersions.Flyway
-    const val Jackson = "2.12.6"
-    const val JacksonHubspot = "0.9.12"
-    const val JavaxValidation = "2.0.0.Final"
+    const val HikariCP = "5.0.1"
+    const val Jackson = "2.12.7"
+    const val JacksonHubspot = "0.9.13"
+    const val JavaxValidation = "2.0.1.Final"
     const val Logback = "0.1.5"
-    const val Moshi = "1.13.0"
-    const val OkHttp = "4.9.3"
-    const val Postgres = "42.2.23"
-    const val Protobuf = "3.19.1"
+    const val Log4J = "2.20.0"
+    const val Moshi = "1.14.0"
+    const val Postgres = "42.6.0"
     const val Swagger = "3.0.0"
     const val SwaggerUi = "3.0.0"
     const val SpringBoot = PluginVersions.SpringBoot
 
     // Testing
-    const val JunitJupiter = "5.7.1"
-    const val JunitCommons = "1.7.0"
-    const val Mockito = "3.2.0"
-    const val Mockk = "1.12.0"
-    const val TestContainers = "1.15.1"
+    const val JunitJupiter = "5.9.2"
+    const val JunitCommons = "1.9.2"
+    const val Mockito = "4.1.0"
+    const val Mockk = "1.13.4"
+    const val TestContainers = "1.16.2"
 
-    const val KtLint = "0.42.1"
+    const val KtLint = "0.48.2"
 }
 
 object Libraries {
@@ -77,21 +76,15 @@ object Libraries {
 
     const val FeignCore = "io.github.openfeign:feign-core:${Versions.Feign}"
     const val FeignJackson = "io.github.openfeign:feign-jackson:${Versions.Feign}"
-    const val FeignSlf4j = "io.github.openfeign:feign-slf4j:${Versions.Feign}"
     const val Jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.Jackson}"
     const val JacksonHubspot = "com.hubspot.jackson:jackson-datatype-protobuf:${Versions.JacksonHubspot}"
 
     const val CommonsCsv = "org.apache.commons:commons-csv:${Versions.CommonsCsv}"
 
     const val Postgres = "org.postgresql:postgresql:${Versions.Postgres}"
+    const val Hikari = "com.zaxxer:HikariCP:${Versions.HikariCP}"
 
     const val Moshi = "com.squareup.moshi:moshi:${Versions.Moshi}"
-    const val MoshiKotlin = "com.squareup.moshi:moshi-kotlin:${Versions.Moshi}"
-    const val OkHttp = "com.squareup.okhttp3:okhttp:${Versions.OkHttp}"
-    const val Scarlet = "com.tinder.scarlet:scarlet:${Versions.ScarletForEventStream}"
-    const val ScarletStreamAdapter = "com.tinder.scarlet:stream-adapter-rxjava2:${Versions.ScarletForEventStream}"
-    const val ScarletWebsocket = "com.tinder.scarlet:websocket-okhttp:${Versions.ScarletForEventStream}"
-    const val ScarletMessageAdapter = "com.tinder.scarlet:message-adapter-moshi:${Versions.ScarletForEventStream}"
 
     const val Swagger2 = "io.springfox:springfox-swagger2:${Versions.Swagger}"
     const val SwaggerStarter = "io.springfox:springfox-boot-starter:${Versions.Swagger}"

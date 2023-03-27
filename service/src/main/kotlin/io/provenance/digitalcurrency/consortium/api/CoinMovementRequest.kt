@@ -11,68 +11,76 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "CoinMovementRequestItem",
-    description = "Details of a particular coin movement sent to the bank."
+    description = "Details of a particular coin movement sent to the bank.",
 )
 data class CoinMovementRequestItem(
     @ApiModelProperty(
         value = "A unique id for this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val txId: String,
+    @get:NotNull
+    val txId: String,
 
     @ApiModelProperty(
         value = "A blockchain address.",
-        required = true
+        required = true,
     )
-    @get:NotNull val fromAddress: String,
+    @get:NotNull
+    val fromAddress: String,
 
     @ApiModelProperty(
         value = "The bank uuid associated with the \"from address\" if one exists.",
-        required = true
+        required = true,
     )
     val fromAddressBankUuid: UUID?,
 
     @ApiModelProperty(
         value = "A blockchain address.",
-        required = true
+        required = true,
     )
-    @get:NotNull val toAddress: String,
+    @get:NotNull
+    val toAddress: String,
 
     @ApiModelProperty(
         value = "The bank uuid associated with the \"to address\" if one exists.",
-        required = true
+        required = true,
     )
     val toAddressBankUuid: UUID?,
 
     @ApiModelProperty(
         value = "The block this transaction was included in.",
-        required = true
+        required = true,
     )
-    @get:NotNull val blockHeight: String,
+    @get:NotNull
+    val blockHeight: String,
 
     @ApiModelProperty(
         value = "The timestamp as reported in the block header.",
-        required = true
+        required = true,
     )
-    @get:NotNull val timestamp: OffsetDateTime,
+    @get:NotNull
+    val timestamp: OffsetDateTime,
 
     @ApiModelProperty(
         value = "The amount of this record.",
-        required = true
+        required = true,
     )
-    @get:NotNull val amount: String,
+    @get:NotNull
+    val amount: String,
 
     @ApiModelProperty(
         value = "The denom of this record.",
-        required = true
+        required = true,
     )
-    @get:NotNull val denom: String,
+    @get:NotNull
+    val denom: String,
 
     @ApiModelProperty(
         value = "The type of this record (MINT|TRANSFER|BURN).",
-        required = true
+        required = true,
     )
-    @get:NotNull val transactionType: String,
+    @get:NotNull
+    val transactionType: String,
 )
 
 /**
@@ -80,18 +88,20 @@ data class CoinMovementRequestItem(
  */
 @ApiModel(
     value = "CoinMovementRequest",
-    description = "Request that the bank persist coin movement records."
+    description = "Request that the bank persist coin movement records.",
 )
 data class CoinMovementRequest(
     @ApiModelProperty(
         value = "The count of records in this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val recordCount: Int,
+    @get:NotNull
+    val recordCount: Int,
 
     @ApiModelProperty(
         value = "The record items.",
-        required = true
+        required = true,
     )
-    @get:NotNull val transactions: List<CoinMovementRequestItem>,
+    @get:NotNull
+    val transactions: List<CoinMovementRequestItem>,
 )

@@ -18,32 +18,33 @@ import javax.validation.constraints.NotNull
  */
 @ApiModel(
     value = "MintCoinRequest",
-    description = "Request to the middleware to mint coin to the user's address associated with their bank account"
+    description = "Request to the middleware to mint coin to the user's address associated with their bank account",
 )
 data class MintCoinRequest(
 
     @ApiModelProperty(
         value = "A unique uuid for this request.",
-        required = true
+        required = true,
     )
-    @get:NotNull val uuid: UUID,
+    @get:NotNull
+    val uuid: UUID,
 
     @ApiModelProperty(
         value = """
             The uuid of the bank account that the bank passed to the middleware during the address registration. 
             If not specified, will mint directly to member bank address.
         """,
-        required = false
+        required = false,
     )
     val bankAccountUUID: UUID?,
 
     @ApiModelProperty(
         value = "The amount of fiat in USD to mint to the customer's address.",
         required = true,
-        allowableValues = "Greater than 0"
+        allowableValues = "Greater than 0",
     )
     @get:NotNull
     @get:DecimalMin("0")
     @get:Digits(integer = 12, fraction = 2)
-    val amount: BigDecimal
+    val amount: BigDecimal,
 )

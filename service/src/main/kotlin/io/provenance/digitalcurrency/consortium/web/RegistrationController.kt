@@ -26,7 +26,7 @@ import javax.validation.Valid
     tags = ["Registration API"],
     description = "Endpoints for the bank middleware to call for AML/KYC account registration.",
     produces = MediaType.TEXT_PLAIN_VALUE,
-    consumes = MediaType.APPLICATION_JSON_VALUE
+    consumes = MediaType.APPLICATION_JSON_VALUE,
 )
 class RegistrationController(private val bankService: BankService) {
 
@@ -39,12 +39,13 @@ class RegistrationController(private val bankService: BankService) {
             Send the middleware a blockchain address and the unique id associated with it. The unique id will be 
             used during coin mint (fiat deposits from the customer) and coin redemption (fiat deposits to the customer)
             requests.
-        """
+        """,
     )
     fun registerAddress(
         @Valid
         @ApiParam(value = "RegisterAddressRequest")
-        @RequestBody request: RegisterAddressRequest
+        @RequestBody
+        request: RegisterAddressRequest,
     ): ResponseEntity<UUID> {
         val (bankAccountUuid, address) = request
         log.info("Registering account:$bankAccountUuid at address:$address")
@@ -57,7 +58,7 @@ class RegistrationController(private val bankService: BankService) {
         value = "Remove an address association",
         notes = """
             Send the bank account uuid as a path variable. This will remove the attribute from the address.
-        """
+        """,
     )
     fun removeAddress(@PathVariable bankAccountUuid: UUID): ResponseEntity<UUID> {
         log.info("Removing registration account:$bankAccountUuid")

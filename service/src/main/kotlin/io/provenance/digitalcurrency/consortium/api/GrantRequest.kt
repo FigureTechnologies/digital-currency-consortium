@@ -16,23 +16,23 @@ import javax.validation.constraints.Size
  */
 @ApiModel(
     value = "GrantCoinRequest",
-    description = "Request to the middleware to grant authz to the smart contract by member bank to move restricted coin."
+    description = "Request to the middleware to grant authz to the smart contract by member bank to move restricted coin.",
 )
 data class GrantCoinRequest(
 
     @ApiModelProperty(
         value = "The coin denom to associate with the grant authz.",
-        required = true
+        required = true,
     )
     val denom: String,
 
     @ApiModelProperty(
         value = "The amount of coin to associate with the grant authz.",
-        required = true
+        required = true,
     )
     @get:NotNull
     @get:Min(1)
-    val amount: Long
+    val amount: Long,
 )
 
 /**
@@ -42,13 +42,13 @@ data class GrantCoinRequest(
  */
 @ApiModel(
     value = "GrantRequest",
-    description = "Request to the middleware to grant authz a list of coins to move restricted coin."
+    description = "Request to the middleware to grant authz a list of coins to move restricted coin.",
 )
 data class GrantRequest(
 
     @ApiModelProperty(
         value = "The coins to associate with the grant.",
-        required = true
+        required = true,
     )
     @Valid
     @Size(min = 1)
@@ -56,7 +56,7 @@ data class GrantRequest(
 
     @ApiModelProperty(
         value = "The expiration timestamp of the grant authz. Defaults to 1/1/2031 if not provided.",
-        required = false
+        required = false,
     )
     val expiration: OffsetDateTime?,
 )

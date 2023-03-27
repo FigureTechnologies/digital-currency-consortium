@@ -46,8 +46,9 @@ class BalanceReportMonitor(
     fun iteration() {
         transaction {
             val balanceReport = BalanceReportRecord.findNotSent().forUpdate().firstOrNull()
-            if (balanceReport == null || balanceReport.sent != null)
+            if (balanceReport == null || balanceReport.sent != null) {
                 return@transaction
+            }
 
             log.info("starting balance report push for [${balanceReport.id.value}]")
 
@@ -98,7 +99,7 @@ fun List<BalanceEntryRecord>.toOutput(balanceReport: BalanceReportRecord, page: 
             address = balanceEntry.address,
             amount = balanceEntry.amount,
             denom = balanceEntry.denom,
-            timestamp = balanceEntry.created
+            timestamp = balanceEntry.created,
         )
-    }
+    },
 )

@@ -48,12 +48,12 @@ class PbcService(
 
     enum class NetworkType(
         val prefix: String,
-        val path: String
+        val path: String,
     ) {
         TESTNET_HARDENED("tp", "m/44'/1'/0'/0/0'"),
         TESTNET("tp", "m/44'/1'/0'/0/0"),
         MAINNET_HARDENED("pb", "m/44'/505'/0'/0/0'"),
-        MAINNET("pb", "m/44'/505'/0'/0/0")
+        MAINNET("pb", "m/44'/505'/0'/0/0"),
     }
 
     private val managerSigner =
@@ -67,7 +67,7 @@ class PbcService(
                 prefix = networkType.prefix,
                 path = networkType.path,
                 mnemonic = serviceProperties.managerKey,
-                isMainNet = provenanceProperties.mainNet
+                isMainNet = provenanceProperties.mainNet,
             )
         }
     final val managerAddress: String by lazy { managerSigner.address() }
@@ -119,14 +119,14 @@ class PbcService(
                             MarkerTransferAuthorization.newBuilder()
                                 .addAllTransferLimit(coins)
                                 .build()
-                                .toAny()
-                        )
+                                .toAny(),
+                        ),
                 )
                 .build()
                 .toAny()
                 .toTxBody(),
             mode = BROADCAST_MODE_BLOCK,
-            gasAdjustment = provenanceProperties.gasAdjustment * 1.1
+            gasAdjustment = provenanceProperties.gasAdjustment * 1.1,
         ).throwIfFailed("Marker transfer authorization grant authz failed")
 
     fun getMembers(): MemberListResponse =
@@ -135,7 +135,7 @@ class PbcService(
                 QuerySmartContractStateRequest.newBuilder()
                     .setAddress(provenanceProperties.contractAddress)
                     .setQueryData(QueryRequest(getMembers = EmptyObject()).toByteString())
-                    .build()
+                    .build(),
             )
             .toValueResponse(MemberListResponse::class)
 

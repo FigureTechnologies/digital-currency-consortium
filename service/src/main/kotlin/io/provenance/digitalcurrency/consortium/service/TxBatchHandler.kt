@@ -34,7 +34,7 @@ class TxBatchHandler(
 
     @Scheduled(
         initialDelayString = "\${queue.batch_initial_delay_ms}",
-        fixedRateString = "\${queue.batch_polling_delay_ms}"
+        fixedRateString = "\${queue.batch_polling_delay_ms}",
     )
     fun batchQueuedTxns() {
         // Waiting for last tx committed to completed before we execute another one
@@ -71,7 +71,7 @@ class TxBatchHandler(
                             if (!tagExists(it.address)) {
                                 it to it.getAddAttributeMessage(
                                     pbcService.managerAddress,
-                                    bankClientProperties.kycTagName
+                                    bankClientProperties.kycTagName,
                                 )
                             } else {
                                 // technically should not happen
@@ -85,7 +85,7 @@ class TxBatchHandler(
                             if (tagExists(it.addressRegistration.address)) {
                                 it to it.getDeleteAttributeMessage(
                                     pbcService.managerAddress,
-                                    bankClientProperties.kycTagName
+                                    bankClientProperties.kycTagName,
                                 )
                             } else {
                                 // technically should not happen

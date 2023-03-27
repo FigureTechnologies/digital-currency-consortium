@@ -1,6 +1,5 @@
-package io.provenance.digitalcurrency.consortium.config
+package io.provenance.digitalcurrency.report.config
 
-import io.provenance.digitalcurrency.consortium.annotation.NotTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import springfox.documentation.builders.ApiInfoBuilder
@@ -11,7 +10,6 @@ import springfox.documentation.spring.web.plugins.Docket
 import springfox.documentation.swagger2.annotations.EnableSwagger2
 
 @Configuration
-@NotTest
 @EnableSwagger2
 class SwaggerConfig {
 
@@ -20,8 +18,8 @@ class SwaggerConfig {
         val contact = Contact("Figure", "figure.com", "")
 
         val info = ApiInfoBuilder()
-            .title("Digital Currency Consortium Middleware")
-            .description("Middleware for banks to use digital currency smart contracts.")
+            .title("Digital Currency Consortium Reporting Middleware")
+            .description("Middleware for banks to generate settlement reports.")
             .version("1")
             .contact(contact)
             .build()
@@ -30,7 +28,7 @@ class SwaggerConfig {
             .apiInfo(info)
             .forCodeGeneration(true)
             .select()
-            .apis(RequestHandlerSelectors.basePackage("io.provenance.digitalcurrency.consortium.web"))
+            .apis(RequestHandlerSelectors.basePackage("io.provenance.digitalcurrency.report.web"))
             .build()
     }
 }

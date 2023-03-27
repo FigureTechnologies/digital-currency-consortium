@@ -14,18 +14,18 @@ import org.springframework.stereotype.Component
 import java.util.UUID
 
 class CoinBurnDirective(
-    override val id: UUID
+    override val id: UUID,
 ) : Directive()
 
 class CoinBurnOutcome(
-    override val id: UUID
+    override val id: UUID,
 ) : Outcome()
 
 @Component
 @NotTest
 class BurnCompletionQueue(
     private val bankClient: BankClient,
-    coroutineProperties: CoroutineProperties
+    coroutineProperties: CoroutineProperties,
 ) :
     ActorModel<CoinBurnDirective, CoinBurnOutcome> {
     private val log = logger()
