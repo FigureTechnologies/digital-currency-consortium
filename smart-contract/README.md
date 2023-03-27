@@ -16,7 +16,7 @@ Checkout provenance v1.13.0, install the `provenanced` command and start a 4-nod
 
 ```bash
 git clone https://github.com/provenance-io/provenance.git
-cd provenance && git checkout v1.13.0-rc4
+cd provenance && git checkout v1.14.1
 make install
 make localnet-start
 ```
@@ -168,7 +168,7 @@ provenanced tx name bind \
     "kyc" \
     $(provenanced keys show -a node0 --home build/node0 --keyring-backend test --testnet) \
     "pb" \
-    --restrict=false \
+    --unrestrict \
     --from node0 \
     --keyring-backend test \
     --home build/node0 \
