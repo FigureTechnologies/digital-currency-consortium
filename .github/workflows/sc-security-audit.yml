@@ -1,0 +1,32 @@
+name: Smart Contract Security audit
+on:
+  push:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+jobs:
+  security_audit:
+    strategy:
+      matrix:
+        sc:
+          - smart-contract
+          - smart-contract-sale
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: Update apt
+        run: sudo apt-get -y update
+      - name: Install pkg-config
+        run: sudo apt-get install -y pkg-config
+      - name: Install libssl-dev
+        run: sudo apt-get install -y libssl-dev
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Change directory
+        run: cd ${{ matrix.sc }}
+      - uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
