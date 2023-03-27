@@ -1,0 +1,61 @@
+name: Smart Contract Build and Test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build_and_lint:
+    strategy:
+      matrix:
+        sc:
+          - smart-contract
+          - smart-contract-sale
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: clippy
+      - name: Change directory
+        run: cd ${{ matrix.sc }}
+      - uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.sc }}
+      - name: Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - name: Clippy
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
+  test:
+    strategy:
+      matrix:
+        sc:
+          - smart-contract
+          - smart-contract-sale
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Change directory
+        run: cd ${{ matrix.sc }}
+      - uses: Swatinem/rust-cache@v1
+        with:
+          key: ${{ matrix.sc }}
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
