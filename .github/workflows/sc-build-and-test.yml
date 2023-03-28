@@ -27,7 +27,7 @@ jobs:
           key: ${{ matrix.sc }}
       - run: cargo build
         working-directory: ./${{ matrix.sc }}
-      - run: cargo clippy --all-features
+      - run: cargo clippy --no-deps
         working-directory: ./${{ matrix.sc }}
 
   test:
