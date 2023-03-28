@@ -145,27 +145,14 @@ jobs:
           push: true
           tags: figuretechnologies/digital-currency-consortium-database:latest
 
+  # TODO - add caching for the docker image and volumes that get mounted in
   wasm_build:
     name: Build and Release Wasm
 
     runs-on: ubuntu-latest
 
-      # env:
-      #   SCCACHE_GHA_ENABLED: "true"
-      #   RUSTC_WRAPPER: "sccache"
-
     steps:
       - uses: actions/checkout@v2
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.sc }}
-          workspaces: |
-            smart-contract
-            smart-contract-sale
-
-        # - name: Run sccache-cache
-        #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Optimize smart contract
         working-directory: ./smart-contract
