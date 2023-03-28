@@ -25,8 +25,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - run: cargo install cargo-audit
       - name: Change directory
         run: cd ${{ matrix.sc }}
-      - uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: cargo audit
