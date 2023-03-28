@@ -150,15 +150,22 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
+      # env:
+      #   SCCACHE_GHA_ENABLED: "true"
+      #   RUSTC_WRAPPER: "sccache"
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.3
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.sc }}
+          workspaces: |
+            smart-contract
+            smart-contract-sale
+
+        # - name: Run sccache-cache
+        #   uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Optimize smart contract
         working-directory: ./smart-contract
