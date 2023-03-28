@@ -49,5 +49,5 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           key: ${{ matrix.sc }}
-      - run: cargo test --target wasm32-unknown-unknown
+      - run: cargo test
         working-directory: ./${{ matrix.sc }}
