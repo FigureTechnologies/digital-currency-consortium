@@ -147,12 +147,18 @@ jobs:
 
   wasm_build:
     name: Build and Release Wasm
+
     runs-on: ubuntu-latest
+
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
 
     steps:
       - uses: actions/checkout@v2
 
-      - uses: Swatinem/rust-cache@v1
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Optimize smart contract
         working-directory: ./smart-contract
