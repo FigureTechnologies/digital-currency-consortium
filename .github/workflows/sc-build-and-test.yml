@@ -8,6 +8,7 @@ on:
 jobs:
   build_and_lint:
     strategy:
+      fail-fast: false
       matrix:
         sc:
           - smart-contract
@@ -38,6 +39,7 @@ jobs:
 
   test:
     strategy:
+      fail-fast: false
       matrix:
         sc:
           - smart-contract

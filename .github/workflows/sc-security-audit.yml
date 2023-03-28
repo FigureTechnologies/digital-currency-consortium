@@ -7,6 +7,7 @@ on:
 jobs:
   security_audit:
     strategy:
+      fail-fast: false
       matrix:
         sc:
           - smart-contract
@@ -25,7 +26,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - run: cargo install cargo-audit
       - name: Change directory
         run: cd ${{ matrix.sc }}
       - run: cargo audit
