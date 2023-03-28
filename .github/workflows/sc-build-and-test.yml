@@ -2,7 +2,7 @@ name: Smart Contract Build and Test
 on:
   push:
     branches:
-      - main
+    - main
   pull_request:
 
 jobs:
@@ -11,42 +11,47 @@ jobs:
       fail-fast: false
       matrix:
         sc:
-          - smart-contract
-          - smart-contract-sale
+        - smart-contract
+        - smart-contract-sale
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: true
-          components: clippy
-      - run: cd ./${{ matrix.sc }}
-      - uses: Swatinem/rust-cache@v1
-        with:
-          key: ${{ matrix.sc }}
-      - run: cargo build --target wasm32-unknown-unknown
-      - run: cargo clippy --no-deps
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        target: wasm32-unknown-unknown
+        override: true
+        components: clippy
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: ${{ matrix.sc }}
+        workspaces: |
+          ${{ matrix.sc }}
+    - run: cargo build --target wasm32-unknown-unknown
+      working-directory: ./${{ matrix.sc }}
+    - run: cargo clippy --no-deps
+      working-directory: ./${{ matrix.sc }}
 
   test:
     strategy:
       fail-fast: false
       matrix:
         sc:
-          - smart-contract
-          - smart-contract-sale
+        - smart-contract
+        - smart-contract-sale
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: cd ./${{ matrix.sc }}
-      - uses: Swatinem/rust-cache@v1
-        with:
-          key: ${{ matrix.sc }}
-      - run: cargo test
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - uses: Swatinem/rust-cache@v1
+      with:
+        key: ${{ matrix.sc }}
+        workspaces: |
+          ${{ matrix.sc }}
+    - run: cargo test
+      working-directory: ./${{ matrix.sc }}
