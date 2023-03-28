@@ -23,7 +23,7 @@ jobs:
         target: wasm32-unknown-unknown
         override: true
         components: clippy
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.sc }}
         workspaces: |
@@ -48,7 +48,7 @@ jobs:
         profile: minimal
         toolchain: stable
         override: true
-    - uses: Swatinem/rust-cache@v1
+    - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.sc }}
         workspaces: |
