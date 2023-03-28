@@ -1,0 +1,30 @@
+name: Smart Contract Security audit
+on:
+  push:
+    paths:
+    - '**/Cargo.toml'
+    - '**/Cargo.lock'
+jobs:
+  security_audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        sc:
+        - smart-contract
+        - smart-contract-sale
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update apt
+      run: sudo apt-get -y update
+    - name: Install pkg-config
+      run: sudo apt-get install -y pkg-config
+    - name: Install libssl-dev
+      run: sudo apt-get install -y libssl-dev
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - run: cargo audit
+      working-directory: ./${{ matrix.sc }}

@@ -5,6 +5,8 @@ on:
     types:
       - created
   push:
+    branches:
+      - main
   pull_request:
 
 jobs:
@@ -143,12 +145,11 @@ jobs:
           push: true
           tags: figuretechnologies/digital-currency-consortium-database:latest
 
+  # TODO - add caching for the docker image and volumes that get mounted in
   wasm_build:
     name: Build and Release Wasm
 
     runs-on: ubuntu-latest
-
-    if: github.event_name == 'release'
 
     steps:
       - uses: actions/checkout@v2
@@ -157,17 +158,17 @@ jobs:
         working-directory: ./smart-contract
         run: make optimize
 
-      - name: Rename smart contract checksum
-        working-directory: ./smart-contract/artifacts
-        run: mv checksums.txt checksums-dcc.txt
-
       - name: Optimize smart contract sale
         working-directory: ./smart-contract-sale
         run: make optimize
 
-      - name: Rename smart contract sale checksum
-        working-directory: ./smart-contract-sale/artifacts
-        run: mv checksums.txt checksums-dcc_sale.txt
+      - name: Rename smart contract checksums
+        shell: bash
+        run: |
+          #!/bin/bash
+          set -ex
+          sudo mv smart-contract/artifacts/checksums{,-dcc}.txt
+          sudo mv smart-contract-sale/artifacts/checksums{,-dcc_sale}.txt
 
       - name: Release smart contracts
         uses: xresloader/upload-to-github-release@v1
@@ -175,3 +176,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: "smart-contract/artifacts/*.wasm;smart-contract/artifacts/checksums-dcc.txt;smart-contract-sale/artifacts/*wasm;smart-contract-sale/artifacts/checksums-dcc_sale.txt"
+        if: github.event_name == 'release'
