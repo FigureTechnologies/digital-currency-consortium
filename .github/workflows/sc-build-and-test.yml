@@ -22,20 +22,13 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      - name: Change directory
-        run: cd ${{ matrix.sc }}
       - uses: Swatinem/rust-cache@v1
         with:
           key: ${{ matrix.sc }}
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-      - name: Clippy
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+      - run: cargo build
+        working-directory: ./${{ matrix.sc }}
+      - run: cargo clippy --all-features
+        working-directory: ./${{ matrix.sc }}
 
   test:
     strategy:
@@ -52,12 +45,8 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Change directory
-        run: cd ${{ matrix.sc }}
       - uses: Swatinem/rust-cache@v1
         with:
           key: ${{ matrix.sc }}
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+      - run: cargo test
+        working-directory: ./${{ matrix.sc }}

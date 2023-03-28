@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         sc:
-          - ./smart-contract
-          - ./smart-contract-sale
+          - smart-contract
+          - smart-contract-sale
     runs-on: ubuntu-latest
     steps:
       - name: Update apt
@@ -27,4 +27,4 @@ jobs:
           toolchain: stable
           override: true
       - run: cargo audit
-        working-directory: ${{ matrix.sc }}
+        working-directory: ./${{ matrix.sc }}
