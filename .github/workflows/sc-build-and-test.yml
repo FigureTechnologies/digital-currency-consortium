@@ -20,12 +20,13 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
+          target: wasm32-unknown-unknown
           override: true
           components: clippy
       - uses: Swatinem/rust-cache@v1
         with:
           key: ${{ matrix.sc }}
-      - run: cargo build
+      - run: cargo build --target wasm32-unknown-unknown
         working-directory: ./${{ matrix.sc }}
       - run: cargo clippy --no-deps
         working-directory: ./${{ matrix.sc }}
@@ -48,5 +49,5 @@ jobs:
       - uses: Swatinem/rust-cache@v1
         with:
           key: ${{ matrix.sc }}
-      - run: cargo test
+      - run: cargo test --target wasm32-unknown-unknown
         working-directory: ./${{ matrix.sc }}
