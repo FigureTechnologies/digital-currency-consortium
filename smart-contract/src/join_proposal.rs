@@ -6,7 +6,6 @@ use crate::error::ContractError;
 use crate::msg::{MigrateMsg, VoteChoice};
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
-use provwasm_std::ProvenanceQuery;
 use semver::{Version, VersionReq};
 
 pub static JOIN_PROPOSAL_KEY: &[u8] = b"proposal";
@@ -40,7 +39,7 @@ pub struct JoinProposal {
 
 #[allow(deprecated)]
 pub fn migrate_join_proposals(
-    deps: DepsMut<ProvenanceQuery>,
+    deps: DepsMut,
     current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
@@ -84,7 +83,7 @@ pub fn legacy_join_proposals_read(storage: &dyn Storage) -> ReadonlyBucket<JoinP
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{Addr, Uint128};
-    use provwasm_mocks::mock_dependencies;
+    use provwasm_mocks::mock_provenance_dependencies;
     use semver::Version;
 
     use crate::error::ContractError;
@@ -97,7 +96,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     pub fn migrate_legacy_proposal_to_removed() -> Result<(), ContractError> {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_provenance_dependencies();
 
         legacy_join_proposals(&mut deps.storage).save(
             b"id",

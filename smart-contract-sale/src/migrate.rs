@@ -1,17 +1,12 @@
 use cosmwasm_std::{entry_point, DepsMut, Env, Response};
 use cw2::set_contract_version;
-use provwasm_std::ProvenanceQuery;
 
 use crate::contract::{CRATE_NAME, PACKAGE_VERSION};
 use crate::error::ContractError;
 use crate::msg::MigrateMsg;
 
 #[entry_point]
-pub fn migrate(
-    deps: DepsMut<ProvenanceQuery>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CRATE_NAME, PACKAGE_VERSION)?;
     Ok(Response::default())
 }
@@ -19,13 +14,13 @@ pub fn migrate(
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::mock_env;
-    use provwasm_mocks::mock_dependencies;
+    use provwasm_mocks::mock_provenance_dependencies;
 
     use super::*;
 
     #[test]
     fn migrate_test() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_provenance_dependencies();
 
         let result = cw2::set_contract_version(deps.as_mut().storage, CRATE_NAME, "v0");
         match result {

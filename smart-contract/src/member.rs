@@ -5,7 +5,6 @@ use crate::error::ContractError;
 use crate::msg::MigrateMsg;
 use cosmwasm_std::{Addr, DepsMut, Order, Storage, Uint128};
 use cosmwasm_storage::{bucket, bucket_read, Bucket, ReadonlyBucket};
-use provwasm_std::ProvenanceQuery;
 use semver::{Version, VersionReq};
 
 pub static MEMBER_KEY: &[u8] = b"member";
@@ -60,7 +59,7 @@ impl From<Member> for MemberV2 {
 
 #[allow(deprecated)]
 pub fn migrate_members(
-    deps: DepsMut<ProvenanceQuery>,
+    deps: DepsMut,
     current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
@@ -113,7 +112,7 @@ pub fn get_legacy_member_ids(storage: &dyn Storage) -> Vec<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{Addr, Uint128};
-    use provwasm_mocks::mock_dependencies;
+    use provwasm_mocks::mock_provenance_dependencies;
     use semver::Version;
 
     use crate::error::ContractError;
@@ -126,7 +125,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     pub fn migrate_legacy_proposal_to_v2() -> Result<(), ContractError> {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_provenance_dependencies();
 
         legacy_members(&mut deps.storage).save(
             b"id",
