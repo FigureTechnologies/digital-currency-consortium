@@ -1,4 +1,4 @@
-FROM openjdk:11-jre
+FROM openjdk:17-zulu
 
 ADD ./docker/docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./report/build/libs/*.jar /report.jar
