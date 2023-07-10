@@ -1,4 +1,4 @@
-FROM openjdk:11-jre
+FROM azul/zulu-openjdk:17-jre
 
 ADD ./docker/docker-entrypoint.sh /docker-entrypoint.sh
 COPY ./service/build/libs/*.jar /service.jar
