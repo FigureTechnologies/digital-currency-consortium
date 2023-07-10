@@ -39,4 +39,5 @@ thiserror = { version = "1.0.40" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.2.6" }
+prost = { version = "0.11.9", default-features = false }
 provwasm-mocks = { version = "2.0.0-rc1" }
