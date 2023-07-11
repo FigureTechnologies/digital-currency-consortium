@@ -60,7 +60,7 @@ fn create_sale(
     let is_unrestricted = matches!(
         get_marker(asset.denom.clone(), &querier),
         Ok(MarkerAccount {
-            marker_type: 1, // 1 is coin
+            marker_type: 1, // 1 index is coin
             ..
         })
     );
@@ -266,9 +266,15 @@ mod tests {
     use crate::state::{config, get_sale_storage, get_sale_storage_read, Sale, State, Status};
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{attr, from_binary, Addr, Binary, Coin, StdError, Storage, Uint128};
+    use cosmwasm_std::{attr, Addr, Coin, StdError, Storage, Uint128};
+    use prost::Message;
     use provwasm_mocks::mock_provenance_dependencies;
-    use provwasm_std::types::provenance::marker::v1::{MarkerAccount, QueryMarkerRequest};
+    use provwasm_std::shim::Any;
+    use provwasm_std::types::cosmos::auth::v1beta1::BaseAccount;
+    use provwasm_std::types::provenance::marker::v1::{
+        AccessGrant, MarkerAccount, MarkerStatus, MarkerType, QueryMarkerRequest,
+        QueryMarkerResponse,
+    };
 
     const ID: &str = "1bd75dc7-5c15-4ef8-9d8c-de9c106d1fdc";
     const ADMIN_ADDRESS: &str = "tp1343puvn0uvzrmxkwzkx62z9eay56ag9y49f3af";
@@ -291,11 +297,7 @@ mod tests {
             },
         );
 
-        let restricted_marker = setup_restricted_marker();
-        let unrestricted_marker: MarkerAccount = setup_unrestricted_marker();
-        // deps.querier
-        // QueryMarkerRequest::mock_response(&mut deps.querier, mock_marker_response);
-            // .with_markers(vec![restricted_marker, unrestricted_marker]);
+        QueryMarkerRequest::mock_response(&mut deps.querier, setup_asset_marker());
 
         let asset = Coin {
             amount: Uint128::new(1),
@@ -320,7 +322,6 @@ mod tests {
         match create_response {
             Ok(response) => {
                 assert_eq!(response.attributes.len(), 8);
-
                 assert_eq!(response.attributes[0], attr("action", "create_sale"));
                 assert_eq!(response.attributes[1], attr("owner", OWNER_ADDRESS));
                 assert_eq!(response.attributes[2], attr("buyer", BUYER_ADDRESS));
@@ -367,11 +368,6 @@ mod tests {
                 dcc_denom: DCC_DENOM.into(),
             },
         );
-
-        let restricted_marker = setup_restricted_marker();
-        let unrestricted_marker: MarkerAccount = setup_unrestricted_marker();
-        deps.querier
-            .with_markers(vec![restricted_marker, unrestricted_marker]);
 
         let asset = Coin {
             amount: Uint128::new(1),
@@ -471,6 +467,8 @@ mod tests {
         }
 
         let funds = vec![asset];
+
+        QueryMarkerRequest::mock_response(&mut deps.querier, setup_asset_marker());
 
         // try to create sale with wrong dcc denom price
         let err = execute(
@@ -913,74 +911,35 @@ mod tests {
         }
     }
 
-    fn setup_restricted_marker() -> MarkerAccount {
-        let marker_json = b"{
-              \"base_account\": {
-                \"address\": \"tp1u9t9ung76wzw88jhr0pa5szvl6ystdfeey2mrm\",
-                \"pub_key\": null,
-                \"account_number\": 10,
-                \"sequence\": 0,
-              },
-              \"manager\": \"\",
-              \"access_control\": [
-                  {
-                    \"address\": \"tp1u9t9ung76wzw88jhr0pa5szvl6ystdfeey2mrm\",
-                    \"permissions\": [
-                      \"ACCESS_MINT\",
-                      \"ACCESS_BURN\",
-                      \"ACCESS_DEPOSIT\",
-                      \"ACCESS_WITHDRAW\",
-                      \"ACCESS_DELETE\",
-                      \"ACCESS_ADMIN\"
-                    ]
-                  }
-              ],
-              \"status\": \"MARKER_STATUS_ACTIVE\",
-              \"denom\": \"usdf.c\",
-              \"supply\": \"1000\",
-              \"marker_type\": \"MARKER_TYPE_RESTRICTED\",
-              \"supply_fixed\": false,
-              \"allow_governance_control\": true,
-              \"allow_forced_transfer\": false,
-              \"required_attributes\": []
-            }";
+    fn setup_asset_marker() -> QueryMarkerResponse {
+        let expected_marker = MarkerAccount {
+            base_account: Some(BaseAccount {
+                address: "tp1l330sxue4suxz9dhc40e2pns0ymrytf8uz4squ".to_string(),
+                pub_key: None,
+                account_number: 11,
+                sequence: 0,
+            }),
+            manager: "".to_string(),
+            access_control: vec![AccessGrant {
+                address: "tp13pnzut8zdjaqht7aqe7kk4ww5zfq04jzlytnmu".to_string(),
+                permissions: vec![1, 2, 3, 4, 5, 6, 7],
+            }],
+            status: MarkerStatus::Active.into(),
+            denom: ASSET_DENOM.to_string(),
+            supply: "1000".to_string(),
+            marker_type: MarkerType::Coin.into(),
+            supply_fixed: false,
+            allow_governance_control: true,
+            allow_forced_transfer: false,
+            required_attributes: vec![],
+        };
 
-        return from_binary(&Binary::from(marker_json)).unwrap();
-    }
-
-    fn setup_unrestricted_marker() -> MarkerAccount {
-        let marker_json = b"{
-              \"base_account\": {
-                \"address\": \"tp1l330sxue4suxz9dhc40e2pns0ymrytf8uz4squ\",
-                \"pub_key\": null,
-                \"account_number\": 10,
-                \"sequence\": 0,
-              },
-              \"manager\": \"\",
-              \"access_control\": [
-                  {
-                    \"address\": \"tp13pnzut8zdjaqht7aqe7kk4ww5zfq04jzlytnmu\",
-                    \"permissions\": [
-                      \"ACCESS_MINT\",
-                      \"ACCESS_BURN\",
-                      \"ACCESS_DEPOSIT\",
-                      \"ACCESS_WITHDRAW\",
-                      \"ACCESS_DELETE\",
-                      \"ACCESS_ADMIN\"
-                    ]
-                  }
-              ],
-              \"status\": \"MARKER_STATUS_ACTIVE\",
-              \"denom\": \"ibc/loan1\",
-              \"supply\": \"1000\",
-              \"marker_type\": \"MARKER_TYPE_COIN\",
-              \"supply_fixed\": false,
-              \"allow_governance_control\": true,
-              \"allow_forced_transfer\": false,
-              \"required_attributes\": []
-            }";
-
-        return from_binary(&Binary::from(marker_json)).unwrap();
+        QueryMarkerResponse {
+            marker: Some(Any {
+                type_url: "/provenance.marker.v1.MarkerAccount".to_string(),
+                value: expected_marker.encode_to_vec(),
+            }),
+        }
     }
 
     fn setup_sale_base(storage: &mut dyn Storage, sale: &Sale) {

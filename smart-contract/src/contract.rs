@@ -2096,7 +2096,6 @@ mod tests {
         let env = mock_env();
 
         // Burn needs to query the marker address, so we mock one here.
-        // Create a mock querier with our expected marker.
         let expected_marker = MarkerAccount {
             base_account: Some(BaseAccount {
                 address: "dcc.marker".to_string(),
@@ -2112,7 +2111,7 @@ mod tests {
             status: MarkerStatus::Active.into(),
             denom: "dcc.coin".to_string(),
             supply: "0".to_string(),
-            marker_type: 0,
+            marker_type: MarkerType::Coin.into(),
             supply_fixed: false,
             allow_governance_control: false,
             allow_forced_transfer: false,
@@ -2182,7 +2181,6 @@ mod tests {
         .unwrap();
 
         // Ensure messages were created.
-        // TODO: validate marker messages (transfer, burn)...
         assert_eq!(2, res.messages.len());
         match &res.messages[0].msg {
             CosmosMsg::Stargate { type_url, value } => {

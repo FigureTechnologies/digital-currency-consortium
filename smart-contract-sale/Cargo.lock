@@ -265,6 +265,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw2",
+ "prost",
  "provwasm-mocks",
  "provwasm-std",
  "schemars",
