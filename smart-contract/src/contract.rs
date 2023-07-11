@@ -9,8 +9,9 @@ use provwasm_std::types::{
     cosmos::base::v1beta1::Coin,
     provenance::attribute::v1::AttributeQuerier,
     provenance::marker::v1::{
-        AccessGrant, MarkerAccount, MarkerQuerier, MarkerStatus, MarkerType, MsgAddMarkerRequest,
-        MsgBurnRequest, MsgMintRequest, MsgTransferRequest, MsgWithdrawRequest,
+        AccessGrant, MarkerAccount, MarkerQuerier, MarkerStatus, MarkerType, MsgActivateRequest,
+        MsgAddMarkerRequest, MsgBurnRequest, MsgMintRequest, MsgTransferRequest,
+        MsgWithdrawRequest,
     },
 };
 use semver::Version;
@@ -56,27 +57,35 @@ pub fn instantiate(
             return Err(contract_err("invalid denom length"));
         }
 
-        res = res.add_message(MsgAddMarkerRequest {
-            amount: None,
-            manager: env.contract.address.to_string(),
-            from_address: env.contract.address.to_string(),
-            status: MarkerStatus::Active.into(),
-            marker_type: MarkerType::Restricted.into(),
-            access_list: vec![
-                AccessGrant {
-                    address: env.contract.address.to_string(),
-                    permissions: vec![1, 2, 3, 4, 5, 6, 7],
-                },
-                AccessGrant {
-                    address: info.sender.to_string(),
-                    permissions: vec![1],
-                },
-            ],
-            supply_fixed: false,
-            allow_governance_control: false,
-            allow_forced_transfer: false,
-            required_attributes: vec![],
-        });
+        res = res
+            .add_message(MsgAddMarkerRequest {
+                amount: Some(Coin {
+                    denom: msg.denom.clone(),
+                    amount: "0".to_string(),
+                }),
+                manager: env.contract.address.to_string(),
+                from_address: env.contract.address.to_string(),
+                status: MarkerStatus::Finalized.into(),
+                marker_type: MarkerType::Restricted.into(),
+                access_list: vec![
+                    AccessGrant {
+                        address: env.contract.address.to_string(),
+                        permissions: vec![1, 2, 3, 4, 5, 6, 7],
+                    },
+                    AccessGrant {
+                        address: info.sender.to_string(),
+                        permissions: vec![1],
+                    },
+                ],
+                supply_fixed: false,
+                allow_governance_control: false,
+                allow_forced_transfer: false,
+                required_attributes: vec![],
+            })
+            .add_message(MsgActivateRequest {
+                denom: msg.denom.clone(),
+                administrator: env.contract.address.to_string(),
+            });
     }
 
     // Set contract version.
@@ -866,15 +875,17 @@ mod tests {
         .unwrap();
 
         // Ensure messages were created.
-        assert_eq!(1, res.messages.len());
-
+        assert_eq!(2, res.messages.len());
         match &res.messages[0].msg {
             CosmosMsg::Stargate { type_url, value } => {
                 let expected: Binary = MsgAddMarkerRequest {
-                    amount: None,
+                    amount: Some(Coin {
+                        denom: "dcc.coin".to_string(),
+                        amount: "0".to_string(),
+                    }),
                     manager: env.contract.address.to_string(),
                     from_address: env.contract.address.to_string(),
-                    status: MarkerStatus::Active.into(),
+                    status: MarkerStatus::Finalized.into(),
                     marker_type: MarkerType::Restricted.into(),
                     access_list: vec![
                         AccessGrant {
@@ -895,6 +906,21 @@ mod tests {
                 .unwrap();
 
                 assert_eq!(type_url, "/provenance.marker.v1.MsgAddMarkerRequest");
+                assert_eq!(value, &expected)
+            }
+            _ => panic!("unexpected cosmos message"),
+        }
+
+        match &res.messages[1].msg {
+            CosmosMsg::Stargate { type_url, value } => {
+                let expected: Binary = MsgActivateRequest {
+                    denom: "dcc.coin".to_string(),
+                    administrator: env.contract.address.to_string(),
+                }
+                .try_into()
+                .unwrap();
+
+                assert_eq!(type_url, "/provenance.marker.v1.MsgActivateRequest");
                 assert_eq!(value, &expected)
             }
             _ => panic!("unexpected cosmos message"),
