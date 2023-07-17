@@ -9,8 +9,8 @@ use provwasm_std::types::{
     cosmos::base::v1beta1::Coin,
     provenance::attribute::v1::AttributeQuerier,
     provenance::marker::v1::{
-        AccessGrant, MarkerAccount, MarkerQuerier, MarkerStatus, MarkerType, MsgActivateRequest,
-        MsgAddMarkerRequest, MsgBurnRequest, MsgMintRequest, MsgTransferRequest,
+        Access, AccessGrant, MarkerAccount, MarkerQuerier, MarkerType,
+        MsgAddFinalizeActivateMarkerRequest, MsgBurnRequest, MsgMintRequest, MsgTransferRequest,
         MsgWithdrawRequest,
     },
 };
@@ -57,35 +57,38 @@ pub fn instantiate(
             return Err(contract_err("invalid denom length"));
         }
 
-        res = res
-            .add_message(MsgAddMarkerRequest {
-                amount: Some(Coin {
-                    denom: msg.denom.clone(),
-                    amount: "0".to_string(),
-                }),
-                manager: env.contract.address.to_string(),
-                from_address: env.contract.address.to_string(),
-                status: MarkerStatus::Finalized.into(),
-                marker_type: MarkerType::Restricted.into(),
-                access_list: vec![
-                    AccessGrant {
-                        address: env.contract.address.to_string(),
-                        permissions: vec![1, 2, 3, 4, 5, 6, 7],
-                    },
-                    AccessGrant {
-                        address: info.sender.to_string(),
-                        permissions: vec![1],
-                    },
-                ],
-                supply_fixed: false,
-                allow_governance_control: false,
-                allow_forced_transfer: false,
-                required_attributes: vec![],
-            })
-            .add_message(MsgActivateRequest {
+        res = res.add_message(MsgAddFinalizeActivateMarkerRequest {
+            amount: Some(Coin {
                 denom: msg.denom.clone(),
-                administrator: env.contract.address.to_string(),
-            });
+                amount: "0".to_string(),
+            }),
+            manager: env.contract.address.to_string(),
+            from_address: env.contract.address.to_string(),
+            marker_type: MarkerType::Restricted.into(),
+            access_list: vec![
+                AccessGrant {
+                    address: env.contract.address.to_string(),
+                    permissions: vec![
+                        Access::Mint.into(),
+                        Access::Burn.into(),
+                        Access::Deposit.into(),
+                        Access::Withdraw.into(),
+                        Access::Delete.into(),
+                        Access::Admin.into(),
+                        Access::Transfer.into(),
+                    ],
+                },
+                AccessGrant {
+                    address: info.sender.to_string(),
+                    // The contract admin is also a marker admin
+                    permissions: vec![Access::Admin.into()],
+                },
+            ],
+            supply_fixed: false,
+            allow_governance_control: false,
+            allow_forced_transfer: false,
+            required_attributes: vec![],
+        });
     }
 
     // Set contract version.
@@ -854,7 +857,9 @@ mod tests {
     use provwasm_std::types::provenance::attribute::v1::{
         Attribute, AttributeType, QueryAttributeRequest, QueryAttributeResponse,
     };
-    use provwasm_std::types::provenance::marker::v1::{QueryMarkerRequest, QueryMarkerResponse};
+    use provwasm_std::types::provenance::marker::v1::{
+        MarkerStatus, QueryMarkerRequest, QueryMarkerResponse,
+    };
     use std::convert::TryInto;
 
     #[test]
@@ -875,17 +880,16 @@ mod tests {
         .unwrap();
 
         // Ensure messages were created.
-        assert_eq!(2, res.messages.len());
+        assert_eq!(1, res.messages.len());
         match &res.messages[0].msg {
             CosmosMsg::Stargate { type_url, value } => {
-                let expected: Binary = MsgAddMarkerRequest {
+                let expected: Binary = MsgAddFinalizeActivateMarkerRequest {
                     amount: Some(Coin {
                         denom: "dcc.coin".to_string(),
                         amount: "0".to_string(),
                     }),
                     manager: env.contract.address.to_string(),
                     from_address: env.contract.address.to_string(),
-                    status: MarkerStatus::Finalized.into(),
                     marker_type: MarkerType::Restricted.into(),
                     access_list: vec![
                         AccessGrant {
@@ -894,7 +898,7 @@ mod tests {
                         },
                         AccessGrant {
                             address: "admin".to_string(),
-                            permissions: vec![1],
+                            permissions: vec![6],
                         },
                     ],
                     supply_fixed: false,
@@ -905,22 +909,10 @@ mod tests {
                 .try_into()
                 .unwrap();
 
-                assert_eq!(type_url, "/provenance.marker.v1.MsgAddMarkerRequest");
-                assert_eq!(value, &expected)
-            }
-            _ => panic!("unexpected cosmos message"),
-        }
-
-        match &res.messages[1].msg {
-            CosmosMsg::Stargate { type_url, value } => {
-                let expected: Binary = MsgActivateRequest {
-                    denom: "dcc.coin".to_string(),
-                    administrator: env.contract.address.to_string(),
-                }
-                .try_into()
-                .unwrap();
-
-                assert_eq!(type_url, "/provenance.marker.v1.MsgActivateRequest");
+                assert_eq!(
+                    type_url,
+                    "/provenance.marker.v1.MsgAddFinalizeActivateMarkerRequest"
+                );
                 assert_eq!(value, &expected)
             }
             _ => panic!("unexpected cosmos message"),
