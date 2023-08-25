@@ -5,7 +5,6 @@ use crate::error::ContractError;
 use crate::msg::MigrateMsg;
 use cosmwasm_std::{Addr, Decimal, DepsMut, Storage, Uint128};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
-use provwasm_std::ProvenanceQuery;
 use semver::{Version, VersionReq};
 
 #[allow(deprecated)]
@@ -55,7 +54,7 @@ impl From<State> for StateV2 {
 
 #[allow(deprecated)]
 pub fn migrate_state(
-    deps: DepsMut<ProvenanceQuery>,
+    deps: DepsMut,
     current_version: Version,
     _msg: &MigrateMsg,
 ) -> Result<(), ContractError> {
@@ -93,7 +92,7 @@ pub fn legacy_config_read(storage: &dyn Storage) -> ReadonlySingleton<State> {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{Addr, Decimal, Uint128};
-    use provwasm_mocks::mock_dependencies;
+    use provwasm_mocks::mock_provenance_dependencies;
     use semver::Version;
 
     use crate::error::ContractError;
@@ -104,7 +103,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     pub fn migrate_legacy_state_to_v2() -> Result<(), ContractError> {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_provenance_dependencies();
 
         legacy_config(&mut deps.storage).save(&State {
             admin: Addr::unchecked("id"),
