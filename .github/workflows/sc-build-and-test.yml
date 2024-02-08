@@ -13,7 +13,7 @@ jobs:
         sc:
         - smart-contract
         - smart-contract-sale
-    runs-on: ubuntu-latest
+    runs-on: figure-linux-standard
     steps:
     - uses: actions/checkout@v3
     - uses: actions-rs/toolchain@v1
@@ -40,7 +40,7 @@ jobs:
         sc:
         - smart-contract
         - smart-contract-sale
-    runs-on: ubuntu-latest
+    runs-on: figure-linux-standard
     steps:
     - uses: actions/checkout@v3
     - uses: actions-rs/toolchain@v1

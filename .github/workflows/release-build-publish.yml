@@ -14,7 +14,7 @@ jobs:
   java_build:
     name: Build Jar
 
-    runs-on: ubuntu-latest
+    runs-on: figure-linux-standard
 
     steps:
       - uses: actions/checkout@v2
@@ -56,7 +56,7 @@ jobs:
     name: Build and Push to Docker Registry
     needs: java_build
 
-    runs-on: ubuntu-latest
+    runs-on: figure-linux-standard
 
     if: github.event_name == 'release'
 
@@ -149,7 +149,7 @@ jobs:
   wasm_build:
     name: Build and Release Wasm
 
-    runs-on: ubuntu-latest
+    runs-on: figure-linux-standard
 
     steps:
       - uses: actions/checkout@v2
