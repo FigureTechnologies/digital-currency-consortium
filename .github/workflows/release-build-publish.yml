@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Get Version
         run: |
@@ -39,14 +39,14 @@ jobs:
         run: ./gradlew clean build :service:jacocoTestReport --refresh-dependencies -PartifactVersion=$VERSION
 
       - name: Upload Service Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: service
           path: service/build/libs/*.jar
         if: github.event_name == 'release'
 
       - name: Upload Report Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: report
           path: report/build/libs/*.jar
@@ -61,7 +61,7 @@ jobs:
     if: github.event_name == 'release'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Prepare
         id: prep
@@ -109,7 +109,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Download Service Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: service
           path: service/build/libs
@@ -123,7 +123,7 @@ jobs:
           tags: ${{ steps.prep.outputs.service_tags }}
 
       - name: Download Report Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: report
           path: report/build/libs
@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Optimize smart contract
         working-directory: ./smart-contract
